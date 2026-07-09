@@ -14,6 +14,10 @@
 - [x] Run static validation, token compliance, browser QA, and Lighthouse.
 - [x] Record `VISUAL_QA.md` and `PERF.md`.
 - [x] Commit verified implementation.
+- [x] Remove no-op CTA buttons by adding concrete screens or state destinations.
+- [x] Reduce badge/tag accent tokens to yellow, blue, green, and danger.
+- [x] Update browser QA to click through CTA destination screens.
+- [x] Attempt Open Design MCP refinement through `clip-inbox-cta-token-refinement`; blocked by Fable 5 usage limit.
 
 ## In Progress
 
@@ -24,3 +28,4 @@
 - [ ] Native SwiftUI component implementation.
 - [ ] Real iOS Share Sheet integration.
 - [ ] Local JSON persistence, import, export, and app lock behavior.
+- [ ] Re-run Open Design agent refinement when model usage credits are available.

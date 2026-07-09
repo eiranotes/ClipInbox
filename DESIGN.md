@@ -2,7 +2,7 @@
 
 ## 1. Atmosphere / Signature
 
-Clip Inbox uses a warm Korean mobile utility style with Trello-like card ownership. The signature is a soft ivory app surface, strong black outlines, large confident Korean titles, rounded white cards, pastel content badges, and a single yellow action accent. It should feel useful, quick, and slightly playful without becoming a game board.
+Clip Inbox uses a warm Korean mobile utility style with Trello-like card ownership. The signature is a soft ivory app surface, strong black outlines, large confident Korean titles, rounded white cards, quiet neutral chips, and a restrained four-color state set. It should feel useful, quick, and slightly playful without becoming a game board.
 
 Design Read: Reading this as a mobile-first clipping utility for personal capture, warm-bold board language, leaning Trello cards plus iOS utility rhythm. DESIGN_VARIANCE 4, MOTION_INTENSITY 3, VISUAL_DENSITY 7.
 
@@ -21,18 +21,15 @@ All production color values are declared here and mirrored as CSS variables.
 | color.text.tertiary | `--color-text-tertiary` | `#9AA0A6` | Low priority text and placeholders |
 | color.border.strong | `--color-border-strong` | `#080808` | Card, button, and icon borders |
 | color.border.soft | `--color-border-soft` | `#D8D1C4` | Inner separators and quiet controls |
-| color.accent.yellow | `--color-accent-yellow` | `#FFD900` | Primary actions and selected controls |
+| color.accent.yellow | `--color-accent-yellow` | `#FFD900` | Primary actions, selected controls, and needs-review state |
+| color.accent.blue | `--color-accent-blue` | `#BBD7FF` | Informational type marker and focus ring |
 | color.accent.green | `--color-accent-green` | `#9BE7B0` | Saved and success state |
-| color.accent.blue | `--color-accent-blue` | `#BBD7FF` | Link badge |
-| color.accent.purple | `--color-accent-purple` | `#D9C8FF` | Memo badge |
-| color.accent.pink | `--color-accent-pink` | `#FFC8D8` | Image badge |
-| color.accent.orange | `--color-accent-orange` | `#FFBD67` | Screenshot and needs-review badge |
 | color.danger | `--color-danger` | `#FF4B4B` | Destructive action |
 | color.shadow.hard | `--color-shadow-hard` | `#080808` | Hard shadow color |
 
 Contrast note: Primary text on app, board, card, and yellow backgrounds passes normal text contrast. Secondary text is reserved for metadata on card or app backgrounds.
 
-Do not use pure white for the app background. Do not add purple gradients, glow fields, or sports/ranking colors.
+Do not use pure white for the app background. Do not add purple gradients, glow fields, sports/ranking colors, or per-content pastel colors beyond yellow, blue, green, and danger.
 
 ## 3. Typography
 
@@ -72,7 +69,7 @@ Board section: `--color-bg-board`, `--border-panel`, `--radius-panel`, `--space-
 
 Clip card: `--color-bg-card`, `--border-card`, `--radius-card`, `--space-card-pad`, no default shadow. Highlighted cards may use `--shadow-hard-sm`.
 
-Badge and chip: pill radius, black border, token-specific pastel fill. Interactive chips have hover translate, active yellow fill, focus ring, and at least 32px height.
+Badge and chip: pill radius, soft token border, mostly neutral fill, and a small state dot when the badge needs meaning. Interactive chips have hover translate, active yellow fill, focus ring, and at least 32px height. Content type badges share the blue informational marker; unsorted/new use yellow; saved uses green.
 
 Primary box button: yellow fill, black text, black border, button radius, optional hard shadow. Disabled state uses card-muted fill and tertiary text.
 
@@ -110,7 +107,7 @@ Border tokens:
 | border.card | `--border-card` | 2px solid `#080808` |
 | border.panel | `--border-panel` | 2px solid `#080808` |
 | border.button | `--border-button` | 2px solid `#080808` |
-| border.chip | `--border-chip` | 1.5px solid `#080808` |
+| border.chip | `--border-chip` | 1px solid `#D8D1C4` |
 | border.input | `--border-input` | 2px solid `#080808` |
 
 Do not introduce extra shadows, lone dark sections, or a second accent color.

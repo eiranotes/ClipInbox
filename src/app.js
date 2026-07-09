@@ -70,6 +70,66 @@ const folders = [
   ["note", "아이디어", 8]
 ];
 
+const settingsGroups = [
+  [
+    ["lock", "앱 잠금", "켬", "app-lock"],
+    ["palette", "테마", "라이트", "theme"],
+    ["language", "언어", "한국어", "language"],
+    ["folder", "기본 폴더", "인박스", "default-folder"]
+  ],
+  [
+    ["upload", "백업 및 내보내기", "JSON", "backup"],
+    ["download", "가져오기", "JSON", "import"]
+  ],
+  [
+    ["info", "앱 정보", "Clip Inbox", "about"],
+    ["help", "문의하기", "", "contact"]
+  ]
+];
+
+const settingDetails = {
+  "app-lock": {
+    title: "앱 잠금",
+    summary: "앱을 다시 열 때 Face ID 또는 기기 암호로 인박스를 보호합니다.",
+    options: ["Face ID 사용", "즉시 잠금", "잠금 화면에서 미리보기 숨김"]
+  },
+  theme: {
+    title: "테마",
+    summary: "현재 프로토타입은 라이트 테마 기준으로 토큰을 고정합니다.",
+    options: ["라이트", "시스템 설정 따르기"]
+  },
+  language: {
+    title: "언어",
+    summary: "앱 표시 언어를 선택합니다.",
+    options: ["한국어", "English"]
+  },
+  "default-folder": {
+    title: "기본 폴더",
+    summary: "공유 시트에서 저장 버튼을 누르면 먼저 들어갈 폴더입니다.",
+    options: ["인박스", "디자인", "업무", "나중에"]
+  },
+  backup: {
+    title: "백업 및 내보내기",
+    summary: "클립, 태그, 폴더 목록을 로컬 JSON 파일로 내보낼 준비 화면입니다.",
+    options: ["전체 내보내기", "선택한 폴더만 내보내기"]
+  },
+  import: {
+    title: "가져오기",
+    summary: "기존 JSON 백업을 가져오기 전에 중복 클립을 확인합니다.",
+    options: ["파일 선택", "중복 미리보기"]
+  },
+  about: {
+    title: "앱 정보",
+    summary: "Clip Inbox 0.1.0 정적 프로토타입입니다.",
+    options: ["버전 0.1.0", "개인 로컬 보관"]
+  },
+  contact: {
+    title: "문의하기",
+    summary: "문제 상황과 저장하려던 URL을 함께 남길 수 있는 문의 준비 화면입니다.",
+    options: ["메일 작성", "진단 정보 첨부"]
+  }
+};
+
 const typeLabels = {
   link: "링크",
   image: "이미지",
@@ -89,11 +149,19 @@ const filterLabels = {
 const state = {
   screen: "inbox",
   filter: "all",
+  searchFilter: "전체",
   selectedId: 1,
   query: "",
   saved: false,
+  bookmarked: false,
   sortIndex: 0,
-  sortChoice: "디자인"
+  sortChoice: "디자인",
+  activeFolder: "인박스",
+  destination: "인박스",
+  addTags: ["인테리어", "거실"],
+  selectedSetting: "app-lock",
+  deleteContext: "detail",
+  actionNotice: ""
 };
 
 const root = document.getElementById("root");
@@ -142,6 +210,7 @@ function render() {
       ${statusBar()}
       <main class="screen" data-screen="${state.screen}">
         ${screenMarkup()}
+        ${state.actionNotice ? toast(state.actionNotice) : ""}
       </main>
       ${["inbox", "folders", "add", "search", "settings"].includes(state.screen) ? bottomNav() : ""}
     </div>
@@ -169,6 +238,20 @@ function screenMarkup() {
   if (state.screen === "search") return searchScreen();
   if (state.screen === "settings") return settingsScreen();
   if (state.screen === "detail") return detailScreen();
+  if (state.screen === "filter") return filterScreen();
+  if (state.screen === "destination") return destinationScreen();
+  if (state.screen === "tag-editor") return tagEditorScreen();
+  if (state.screen === "bookmark") return bookmarkScreen();
+  if (state.screen === "share") return shareScreen();
+  if (state.screen === "more") return moreScreen();
+  if (state.screen === "external") return externalScreen();
+  if (state.screen === "move") return moveScreen();
+  if (state.screen === "edit") return editScreen();
+  if (state.screen === "delete") return deleteScreen();
+  if (state.screen === "folder-new") return newFolderScreen();
+  if (state.screen === "folder-detail") return folderDetailScreen();
+  if (state.screen === "setting-detail") return settingDetailScreen();
+  if (state.screen === "card-actions") return cardActionsScreen();
   return sortScreen();
 }
 
@@ -198,12 +281,32 @@ function inboxScreen() {
   });
   return `
     ${header("클립 인박스", {
-      right: `${iconButton("필터", "filter", "noop")}${iconButton("정렬", "sort", "open-sort")}${iconButton("설정", "settings", "settings")}`
+      right: `${iconButton("필터", "filter", "open-filter")}${iconButton("정렬", "sort", "open-sort")}${iconButton("설정", "settings", "settings")}`
     })}
     <div class="chip-strip" aria-label="인박스 필터">
       ${Object.entries(filterLabels).map(([key, label]) => chip(label, state.filter === key, `filter:${key}`)).join("")}
     </div>
     ${board("INBOX", list.length, `<div class="card-stack">${list.map(clipCard).join("")}</div>`)}
+  `;
+}
+
+function filterScreen() {
+  return `
+    ${header("필터", {
+      left: iconTextButton("뒤로", "left", "inbox")
+    })}
+    ${board("보이는 클립", null, `
+      <div class="chip-wrap spacious">
+        ${Object.entries(filterLabels).map(([key, label]) => chip(label, state.filter === key, `filter:${key}`)).join("")}
+      </div>
+    `)}
+    ${board("정리 상태", null, `
+      <div class="choice-stack">
+        ${actionRow("inbox", "전체 인박스", "모든 저장 항목", "filter:all", state.filter === "all" ? "is-selected" : "")}
+        ${actionRow("sort", "미정리만", "분류가 필요한 항목", "filter:unsorted", state.filter === "unsorted" ? "is-selected" : "")}
+      </div>
+    `)}
+    <button class="primary-box-button" type="button" data-action="inbox">${icon("check")}필터 적용</button>
   `;
 }
 
@@ -223,16 +326,52 @@ function addScreen() {
       </div>
     </article>
     ${board("저장 위치", null, `
-      <button class="select-row" type="button">
+      <button class="select-row" type="button" data-action="destination">
         <span class="row-icon yellow">${icon("inbox")}</span>
-        <span>인박스</span>
+        <span>${state.destination}</span>
         ${icon("down")}
       </button>
     `)}
-    ${board("태그", null, `<div class="inline-input"><span>태그 추가</span>${icon("plus")}</div>`)}
+    ${board("태그", null, `
+      <div class="chip-wrap compact">${state.addTags.map((tag) => tagChip(tag)).join("")}</div>
+      <button class="inline-input" type="button" data-action="tag-editor"><span>태그 추가</span>${icon("plus")}</button>
+    `)}
     ${board("메모", null, `<label class="memo-box"><span class="sr-only">메모</span><textarea placeholder="메모를 입력하세요"></textarea></label>`)}
-    <button class="primary-box-button" type="button" data-action="save" ${state.saved ? "disabled" : ""}>${state.saved ? "인박스에 저장됨" : "인박스에 저장"}</button>
-    ${state.saved ? `<div class="toast" role="status">${icon("saved")}저장됨</div>` : ""}
+    <button class="primary-box-button" type="button" data-action="save" ${state.saved ? "disabled" : ""}>${state.saved ? `${state.destination}에 저장됨` : `${state.destination}에 저장`}</button>
+  `;
+}
+
+function destinationScreen() {
+  return `
+    ${header("저장 위치", {
+      left: iconTextButton("뒤로", "left", "add")
+    })}
+    ${board("폴더 선택", null, `
+      <div class="choice-stack">
+        ${folders.slice(1).map(([, label, count]) => actionRow("folder", label, `${count}개 클립`, `destination:${label}`, state.destination === label ? "is-selected" : "")).join("")}
+      </div>
+    `)}
+    <button class="primary-box-button" type="button" data-action="add">${icon("check")}선택 완료</button>
+  `;
+}
+
+function tagEditorScreen() {
+  const suggestions = ["인테리어", "거실", "미니멀", "레퍼런스", "아이디어", "나중에"];
+  return `
+    ${header("태그 편집", {
+      left: iconTextButton("뒤로", "left", "add")
+    })}
+    ${board("현재 태그", state.addTags.length, `
+      <div class="chip-wrap spacious">
+        ${state.addTags.map((tag) => chip(`${tag} 삭제`, false, `remove-tag:${tag}`)).join("")}
+      </div>
+    `)}
+    ${board("추천 태그", null, `
+      <div class="chip-wrap spacious">
+        ${suggestions.map((tag) => chip(tag, state.addTags.includes(tag), `add-tag:${tag}`)).join("")}
+      </div>
+    `)}
+    <button class="primary-box-button" type="button" data-action="add">${icon("check")}태그 적용</button>
   `;
 }
 
@@ -241,7 +380,7 @@ function detailScreen() {
   return `
     ${header("클립 상세", {
       left: iconTextButton("뒤로", "left", "inbox"),
-      right: `${iconButton("북마크", "bookmark", "noop")}${iconButton("공유", "share", "noop")}${iconButton("더보기", "more", "noop")}`
+      right: `${iconButton("북마크", "bookmark", "bookmark")}${iconButton("공유", "share", "share")}${iconButton("더보기", "more", "more")}`
     })}
     <article class="detail-card">
       ${badge(typeLabels[clip.type], clip.type)}
@@ -253,22 +392,141 @@ function detailScreen() {
     ${board("NOTE", null, `<p class="body-copy">${clip.memo ?? "필요한 맥락을 짧게 적어두면 나중에 정리하기 쉽습니다."}</p>`)}
     ${board("ORGANIZE", null, `<div class="organize-list"><span>Folder: Inbox</span><span>Tags: ${clip.tags.join(", ")}</span></div>`)}
     <div class="button-stack">
-      <button class="primary-box-button" type="button">${icon("external")}링크 열기</button>
+      <button class="primary-box-button" type="button" data-action="external">${icon("external")}링크 열기</button>
       <div class="button-grid">
-        <button class="secondary-box-button" type="button">${icon("folder")}이동</button>
-        <button class="secondary-box-button" type="button">${icon("edit")}편집</button>
-        <button class="secondary-box-button is-danger" type="button">${icon("trash")}삭제</button>
+        <button class="secondary-box-button" type="button" data-action="move">${icon("folder")}이동</button>
+        <button class="secondary-box-button" type="button" data-action="edit">${icon("edit")}편집</button>
+        <button class="secondary-box-button is-danger" type="button" data-action="confirm-delete:detail">${icon("trash")}삭제</button>
       </div>
+    </div>
+  `;
+}
+
+function bookmarkScreen() {
+  const clip = selectedClip();
+  return `
+    ${header("북마크", {
+      left: iconTextButton("뒤로", "left", "detail")
+    })}
+    ${board("저장 상태", null, `
+      <div class="state-panel">
+        ${icon("bookmark")}
+        <strong>${clip.title}</strong>
+        <span>${state.bookmarked ? "북마크에 추가됨" : "북마크에서 해제됨"}</span>
+      </div>
+    `)}
+    <button class="primary-box-button" type="button" data-action="detail">${icon("check")}상세로 돌아가기</button>
+  `;
+}
+
+function shareScreen() {
+  const clip = selectedClip();
+  return `
+    ${header("공유", {
+      left: iconTextButton("뒤로", "left", "detail")
+    })}
+    ${board("공유할 클립", null, `
+      <div class="share-summary">
+        ${clip.image ? `<img src="${clip.image}" alt="">` : fallbackDomain(clip.source, true)}
+        <div>
+          <strong>${clip.title}</strong>
+          <span>${clip.source}</span>
+        </div>
+      </div>
+    `)}
+    ${board("공유 방식", null, `
+      <div class="choice-stack">
+        ${actionRow("share", "링크 복사", "URL을 클립보드에 준비", "share-complete:링크 복사 준비됨")}
+        ${actionRow("note", "메시지로 공유", "제목과 메모를 함께 전송", "share-complete:공유 시트 준비됨")}
+        ${actionRow("image", "이미지 카드 저장", "썸네일 포함 카드 생성", "share-complete:이미지 카드 준비됨")}
+      </div>
+    `)}
+    <button class="primary-box-button" type="button" data-action="detail">${icon("check")}완료</button>
+  `;
+}
+
+function moreScreen() {
+  return `
+    ${header("더보기", {
+      left: iconTextButton("뒤로", "left", "detail")
+    })}
+    ${actionMenu()}
+  `;
+}
+
+function externalScreen() {
+  const clip = selectedClip();
+  return `
+    ${header("링크 열기", {
+      left: iconTextButton("뒤로", "left", "detail")
+    })}
+    ${board("열기 전 확인", null, `
+      <div class="state-panel">
+        ${icon("external")}
+        <strong>${clip.title}</strong>
+        <span>${clip.source}</span>
+      </div>
+    `)}
+    <div class="button-stack">
+      <button class="primary-box-button" type="button" data-action="external-opened">${icon("external")}브라우저에서 열기</button>
+      <button class="secondary-box-button" type="button" data-action="detail">상세로 돌아가기</button>
+    </div>
+  `;
+}
+
+function moveScreen() {
+  return `
+    ${header("폴더 이동", {
+      left: iconTextButton("뒤로", "left", "detail")
+    })}
+    ${board("이동할 폴더", null, `
+      <div class="choice-stack">
+        ${folders.slice(1).map(([, label, count]) => actionRow("folder", label, `${count}개 클립`, `move-folder:${label}`, state.activeFolder === label ? "is-selected" : "")).join("")}
+      </div>
+    `)}
+    <button class="primary-box-button" type="button" data-action="detail">${icon("check")}이동 완료</button>
+  `;
+}
+
+function editScreen() {
+  const clip = selectedClip();
+  return `
+    ${header("클립 편집", {
+      left: iconTextButton("뒤로", "left", "detail")
+    })}
+    ${board("제목", null, `<label class="edit-field"><span class="sr-only">제목</span><input value="${escapeAttr(clip.title)}"></label>`)}
+    ${board("태그", null, `<div class="chip-wrap compact">${clip.tags.map((tag) => tagChip(tag)).join("")}</div>`)}
+    ${board("메모", null, `<label class="memo-box"><span class="sr-only">메모</span><textarea>${clip.memo ?? clip.description}</textarea></label>`)}
+    <button class="primary-box-button" type="button" data-action="edit-save">${icon("check")}변경 저장</button>
+  `;
+}
+
+function deleteScreen() {
+  const title = state.deleteContext === "settings" ? "모든 데이터 삭제" : selectedClip().title;
+  return `
+    ${header("삭제 확인", {
+      left: iconTextButton("뒤로", "left", state.deleteContext === "settings" ? "settings" : "detail")
+    })}
+    ${board("삭제 대상", null, `
+      <div class="state-panel is-danger">
+        ${icon("trash")}
+        <strong>${title}</strong>
+        <span>이 프로토타입에서는 삭제 전 확인 화면까지만 표시합니다.</span>
+      </div>
+    `)}
+    <div class="button-stack">
+      <button class="primary-box-button is-danger" type="button" data-action="delete-confirmed">${icon("trash")}삭제 확인</button>
+      <button class="secondary-box-button" type="button" data-action="${state.deleteContext === "settings" ? "settings" : "detail"}">취소</button>
     </div>
   `;
 }
 
 function folderScreen() {
   return `
-    ${header("폴더", { right: iconButton("새 폴더", "plus", "noop") })}
+    ${header("폴더", { right: iconButton("새 폴더", "plus", "folder-new") })}
     <div class="folder-list">
       ${folders.map(([iconName, label, count, active]) => `
-        <button class="folder-row ${active ? "is-active" : ""}" type="button">
+        <button class="folder-row ${active ? "is-active" : ""}" type="button" data-action="open-folder:${label}">
           <span class="folder-row-icon">${icon(iconName)}</span>
           <span>${label}</span>
           <strong>${count}</strong>
@@ -278,11 +536,47 @@ function folderScreen() {
   `;
 }
 
+function newFolderScreen() {
+  return `
+    ${header("새 폴더", {
+      left: iconTextButton("뒤로", "left", "folders")
+    })}
+    ${board("폴더 이름", null, `<label class="edit-field"><span class="sr-only">폴더 이름</span><input value="새 폴더"></label>`)}
+    ${board("기본 태그", null, `
+      <div class="chip-wrap spacious">
+        ${["업무", "디자인", "나중에", "아이디어"].map((tag) => chip(tag, tag === "디자인", `folder-tag:${tag}`)).join("")}
+      </div>
+    `)}
+    <button class="primary-box-button" type="button" data-action="folder-create">${icon("plus")}폴더 만들기</button>
+  `;
+}
+
+function folderDetailScreen() {
+  const count = folders.find(([, label]) => label === state.activeFolder)?.[2] ?? clips.length;
+  return `
+    ${header(state.activeFolder, {
+      left: iconTextButton("뒤로", "left", "folders"),
+      right: iconButton("새 폴더", "plus", "folder-new")
+    })}
+    ${board("폴더 정보", null, `
+      <div class="state-panel">
+        ${icon("folder")}
+        <strong>${state.activeFolder}</strong>
+        <span>${count}개 클립을 보관 중</span>
+      </div>
+    `)}
+    ${board("클립", clips.length, `<div class="compact-stack">${clips.slice(0, 4).map(compactResult).join("")}</div>`)}
+  `;
+}
+
 function searchScreen() {
   const term = state.query.trim().toLowerCase();
-  const results = term
+  const baseResults = term
     ? clips.filter((clip) => [clip.title, clip.source, clip.tags.join(" "), clip.description].join(" ").toLowerCase().includes(term))
     : clips.slice(0, 3);
+  const results = state.searchFilter === "전체"
+    ? baseResults
+    : baseResults.filter((clip) => typeLabels[clip.type] === state.searchFilter || clip.tags.includes(state.searchFilter));
   return `
     ${header("검색")}
     <label class="search-box">
@@ -291,7 +585,7 @@ function searchScreen() {
       <input value="${escapeAttr(state.query)}" placeholder="제목, 메모, 태그로 검색" data-search-input>
     </label>
     <div class="chip-strip">
-      ${["전체", "링크", "메모", "이미지", "태그"].map((label, index) => chip(label, index === 0)).join("")}
+      ${["전체", "링크", "메모", "이미지", "태그"].map((label) => chip(label, state.searchFilter === label, `search-filter:${label}`)).join("")}
     </div>
     <section class="recent-searches" aria-label="최근 검색">
       <h2>최근 검색</h2>
@@ -337,25 +631,14 @@ function sortScreen() {
 function settingsScreen() {
   return `
     ${header("설정")}
-    ${settingsGroup([
-      ["lock", "앱 잠금", "켬"],
-      ["palette", "테마", "라이트"],
-      ["language", "언어", "한국어"],
-      ["folder", "기본 폴더", "인박스"]
-    ])}
+    ${settingsGroup(settingsGroups[0])}
     <section class="settings-section">
       <h2>데이터</h2>
-      ${settingsGroup([
-        ["upload", "백업 및 내보내기", "JSON"],
-        ["download", "가져오기", "JSON"]
-      ])}
+      ${settingsGroup(settingsGroups[1])}
     </section>
     <section class="settings-section">
       <h2>기타</h2>
-      ${settingsGroup([
-        ["info", "앱 정보", "Clip Inbox"],
-        ["help", "문의하기", ""]
-      ])}
+      ${settingsGroup(settingsGroups[2])}
     </section>
     ${board("앱 아이콘", null, `
       <div class="icon-preview-row">
@@ -370,15 +653,42 @@ function settingsScreen() {
         </div>
       </div>
     `)}
-    <button class="delete-card" type="button">모든 데이터 삭제</button>
+    <button class="delete-card" type="button" data-action="confirm-delete:settings">모든 데이터 삭제</button>
+  `;
+}
+
+function settingDetailScreen() {
+  const detail = settingDetails[state.selectedSetting] ?? settingDetails["app-lock"];
+  return `
+    ${header(detail.title, {
+      left: iconTextButton("뒤로", "left", "settings")
+    })}
+    ${board("설정 설명", null, `
+      <div class="state-panel">
+        ${icon("settings")}
+        <strong>${detail.title}</strong>
+        <span>${detail.summary}</span>
+      </div>
+    `)}
+    ${board("옵션", null, `
+      <div class="choice-stack">
+        ${detail.options.map((option, index) => `
+          <button class="choice-row ${index === 0 ? "is-selected" : ""}" type="button" data-action="setting-apply">
+            <span>${option}</span>
+            ${index === 0 ? icon("check") : ""}
+          </button>
+        `).join("")}
+      </div>
+    `)}
+    <button class="primary-box-button" type="button" data-action="settings">${icon("check")}설정 완료</button>
   `;
 }
 
 function settingsGroup(rows) {
   return `
     <div class="settings-group">
-      ${rows.map(([iconName, label, value]) => `
-        <button class="settings-row" type="button">
+      ${rows.map(([iconName, label, value, key]) => `
+        <button class="settings-row" type="button" data-action="setting:${key}">
           <span class="settings-row-icon">${icon(iconName)}</span>
           <strong>${label}</strong>
           <span>${value}</span>
@@ -401,6 +711,49 @@ function board(title, count, content) {
   `;
 }
 
+function actionRow(iconName, label, value, action, className = "") {
+  return `
+    <button class="action-row ${className}" type="button" data-action="${action}">
+      <span class="settings-row-icon">${icon(iconName)}</span>
+      <strong>${label}</strong>
+      <span>${value}</span>
+      ${icon(className.includes("is-selected") ? "check" : "right")}
+    </button>
+  `;
+}
+
+function actionMenu() {
+  return `
+    ${board("클립 작업", null, `
+      <div class="choice-stack">
+        ${actionRow("external", "링크 열기", "원본 페이지 확인", "external")}
+        ${actionRow("bookmark", "북마크", state.bookmarked ? "이미 추가됨" : "빠른 보관", "bookmark")}
+        ${actionRow("share", "공유", "링크 또는 이미지 카드", "share")}
+        ${actionRow("folder", "이동", "폴더 변경", "move")}
+        ${actionRow("edit", "편집", "제목, 태그, 메모 수정", "edit")}
+        ${actionRow("trash", "삭제", "삭제 전 확인", "confirm-delete:detail", "is-danger")}
+      </div>
+    `)}
+  `;
+}
+
+function cardActionsScreen() {
+  const clip = selectedClip();
+  return `
+    ${header("카드 메뉴", {
+      left: iconTextButton("뒤로", "left", "inbox")
+    })}
+    ${board("선택한 클립", null, `
+      <div class="state-panel">
+        ${icon(typeIcon(clip.type))}
+        <strong>${clip.title}</strong>
+        <span>${clip.source}</span>
+      </div>
+    `)}
+    ${actionMenu()}
+  `;
+}
+
 function clipCard(clip) {
   const stateBadge = clip.state
     ? badge(clip.state === "unsorted" ? "미정리" : clip.state === "new" ? "신규" : "저장됨", null, clip.state)
@@ -411,10 +764,10 @@ function clipCard(clip) {
         <div class="badge-row">${badge(typeLabels[clip.type], clip.type)}${stateBadge}</div>
         <h3>${clip.title}</h3>
         ${metaLine(clip)}
-        <div class="chip-wrap compact">${clip.tags.slice(0, 3).map((tag) => chip(tag)).join("")}</div>
+        <div class="chip-wrap compact">${clip.tags.slice(0, 3).map((tag) => tagChip(tag)).join("")}</div>
       </div>
       <div class="clip-media">${clip.image ? `<img src="${clip.image}" alt="">` : fallbackDomain(clip.source, true)}</div>
-      <button class="card-menu" type="button" aria-label="${clip.title} 메뉴">${icon("more")}</button>
+      <button class="card-menu" type="button" aria-label="${clip.title} 메뉴" data-action="card-actions:${clip.id}">${icon("more")}</button>
     </article>
   `;
 }
@@ -440,6 +793,21 @@ function badge(label, type, tone) {
 
 function chip(label, active = false, action = "") {
   return `<button class="chip ${active ? "is-active" : ""}" type="button" ${action ? `data-action="${action}"` : ""}>${label}</button>`;
+}
+
+function tagChip(label) {
+  return chip(label, false, `query:${label}`);
+}
+
+function toast(message) {
+  return `<div class="toast" role="status">${icon("saved")}${message}</div>`;
+}
+
+function typeIcon(type) {
+  if (type === "image") return "image";
+  if (type === "memo") return "note";
+  if (type === "screenshot") return "camera";
+  return "external";
 }
 
 function metaLine(clip) {
@@ -496,6 +864,7 @@ function escapeAttr(value) {
 function bindEvents() {
   root.querySelectorAll("[data-nav]").forEach((button) => {
     button.addEventListener("click", () => {
+      state.actionNotice = "";
       state.screen = button.dataset.nav;
       render();
     });
@@ -508,6 +877,7 @@ function bindEvents() {
   root.querySelectorAll("[data-open-detail]").forEach((card) => {
     card.addEventListener("click", (event) => {
       if (event.target.closest(".card-menu")) return;
+      state.actionNotice = "";
       state.selectedId = Number(card.dataset.openDetail);
       state.screen = "detail";
       render();
@@ -515,6 +885,7 @@ function bindEvents() {
     card.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
+        state.actionNotice = "";
         state.selectedId = Number(card.dataset.openDetail);
         state.screen = "detail";
         render();
@@ -534,13 +905,47 @@ function bindEvents() {
 }
 
 function handleAction(action) {
-  if (!action || action === "noop") return;
-  if (["inbox", "settings"].includes(action)) {
+  if (!action) return;
+  state.actionNotice = "";
+  if (["inbox", "folders", "add", "search", "settings", "detail"].includes(action)) {
     state.screen = action;
+  } else if (action === "open-filter") {
+    state.screen = "filter";
   } else if (action === "open-sort") {
     state.screen = "sort";
+  } else if (action === "destination") {
+    state.screen = "destination";
+  } else if (action === "tag-editor") {
+    state.screen = "tag-editor";
+  } else if (action === "bookmark") {
+    state.bookmarked = true;
+    state.screen = "bookmark";
+  } else if (action === "share") {
+    state.screen = "share";
+  } else if (action === "more") {
+    state.screen = "more";
+  } else if (action === "external") {
+    state.screen = "external";
+  } else if (action === "external-opened") {
+    state.actionNotice = "브라우저 열기 준비됨";
+  } else if (action === "move") {
+    state.screen = "move";
+  } else if (action === "edit") {
+    state.screen = "edit";
+  } else if (action === "edit-save") {
+    state.actionNotice = "변경 저장됨";
+    state.screen = "detail";
+  } else if (action === "folder-new") {
+    state.screen = "folder-new";
+  } else if (action === "folder-create") {
+    state.activeFolder = "새 폴더";
+    state.actionNotice = "새 폴더가 준비됨";
+    state.screen = "folder-detail";
+  } else if (action === "setting-apply") {
+    state.actionNotice = "설정 선택됨";
   } else if (action === "save") {
     state.saved = true;
+    state.actionNotice = "저장됨";
   } else if (action === "sort-next") {
     state.sortIndex += 1;
     state.sortChoice = "디자인";
@@ -548,9 +953,41 @@ function handleAction(action) {
     state.sortChoice = action.slice("choice:".length);
   } else if (action.startsWith("filter:")) {
     state.filter = action.slice("filter:".length);
+  } else if (action.startsWith("search-filter:")) {
+    state.searchFilter = action.slice("search-filter:".length);
   } else if (action.startsWith("query:")) {
     state.query = action.slice("query:".length);
     state.screen = "search";
+  } else if (action.startsWith("destination:")) {
+    state.destination = action.slice("destination:".length);
+  } else if (action.startsWith("add-tag:")) {
+    const tag = action.slice("add-tag:".length);
+    if (!state.addTags.includes(tag)) state.addTags.push(tag);
+  } else if (action.startsWith("remove-tag:")) {
+    const tag = action.slice("remove-tag:".length);
+    state.addTags = state.addTags.filter((item) => item !== tag);
+  } else if (action.startsWith("open-folder:")) {
+    state.activeFolder = action.slice("open-folder:".length);
+    state.screen = "folder-detail";
+  } else if (action.startsWith("folder-tag:")) {
+    state.actionNotice = `${action.slice("folder-tag:".length)} 태그 선택됨`;
+  } else if (action.startsWith("setting:")) {
+    state.selectedSetting = action.slice("setting:".length);
+    state.screen = "setting-detail";
+  } else if (action.startsWith("share-complete:")) {
+    state.actionNotice = action.slice("share-complete:".length);
+  } else if (action.startsWith("move-folder:")) {
+    state.activeFolder = action.slice("move-folder:".length);
+    state.actionNotice = `${state.activeFolder}로 이동 준비됨`;
+  } else if (action.startsWith("confirm-delete:")) {
+    state.deleteContext = action.slice("confirm-delete:".length);
+    state.screen = "delete";
+  } else if (action === "delete-confirmed") {
+    state.actionNotice = state.deleteContext === "settings" ? "삭제 확인됨" : "클립 삭제 확인됨";
+    state.screen = state.deleteContext === "settings" ? "settings" : "inbox";
+  } else if (action.startsWith("card-actions:")) {
+    state.selectedId = Number(action.slice("card-actions:".length));
+    state.screen = "card-actions";
   }
   render();
 }
