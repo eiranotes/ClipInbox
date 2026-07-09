@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "mode": "strict",
+  "createdAt": "2026-07-09T12:28:56.858Z",
+  "updatedAt": "2026-07-09T12:29:35.150Z",
+  "briefPath": ".superloopy/brief.md",
+  "evidencePath": ".superloopy/evidence",
+  "goalsPath": ".superloopy/goals.json",
+  "ledgerPath": ".superloopy/ledger.jsonl",
+  "goals": [
+    {
+      "id": "G001",
+      "title": "Clip Inbox Trello-token UI prototype implementation and QA",
+      "objective": "Clip Inbox Trello-token UI prototype implementation and QA",
+      "status": "complete",
+      "attempt": 1,
+      "createdAt": "2026-07-09T12:28:56.858Z",
+      "updatedAt": "2026-07-09T12:29:35.150Z",
+      "criteria": [
+        {
+          "id": "C001",
+          "kind": "happy",
+          "scenario": "Happy path works from the real user-facing surface.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/evidence/frontend/20260709-204729-clip-inbox-trello-token/VISUAL_QA.md",
+          "capturedAt": "2026-07-09T12:29:11.560Z",
+          "notes": "Real browser screenshots and state walkthrough pass."
+        },
+        {
+          "id": "C002",
+          "kind": "risk",
+          "scenario": "Riskiest edge or failure path is handled.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/evidence/frontend/20260709-204729-clip-inbox-trello-token/PERF.md",
+          "capturedAt": "2026-07-09T12:29:11.234Z",
+          "notes": "Token compliance, browser QA, and Lighthouse passed."
+        },
+        {
+          "id": "C003",
+          "kind": "regression",
+          "scenario": "Adjacent existing behavior still works.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/evidence/frontend/20260709-204729-clip-inbox-trello-token/ds-compliance.json",
+          "capturedAt": "2026-07-09T12:29:11.861Z",
+          "notes": "Design-system compliance has no violations."
+        }
+      ],
+      "startedAt": "2026-07-09T12:28:57.134Z",
+      "completedAt": "2026-07-09T12:29:35.150Z",
+      "evidence": "Clip Inbox Trello-token prototype criteria passed."
+    }
+  ],
+  "aggregateCompletion": {
+    "status": "complete",
+    "completedAt": "2026-07-09T12:29:35.150Z",
+    "evidence": "Clip Inbox Trello-token prototype criteria passed.",
+    "qualityGate": {
+      "status": "passed",
+      "artifacts": [
+        {
+          "absolutePath": "/Volumes/AI/Clip/.superloopy/evidence/frontend/20260709-204729-clip-inbox-trello-token/VISUAL_QA.md",
+          "relativePath": ".superloopy/evidence/frontend/20260709-204729-clip-inbox-trello-token/VISUAL_QA.md",
+          "size": 1919
+        },
+        {
+          "absolutePath": "/Volumes/AI/Clip/.superloopy/evidence/frontend/20260709-204729-clip-inbox-trello-token/PERF.md",
+          "relativePath": ".superloopy/evidence/frontend/20260709-204729-clip-inbox-trello-token/PERF.md",
+          "size": 1516
+        },
+        {
+          "absolutePath": "/Volumes/AI/Clip/.superloopy/evidence/frontend/20260709-204729-clip-inbox-trello-token/ds-compliance.json",
+          "relativePath": ".superloopy/evidence/frontend/20260709-204729-clip-inbox-trello-token/ds-compliance.json",
+          "size": 115
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "sessionId": null,
+  "auditsAccepted": 0,
+  "updatedAt": "2026-07-09T12:29:35.962Z",
+  "criteria": [
+    {
+      "criterion": "G001/C001",
+      "scenario": "Happy path works from the real user-facing surface.",
+      "inputHash": "11677c28469a845af805de0c8172ca84b83f3732d6a0ac582c527b35a44045e5",
+      "sourceHash": "9e175575e00ee66a844b23b6beb681e116b33d493f86808b5d531d9ff02e264d",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-09T12:29:35.267Z",
+      "command": null,
+      "rerunStatus": "manual-recheck",
+      "rerunArtifact": ".superloopy/evidence/frontend/20260709-204729-clip-inbox-trello-token/VISUAL_QA.md",
+      "rerunArtifactHash": "9e175575e00ee66a844b23b6beb681e116b33d493f86808b5d531d9ff02e264d",
+      "floor": "pass",
+      "verdictArtifact": null,
+      "verdictHash": null
+    },
+    {
+      "criterion": "G001/C002",
+      "scenario": "Riskiest edge or failure path is handled.",
+      "inputHash": "61e9d1c9de2a3a3d281f1ee7a98f3396b783c01583606001d86acfcbd6706a5c",
+      "sourceHash": "d6594214992492fd30fb36056d1a3eed2464ffca8cdb94cf3c4994b680edd96a",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-09T12:29:35.674Z",
+      "command": null,
+      "rerunStatus": "manual-recheck",
+      "rerunArtifact": ".superloopy/evidence/frontend/20260709-204729-clip-inbox-trello-token/PERF.md",
+      "rerunArtifactHash": "d6594214992492fd30fb36056d1a3eed2464ffca8cdb94cf3c4994b680edd96a",
+      "floor": "pass",
+      "verdictArtifact": null,
+      "verdictHash": null
+    },
+    {
+      "criterion": "G001/C003",
+      "scenario": "Adjacent existing behavior still works.",
+      "inputHash": "73d8af7d3209d314755c0deb5f0563c032a1217e4ae8a1278d60cb7c2b009a9f",
+      "sourceHash": "eaf6cc96ce59adb91ad0b7e8291801d23d6785d6d45b24a65d83ef6d8087c0f5",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-09T12:29:35.961Z",
+      "command": null,
+      "rerunStatus": "manual-recheck",
+      "rerunArtifact": ".superloopy/evidence/frontend/20260709-204729-clip-inbox-trello-token/ds-compliance.json",
+      "rerunArtifactHash": "eaf6cc96ce59adb91ad0b7e8291801d23d6785d6d45b24a65d83ef6d8087c0f5",
+      "floor": "pass",
+      "verdictArtifact": null,
+      "verdictHash": null
+    }
+  ]
+}
