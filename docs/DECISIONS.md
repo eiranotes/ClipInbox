@@ -215,3 +215,19 @@ Decision: Create a Clip refinement project in Open Design MCP and record the age
 Why: The Open Design run failed with a Fable 5 usage-limit error before producing output.
 
 Impact: Open Design context exists at `clip-inbox-cta-token-refinement`, and the remaining OD refinement is deferred until model usage is available.
+
+## 2026-07-11: Keyboard Is Raised Only by Direct User Taps
+
+Decision: No screen or workflow sheet requests text-field focus programmatically. The keyboard opens only when the user taps the search field or an editor, is prewarmed once right after launch with a zero-frame responder, and is dismissed by outside taps in search and by every bottom-tab switch.
+
+Why: Programmatic focus raced view attachment, producing the `containerToPush is nil` input-assistant warning, unpredictable keyboard pop-ups when entering tabs or sheets, and a laggy-feeling first presentation. Tap-only focus plus a one-time prewarm makes every keyboard appearance user-initiated and immediate.
+
+Impact: `sheetFocusDelay` was removed from the token contract, Search/new-folder/rename flows no longer auto-focus, the warning is absent from captured simulator logs, and DESIGN.md's motion section documents the policy.
+
+## 2026-07-11: Detail Reads as One Viewport
+
+Decision: The clip-detail read flow — badges through the 링크 열기 action — must fit a 6.3" screen without scrolling. Preview media is capped at 140pt and the note editor opens at a 72pt minimum; whitespace keeps the 16pt rhythm instead of growing media.
+
+Why: At 220pt of media plus a 104pt editor the primary action fell below the fold, and the requested fix was explicitly to shrink media rather than tighten breathing room.
+
+Impact: `size.detailImageHeight` changed to 140px, `size.noteEditorMinHeight` was added, and Sort Later/Add previews share the same compact height. Fill-mode thumbnails are now clipped at their real frame (overlay-on-proposal composition), which the smaller viewport exposed as an overflow bug.

@@ -42,12 +42,18 @@ enum Tokens {
     static let button = Font.custom("Pretendard-SemiBold", size: 16)
     static let nav = Font.custom("Pretendard-SemiBold", size: 11)
 
+    // Line spacing (DESIGN.md line-height 계약: body 1.55, meta 1.4를 lineSpacing 가산치로 구현)
+    static let titleLineSpacing: CGFloat = 3
+    static let bodyLineSpacing: CGFloat = 6
+    static let metaLineSpacing: CGFloat = 4
+
     // Spacing (base 4px)
     static let space1: CGFloat = 4
     static let chipGap: CGFloat = 8
     static let rowGap: CGFloat = 8
     static let cardGap: CGFloat = 12
     static let cardPad: CGFloat = 12
+    static let detailGap: CGFloat = 16
     static let screenX: CGFloat = 16
     static let panelPad: CGFloat = 16
     static let sectionGap: CGFloat = 24
@@ -73,7 +79,9 @@ enum Tokens {
     static let resultThumbnailWidth: CGFloat = 64
     static let resultThumbnailHeight: CGFloat = 48
     static let resultRowContentHeight: CGFloat = 48
-    static let detailImageHeight: CGFloat = 220
+    // 상세는 스크롤 없이 링크 열기까지 한 화면에 들어와야 하므로 미디어와 노트를 압축한다.
+    static let detailImageHeight: CGFloat = 140
+    static let noteEditorMinHeight: CGFloat = 72
     static let sheetDetentFraction: CGFloat = 0.68
     static let contentMax: CGFloat = 720
     static let gridBreakpoint: CGFloat = 760
@@ -93,7 +101,7 @@ enum Tokens {
     // Motion
     static let motionFast: Double = 0.14
     static let motionBase: Double = 0.18
-    static let searchFocusDelay: Duration = .milliseconds(80)
+    static let searchDebounceDelay: Duration = .milliseconds(120)
 }
 
 extension View {

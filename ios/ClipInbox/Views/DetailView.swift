@@ -10,6 +10,8 @@ struct DetailView: View {
     @State private var showMore = false
     @State private var showMove = false
     @State private var showEdit = false
+    @State private var showTagEdit = false
+    @State private var tagDraft: [String] = []
     @State private var showDeleteConfirm = false
     @State private var showExternalConfirm = false
     @State private var noteDraft = ""
@@ -32,7 +34,7 @@ struct DetailView: View {
                     }
                 }
 
-                VStack(alignment: .leading, spacing: Tokens.cardGap) {
+                VStack(alignment: .leading, spacing: Tokens.detailGap) {
                     HStack(spacing: Tokens.rowGap) {
                         TokenBadge(tone: .type(clip.type))
                         if let state = clip.state { TokenBadge(tone: .state(state)) }
@@ -40,6 +42,7 @@ struct DetailView: View {
                     Text(clip.title)
                         .font(Tokens.sectionTitle)
                         .foregroundStyle(Tokens.textPrimary)
+                        .lineSpacing(Tokens.titleLineSpacing)
                     HStack(spacing: Tokens.rowGap) {
                         HStack(spacing: 5) {
                             Image(systemName: "globe").font(.system(size: 12, weight: .bold))
@@ -55,13 +58,13 @@ struct DetailView: View {
                         ClipThumbnail(clip: clip)
                             .frame(maxWidth: .infinity)
                             .frame(height: Tokens.detailImageHeight)
-                            .padding(.vertical, Tokens.space1)
                     }
 
                     if !clip.description.isEmpty {
                         Text(clip.description)
                             .font(Tokens.body)
                             .foregroundStyle(Tokens.textPrimary)
+                            .lineSpacing(Tokens.bodyLineSpacing)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -81,9 +84,10 @@ struct DetailView: View {
                     ZStack(alignment: .topLeading) {
                         TextEditor(text: $noteDraft)
                             .font(Tokens.body)
+                            .lineSpacing(Tokens.bodyLineSpacing)
                             .scrollContentBackground(.hidden)
                             .padding(Tokens.rowGap)
-                            .frame(minHeight: Tokens.actionTarget * 2)
+                            .frame(minHeight: Tokens.noteEditorMinHeight)
                             .background(Tokens.bgCard)
                             .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusInput, style: .continuous))
                             .overlay(
@@ -111,7 +115,8 @@ struct DetailView: View {
                     organizeRow(label: "태그",
                                 value: clip.tags.isEmpty ? "없음" : clip.tags.joined(separator: " · "),
                                 systemImage: "tag") {
-                        showEdit = true
+                        tagDraft = clip.tags
+                        showTagEdit = true
                     }
                 }
 
@@ -141,6 +146,9 @@ struct DetailView: View {
             .sheet(isPresented: $showMore) { CardActionsSheet(clipID: clip.id).workflowSheet() }
             .sheet(isPresented: $showMove) { MoveFolderSheet(clipID: clip.id).workflowSheet() }
             .sheet(isPresented: $showEdit) { EditClipSheet(clipID: clip.id).workflowSheet() }
+            .sheet(isPresented: $showTagEdit, onDismiss: { store.updateTags(id: clipID, tags: tagDraft) }) {
+                TagEditorSheet(tags: $tagDraft).workflowSheet()
+            }
             .confirmationDialog("브라우저에서 열까요?", isPresented: $showExternalConfirm, titleVisibility: .visible) {
                 Button("브라우저에서 열기") {
                     if let url = URL(string: clip.url) {
@@ -188,7 +196,7 @@ struct DetailView: View {
                 Image(systemName: systemImage)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Tokens.textSecondary)
-                    .frame(width: Tokens.sectionGap)
+                    .frame(width: Tokens.iconColumn)
                 Text(label)
                     .font(Tokens.bodySemibold)
                     .foregroundStyle(Tokens.textPrimary)
@@ -237,7 +245,7 @@ struct MoveFolderSheet: View {
 
             BoardSection(title: "이동할 폴더") {
                 VStack(spacing: 0) {
-                    ForEach(store.folders.filter { $0.label != "전체" }) { folder in
+                    ForEach(store.destinationFolders) { folder in
                         ActionRow(systemImage: folder.systemImage, label: folder.label,
                                   value: "\(store.folderCount(folder.label))개 클립",
                                   isSelected: destination == folder.label) {
@@ -251,7 +259,7 @@ struct MoveFolderSheet: View {
                 store.moveClip(id: clipID, to: destination)
                 dismiss()
             } label: {
-                Label("\(destination)로 이동", systemImage: "checkmark")
+                Label("\(destination.withRoParticle) 이동", systemImage: "checkmark")
             }
             .buttonStyle(PrimaryBoxButtonStyle())
         }
@@ -296,6 +304,7 @@ struct EditClipSheet: View {
             BoardSection(title: "메모") {
                 TextEditor(text: $memo)
                     .font(Tokens.body)
+                    .lineSpacing(Tokens.bodyLineSpacing)
                     .scrollContentBackground(.hidden)
                     .padding(Tokens.rowGap)
                     .frame(minHeight: 110)

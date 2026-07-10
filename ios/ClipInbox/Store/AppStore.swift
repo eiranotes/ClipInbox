@@ -126,7 +126,12 @@ final class AppStore {
 
         for item in pending {
             let payload = item.payload
-            let destination = Self.cleanText(payload.folder, fallback: "인박스", maxLength: 40)
+            var destination = Self.cleanText(payload.folder, fallback: "인박스", maxLength: 40)
+            if destination == "인박스",
+               !folders.contains(where: { $0.label == destination }),
+               let renamedInbox = folders.first(where: { $0.icon == "inbox" }) {
+                destination = renamedInbox.label
+            }
             if !folders.contains(where: { $0.label == destination }) {
                 folders.append(Folder(icon: "folder", label: destination))
             }
@@ -260,14 +265,20 @@ final class AppStore {
                                       label: label,
                                       defaultTag: folder.defaultTag.map { cleanText($0, maxLength: 50) }))
         }
-        if !safeFolders.contains(where: { $0.label == "전체" }) {
+        if !safeFolders.contains(where: { $0.icon == "archive" }) {
             safeFolders.insert(Folder(icon: "archive", label: "전체"), at: 0)
         }
-        if !safeFolders.contains(where: { $0.label == "인박스" }) {
+        if !safeFolders.contains(where: { $0.icon == "inbox" }) {
             safeFolders.insert(Folder(icon: "inbox", label: "인박스"), at: min(1, safeFolders.count))
         }
+        let inboxLabel = safeFolders.first(where: { $0.icon == "inbox" })?.label ?? "인박스"
+        let aggregateLabels = Set(
+            safeFolders.filter { $0.icon == "archive" }.map { $0.label.lowercased() }
+        )
         for index in safeClips.indices {
-            if safeClips[index].folder == "전체" { safeClips[index].folder = "인박스" }
+            if aggregateLabels.contains(safeClips[index].folder.lowercased()) {
+                safeClips[index].folder = inboxLabel
+            }
             if let match = safeFolders.first(where: { $0.label.lowercased() == safeClips[index].folder.lowercased() }) {
                 safeClips[index].folder = match.label
             } else {
@@ -279,8 +290,8 @@ final class AppStore {
         if !["켬", "끔"].contains(preferences.appLock) { preferences.appLock = Preferences.standard.appLock }
         if !["라이트", "시스템 설정"].contains(preferences.theme) { preferences.theme = Preferences.standard.theme }
         if !["한국어", "English"].contains(preferences.language) { preferences.language = Preferences.standard.language }
-        if !safeFolders.contains(where: { $0.label != "전체" && $0.label == preferences.defaultFolder }) {
-            preferences.defaultFolder = Preferences.standard.defaultFolder
+        if !safeFolders.contains(where: { $0.icon != "archive" && $0.label == preferences.defaultFolder }) {
+            preferences.defaultFolder = inboxLabel
         }
 
         return DataSnapshot(version: 2, clips: safeClips, folders: safeFolders, preferences: preferences)
@@ -309,11 +320,19 @@ final class AppStore {
     }
 
     func folderCount(_ label: String) -> Int {
-        label == "전체" ? clips.count : clips.filter { $0.folder == label }.count
+        isAggregateFolder(label) ? clips.count : clips.filter { $0.folder == label }.count
     }
 
     func folderClips(_ label: String) -> [Clip] {
-        label == "전체" ? clips : clips.filter { $0.folder == label }
+        isAggregateFolder(label) ? clips : clips.filter { $0.folder == label }
+    }
+
+    var destinationFolders: [Folder] {
+        folders.filter { $0.icon != "archive" }
+    }
+
+    func isAggregateFolder(_ label: String) -> Bool {
+        folders.first(where: { $0.label == label })?.icon == "archive"
     }
 
     var unsortedClips: [Clip] { clips.filter { $0.state == .unsorted } }
@@ -371,7 +390,7 @@ final class AppStore {
 
     func moveClip(id: Int, to folder: String) {
         mutate(id: id) { $0.folder = folder }
-        showToast("\(folder)로 이동했습니다")
+        showToast("\(folder.withRoParticle) 이동했습니다")
     }
 
     func updateClip(id: Int, title: String, memo: String, tags: [String]) throws {
@@ -383,6 +402,14 @@ final class AppStore {
             $0.tags = tags
         }
         showToast("변경 내용을 저장했습니다")
+    }
+
+    /// 상세 화면의 태그 행에서 태그만 바로 저장한다. 값이 같으면 저장·토스트를 생략한다.
+    func updateTags(id: Int, tags: [String]) {
+        let clean = Array(tags.map { Self.cleanText($0, maxLength: 50) }.filter { !$0.isEmpty }.prefix(12))
+        guard let current = clip(id: id), current.tags != clean else { return }
+        mutate(id: id) { $0.tags = clean }
+        showToast("태그를 저장했습니다")
     }
 
     func updateMemo(id: Int, memo: String) {
@@ -422,6 +449,46 @@ final class AppStore {
         folders.append(Folder(icon: "folder", label: clean, defaultTag: defaultTag))
         persist()
         showToast("\(clean) 폴더를 만들었습니다")
+        return clean
+    }
+
+    func renameFolder(from originalLabel: String, to name: String) throws -> String {
+        let clean = Self.cleanText(name, maxLength: 40)
+        guard !clean.isEmpty else { throw StoreError.message("폴더 이름을 입력하세요.") }
+        guard let folderIndex = folders.firstIndex(where: { $0.label == originalLabel }) else {
+            throw StoreError.message("폴더를 찾을 수 없습니다.")
+        }
+        guard !folders.enumerated().contains(where: { index, folder in
+            index != folderIndex && folder.label.caseInsensitiveCompare(clean) == .orderedSame
+        }) else {
+            throw StoreError.message("같은 이름의 폴더가 이미 있습니다.")
+        }
+        guard clean != originalLabel else { return originalLabel }
+
+        let originalFolders = folders
+        let originalClips = clips
+        let originalPreferences = preferences
+
+        folders[folderIndex].label = clean
+        for index in clips.indices {
+            if clips[index].folder == originalLabel {
+                clips[index].folder = clean
+            }
+            clips[index].folderSuggestions = clips[index].folderSuggestions.map {
+                $0 == originalLabel ? clean : $0
+            }
+        }
+        if preferences.defaultFolder == originalLabel {
+            preferences.defaultFolder = clean
+        }
+
+        guard persist() else {
+            folders = originalFolders
+            clips = originalClips
+            preferences = originalPreferences
+            throw StoreError.message("폴더 이름을 저장하지 못했습니다.")
+        }
+        showToast("폴더 이름을 변경했습니다")
         return clean
     }
 

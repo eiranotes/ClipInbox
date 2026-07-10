@@ -46,6 +46,8 @@ Use Pretendard v1.3.9 from the official `orioncactus/pretendard` release. The na
 | type.button | `--type-button-size` | 16px | 600 | 1 | Button labels |
 | type.nav | `--type-nav-size` | 11px | 600 | 1 | Bottom navigation |
 
+The native app implements the multi-line line heights with additive `lineSpacing` tokens: +3pt on multi-line titles, +6pt on body text and text editors, +4pt on multi-line meta text. Single-line labels stay at the font's natural height.
+
 ## 4. Spacing
 
 Base unit: 4px. Component spacing follows the product spec through named tokens.
@@ -57,6 +59,7 @@ Base unit: 4px. Component spacing follows the product spec through named tokens.
 | space.rowGap | `--space-row` | 8px | Metadata and compact row gap |
 | space.cardGap | `--space-card-rhythm` | 12px | Card list gap |
 | space.cardPadding | `--space-card-pad` | 12px | Clip row and control padding |
+| space.detailGap | native only | 16px | Detail content stack rhythm (badges, title, source, media, description) |
 | space.screenX | `--space-screen-x` | 16px | Screen side inset |
 | space.panelPadding | `--space-panel-pad` | 16px | Focused form surface padding only |
 | space.sectionGap | `--space-section` | 24px | Screen section gap |
@@ -86,7 +89,8 @@ Responsive and control-size tokens:
 | size.resultThumbnailWidth | native only | 64px | Search/folder thumbnail width |
 | size.resultThumbnailHeight | native only | 48px | Search/folder thumbnail height |
 | size.resultRowContentHeight | native only | 48px | Fixed compact-result content height with or without media |
-| size.detailImageHeight | native only | 220px | Detail image viewport height |
+| size.detailImageHeight | native only | 140px | Detail/sort/save preview image height, sized so detail fits one screen |
+| size.noteEditorMinHeight | native only | 72px | Detail note editor minimum height |
 | layout.appMax | `--layout-app-max` | 960px | Wide application-shell maximum |
 | layout.contentMax | `--layout-content-max` | 720px | Readable secondary-workflow measure |
 | layout.gridBreakpoint | `--layout-grid-breakpoint` | 760px | Two-column workbench threshold |
@@ -98,11 +102,19 @@ Section block: transparent on the app canvas. A section heading sits above conte
 
 Root screen header: every tab starts at the same 12px top inset and uses a fixed 44px header height. Titles share one vertical center whether trailing utilities are present or absent.
 
+Destination list (folders, settings): rows share the same `DestinationRow` anatomy — 12px horizontal padding, a 28px leading icon column, and a trailing value plus chevron. Rows are separated by a hairline divider inset to the icon column start (12px); the last row has no divider. Folder and settings icons therefore sit on one identical vertical axis.
+
+Detail screen: the whole read flow — badges, title, source, preview, description, note, organize rows, and the primary link action — fits one viewport without scrolling on a 6.3" device. The preview stays 140px tall and the note editor opens at its 72px minimum; whitespace stays at the 16px detail rhythm instead of growing media.
+
+Row hit areas: every selectable row (action rows, destination rows, selection rows) accepts taps across its full width and height, not only on the label or icon.
+
+Share Extension feedback: saving is zero-confirm, then a compact green confirmation card ("Clip Inbox에 저장됨", checkmark, 10px radius, soft border) appears for about 0.85s before returning to the host app. Korean particles in dynamic labels and toasts follow the final consonant ("디자인으로", "인박스로").
+
 Clip row: full-width navigation target with 12px vertical padding and a soft bottom divider. The inbox hierarchy is title first, source second, then an optional 80x64 thumbnail. Type, state, time, and tags are detail-only metadata. The menu remains an independent 44px trailing target. There is no outer row card or shadow.
 
 Badge and filter: type/state metadata is plain text with an optional semantic mark and appears only in focused/detail contexts. Inbox and search filters show five equal-width cells per row across two visible rows, with an 8px gap, a 44px touch target, and a 2px yellow active underline. The first ten options fill the visible 5x2 grid; additional options continue horizontally in the same two-row grid. Label length never changes cell width. There is no per-filter box or duplicate filter modal.
 
-Tags: read-only tags appear only in detail. Editing screens show the selected value in one summary row, and tag selection uses the same two-row, five-column, equal-width underline grid as the main filter. Custom tags can grow beyond the first ten options through horizontal continuation. Tags never render as pill collections or irregular boxes.
+Tags: tags appear in detail inside the organize group, and the tag row opens the tag editor directly so tags can be changed without entering full clip edit. Editing screens show the selected value in one summary row, and tag selection uses the same two-row, five-column, equal-width underline grid as the main filter. Custom tags can grow beyond the first ten options through horizontal continuation. Tags never render as pill collections or irregular boxes.
 
 Primary button: flat yellow fill, near-black text, 10px radius, no shadow and no text raster shadow. Disabled state uses card-muted fill and tertiary text.
 
@@ -120,7 +132,7 @@ Thumbnail: 8px radius with no border for large detail imagery and an optional so
 
 ## 6. Motion
 
-Motion is light and functional: `--motion-fast` 140ms, `--motion-base` 180ms, `--motion-ease` cubic-bezier(0.2, 0.8, 0.2, 1). Search focus uses an 80ms next-runloop handoff so the field becomes first responder as soon as the tab transition installs it. Buttons and rows use opacity only; sheets use the system transition. Reduced-motion removes custom transitions.
+Motion is light and functional: `--motion-fast` 140ms, `--motion-base` 180ms, `--motion-ease` cubic-bezier(0.2, 0.8, 0.2, 1). The keyboard is raised only by a direct tap on the search field or a text editor; screens and workflow sheets never request focus programmatically. The keyboard process is prewarmed once right after launch so the first tap presents the keyboard without cold-start delay. In search, tapping outside the field dismisses the keyboard, and switching bottom tabs always dismisses it. Search result evaluation follows input by 120ms so Korean composition and key events stay responsive while results update after the user pauses. Buttons and rows use opacity only; sheets use the system transition. Reduced-motion removes custom transitions.
 
 ## 7. Depth
 

@@ -13,32 +13,16 @@ struct FoldersView: View {
             })
 
             VStack(spacing: 0) {
-                ForEach(store.folders) { folder in
+                ForEach(Array(store.folders.enumerated()), id: \.element.id) { index, folder in
                     NavigationLink(value: Route.folderDetail(folder.label)) {
-                        HStack(spacing: Tokens.cardGap) {
-                            Image(systemName: folder.systemImage)
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(Tokens.textPrimary)
-                                .frame(width: Tokens.iconColumn, height: Tokens.chipTarget - Tokens.space1 / 2)
-                            Text(folder.label)
-                                .font(Tokens.bodySemibold)
-                                .foregroundStyle(Tokens.textPrimary)
-                            Spacer()
-                            Text("\(store.folderCount(folder.label))")
-                                .font(Tokens.meta)
-                                .foregroundStyle(Tokens.textSecondary)
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Tokens.textTertiary)
-                        }
-                        .padding(.horizontal, Tokens.space1)
-                        .frame(minHeight: Tokens.actionTarget)
-                        .contentShape(Rectangle())
-                        .overlay(alignment: .bottom) {
-                            Tokens.borderSoft.frame(height: Tokens.borderChipWidth)
-                        }
+                        DestinationRow(systemImage: folder.systemImage,
+                                       title: folder.label,
+                                       value: "\(store.folderCount(folder.label))")
                     }
                     .buttonStyle(.plain)
+                    if index < store.folders.count - 1 {
+                        RowDivider()
+                    }
                 }
             }
 
@@ -58,12 +42,13 @@ struct NewFolderSheet: View {
     @State private var name = ""
     @State private var defaultTag = "디자인"
     @State private var errorMessage: String?
+    @FocusState private var nameFocused: Bool
 
     private let tagOptions = DefaultData.suggestedTags
 
     var body: some View {
         ScreenScaffold {
-            ScreenHeader("새 폴더", onBack: { dismiss() })
+            ScreenHeader("새 폴더", onBack: close)
 
             BoardSection(title: "폴더 이름") {
                 TextField("예: 읽을거리", text: $name)
@@ -71,6 +56,9 @@ struct NewFolderSheet: View {
                     .padding(.horizontal, Tokens.cardPad)
                     .frame(minHeight: Tokens.actionTarget)
                     .tokenSurface(radius: Tokens.radiusInput)
+                    .focused($nameFocused)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
                     .onChange(of: name) { errorMessage = nil }
             }
 
@@ -89,7 +77,7 @@ struct NewFolderSheet: View {
             Button {
                 do {
                     _ = try store.createFolder(name: name, defaultTag: defaultTag)
-                    dismiss()
+                    close()
                 } catch {
                     errorMessage = error.localizedDescription
                 }
@@ -99,6 +87,78 @@ struct NewFolderSheet: View {
             .buttonStyle(PrimaryBoxButtonStyle())
         }
     }
+
+    private func close() {
+        nameFocused = false
+        Keyboard.dismiss()
+        dismiss()
+    }
+}
+
+// MARK: - 폴더 이름 편집
+
+struct RenameFolderSheet: View {
+    @Environment(AppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+
+    let originalLabel: String
+    let onRenamed: (String) -> Void
+
+    @State private var name: String
+    @State private var errorMessage: String?
+    @FocusState private var nameFocused: Bool
+
+    init(originalLabel: String, onRenamed: @escaping (String) -> Void) {
+        self.originalLabel = originalLabel
+        self.onRenamed = onRenamed
+        _name = State(initialValue: originalLabel)
+    }
+
+    var body: some View {
+        ScreenScaffold {
+            ScreenHeader("폴더 이름 편집", onBack: close)
+
+            BoardSection(title: "폴더 이름") {
+                TextField("폴더 이름", text: $name)
+                    .font(Tokens.body)
+                    .padding(.horizontal, Tokens.cardPad)
+                    .frame(minHeight: Tokens.actionTarget)
+                    .tokenSurface(radius: Tokens.radiusInput)
+                    .focused($nameFocused)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .onChange(of: name) { errorMessage = nil }
+                    .onSubmit(rename)
+            }
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(Tokens.metaBold)
+                    .foregroundStyle(Tokens.danger)
+            }
+
+            Button(action: rename) {
+                Label("이름 저장", systemImage: "checkmark")
+            }
+            .buttonStyle(PrimaryBoxButtonStyle())
+        }
+    }
+
+    private func rename() {
+        do {
+            let renamed = try store.renameFolder(from: originalLabel, to: name)
+            onRenamed(renamed)
+            close()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func close() {
+        nameFocused = false
+        Keyboard.dismiss()
+        dismiss()
+    }
 }
 
 // MARK: - 폴더 상세
@@ -106,20 +166,30 @@ struct NewFolderSheet: View {
 struct FolderDetailView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-    let label: String
     @State private var showNewFolder = false
+    @State private var showRenameFolder = false
+    @State private var currentLabel: String
+
+    init(label: String) {
+        _currentLabel = State(initialValue: label)
+    }
 
     var body: some View {
-        let matches = store.folderClips(label)
+        let matches = store.folderClips(currentLabel)
         ScreenScaffold {
-            ScreenHeader(label, onBack: { dismiss() }, trailing: {
-                UtilityIconButton(label: "새 폴더", systemImage: "plus") {
-                    showNewFolder = true
+            ScreenHeader(currentLabel, onBack: { dismiss() }, trailing: {
+                HStack(spacing: 0) {
+                    UtilityIconButton(label: "폴더 이름 편집", systemImage: "pencil") {
+                        showRenameFolder = true
+                    }
+                    UtilityIconButton(label: "새 폴더", systemImage: "plus") {
+                        showNewFolder = true
+                    }
                 }
             })
 
             BoardSection(title: "폴더 정보") {
-                StatePanel(systemImage: "folder", title: label,
+                StatePanel(systemImage: "folder", title: currentLabel,
                            message: "\(matches.count)개 클립을 보관 중")
             }
 
@@ -138,6 +208,12 @@ struct FolderDetailView: View {
         }
         .sheet(isPresented: $showNewFolder) {
             NewFolderSheet().workflowSheet()
+        }
+        .sheet(isPresented: $showRenameFolder) {
+            RenameFolderSheet(originalLabel: currentLabel) { renamed in
+                currentLabel = renamed
+            }
+            .workflowSheet()
         }
     }
 }

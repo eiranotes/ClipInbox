@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 90;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -293,8 +293,14 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 2650;
 				TargetAttributes = {
+					377A7CF86AB24C7AC619FCC6 = {
+						DevelopmentTeam = 83BB7YWQHU;
+					};
+					67C447EC5E58E809B313F7D3 = {
+						DevelopmentTeam = 83BB7YWQHU;
+					};
 				};
 			};
 			buildConfigurationList = 824D8C9188C5FF12A114785E /* Build configuration list for PBXProject "ClipInbox" */;
@@ -306,7 +312,7 @@
 			);
 			mainGroup = 5369E285E03FF467869FEC5F;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
+			preferredProjectObjectVersion = 90;
 			productRefGroup = CD983CBDBDC6944DF95B02BB /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -468,6 +474,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = ClipShareExtension/ClipInboxShare.entitlements;
+				DEVELOPMENT_TEAM = 83BB7YWQHU;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ClipShareExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -489,6 +496,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ClipInbox/ClipInbox.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 83BB7YWQHU;
 				INFOPLIST_FILE = ClipInbox/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -505,6 +513,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = ClipShareExtension/ClipInboxShare.entitlements;
+				DEVELOPMENT_TEAM = 83BB7YWQHU;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ClipShareExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -614,6 +623,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ClipInbox/ClipInbox.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 83BB7YWQHU;
 				INFOPLIST_FILE = ClipInbox/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

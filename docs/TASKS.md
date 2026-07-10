@@ -67,6 +67,15 @@
 - [x] Add and pass native unit regressions for default tag filters, search history persistence, and primary mutation reloads.
 - [x] Smoke-test inbox filters, detail, card menu, share options, folders/new-folder, add/tag editor, search, Sort Later, and settings on the iPhone 17 Pro simulator.
 
+- [x] Make the keyboard tap-only (no programmatic focus), prewarm it at launch, and dismiss it on outside taps and tab switches; confirm the `containerToPush is nil` warning is gone from captured logs.
+- [x] Open the tag editor directly from the detail organize row and persist cleaned tags through a new `updateTags` mutation with regression coverage.
+- [x] Unify folder and settings rows behind `DestinationRow` + `RowDivider` and verify the icon axes match pixel-for-pixel on the simulator.
+- [x] Add line-spacing tokens and apply them to multi-line titles, body text, editors, and meta descriptions.
+- [x] Fit the detail read flow through 링크 열기 into one viewport (140pt preview, 72pt note editor) and fix the fill-mode thumbnail overflow that covered the source row.
+- [x] Show a compact saved-confirmation card in the Share Extension after zero-confirm capture.
+- [x] Fix Korean 로/으로 particles in dynamic folder labels and make selectable action rows fully tappable.
+- [x] Cache shared-image thumbnail decoding and re-verify the eight-test XCTest suite plus live simulator flows.
+
 ## In Progress
 
 - [ ] None.

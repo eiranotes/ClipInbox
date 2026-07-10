@@ -7,10 +7,10 @@ Clip Inbox's production source of truth is now the native SwiftUI iOS app under 
 Implemented screens:
 
 - Inbox with a two-row, five-column equal-width filter grid, full-row clip navigation, optional thumbnails, and text-only rows that keep the same height as media rows.
-- Share Extension that saves immediately after the user taps Clip Inbox in the system share sheet; there is no second Save/OK confirmation.
-- Detail view with optional preview, directly editable note, flat organization rows, and actions kept above the bottom navigation.
-- Folder list with flat rows and counts.
-- Search with immediate field focus, the shared 5x2 category selector, persisted real recent searches, results, and empty state.
+- Share Extension that saves immediately after the user taps Clip Inbox in the system share sheet — no second Save/OK step — then shows a compact green "Clip Inbox에 저장됨" confirmation card for about 0.85s before returning to the host app.
+- Detail view with a 16pt content rhythm that fits one viewport through the 링크 열기 action (140pt preview, 72pt note editor), directly editable note and tags (the tag row opens the tag editor directly), flat organization rows, and actions kept above the bottom navigation.
+- Folder list with flat rows and counts, sharing the settings screen's row anatomy and inset divider rule so both screens' icons sit on one axis.
+- Search with the shared 5x2 category selector, persisted real recent searches, results, and empty state. The keyboard opens only from a direct field tap, is prewarmed at launch for instant presentation, and dismisses on outside taps or tab switches.
 - Sort Later classification flow without scores or percentages.
 - Settings with app lock, theme, language, default folder, JSON export/import, app info, contact, and delete; the decorative app-icon preview was removed.
 - CTA destination screens for card menu, share, more actions, external link confirmation, folder move, clip edit, delete confirmation, save destination, tag editor, new folder, folder detail, and setting detail. Inbox filtering is direct and bookmark is an immediate toggle.
@@ -59,6 +59,8 @@ Implemented screens:
 - Expanded inbox/search filters and tag suggestions to ten practical defaults rendered as five equal-width controls per row across two rows, with horizontal continuation only beyond ten items.
 - Added persisted, deduplicated, five-item recent search history and default/next-runloop focus handoff; verified the caret is active immediately on Search tab entry and the submitted `거실` query survives app restart.
 - Added `ClipInboxTests` and passed three XCTest regressions covering tag filtering/search, recent-search persistence, and core mutation reload behavior. Runtime screenshots and CTA smoke evidence are in `.superloopy/evidence/frontend/20260710-ios-tag-search-audit`.
+- Reworked the keyboard policy (tap-only focus, launch prewarm, outside-tap and tab-switch dismissal), which also removed the `containerToPush is nil` warning; added direct tag editing from detail with an `updateTags` mutation; unified folder/settings destination rows behind `DestinationRow` + `RowDivider` with pixel-matched icon axes; and added line-spacing tokens for multi-line text.
+- Compressed detail to a one-viewport read flow (140pt preview, 72pt note editor), fixed fill-mode thumbnail overflow via overlay-and-clip composition, cached shared-image decoding in `NSCache`, added the Share Extension saved-confirmation card, made action rows fully tappable, and corrected Korean 로/으로 particles with a tested helper. Eight XCTest regressions pass; evidence in `.superloopy/evidence/frontend/20260711-keyboard-lock-folder`.
 
 ## Next Steps
 

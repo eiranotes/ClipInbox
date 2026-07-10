@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum AppTab: String, CaseIterable, Identifiable {
     case inbox, folders, add, search, settings
@@ -71,6 +72,9 @@ private struct BottomNavBar: View {
         HStack(spacing: 0) {
             ForEach(AppTab.allCases) { tab in
                 Button {
+                    guard selected != tab else { return }
+                    // 키보드는 입력 필드를 직접 탭했을 때만 올라온다. 탭 전환은 항상 내린다.
+                    Keyboard.dismiss()
                     selected = tab
                 } label: {
                     VStack(spacing: 4) {

@@ -1,9 +1,12 @@
 # Changelog
 
-## Unreleased - 2026-07-10
+## Unreleased - 2026-07-11
 
 ### Added
 
+- Direct tag editing from the clip-detail organize row: the tag row opens the tag editor immediately and saves cleaned, deduplicated tags with a no-op guard, covered by a new `updateTags` XCTest regression.
+- Share Extension now shows a compact green "Clip Inbox에 저장됨" confirmation card for about 0.85s after the zero-confirm save, instead of disappearing without feedback.
+- Korean "로/으로" particles in dynamic folder labels (move sheet, move toast, Sort Later CTA) now follow the final consonant — "디자인으로 분류하고 다음", "인박스로 이동" — via a tested `withRoParticle` helper.
 - Native `ClipInboxShare` Share Extension for Safari, Photos, and text sources, embedded in `ClipInbox.app` with URL, web-page, text, and single-image activation rules.
 - App Group file queue (`group.app.clipinbox.ClipInbox`) so the extension can save while the containing app is closed; the app imports queued clips whenever it becomes active.
 - Shared-photo persistence and thumbnail rendering, including cleanup when a shared-image clip or all local data is deleted.
@@ -15,6 +18,11 @@
 
 ### Changed
 
+- Keyboard policy: the keyboard now opens only from a direct tap on the search field or a text editor. Search-tab entry and the new-folder/rename sheets no longer request focus programmatically, tapping outside the search field or switching bottom tabs dismisses the keyboard, and the keyboard process is prewarmed once at launch so the first tap presents it without cold-start delay.
+- Expanded the detail content rhythm to a 16pt stack (badges, title, source, media, description) and added line spacing to multi-line titles, body text, editors, and meta descriptions across detail, edit, add, sort, settings, and state/empty panels.
+- Unified folder and settings destination rows behind one divider rule — a hairline inset to the icon column with no divider after the last row — keeping both screens' icons on an identical vertical axis (measured center x 126px on the 3x simulator).
+- Compressed the detail screen so the whole read flow through the 링크 열기 action fits one viewport without scrolling: preview images are 140pt, the note editor opens at a 72pt minimum, and the 16pt content rhythm is preserved instead of oversized media.
+- Selectable action rows (Sort Later categories, option lists, folder pickers) now accept taps across the entire row, not only on the label or icon.
 - Designated the native SwiftUI implementation under `ios/` as the production source of truth; the root web prototype is now reference-only unless web work is explicitly requested.
 - Reworked the native UI into a productive-minimal, list-first system with one warm canvas, row dividers, compact radii, quieter metadata, and no hard shadows.
 - Reduced the native main title, removed the duplicated lower Inbox label, and made the full clip row open detail while preserving the independent quick menu.
@@ -35,7 +43,9 @@
 - Detail note changes now save explicitly and on exit, with persisted-data feedback.
 - Long tag sets no longer stop at six or clip at the trailing edge; the first ten fill a 5x2 grid and later options continue horizontally.
 - Inbox images, text, and quick menus no longer share an overlay layer; media and no-media rows now keep identical content heights in inbox and compact results.
-- Search now becomes first responder as the tab opens through default focus plus an 80ms next-runloop handoff.
+- The `containerToPush is nil` keyboard warning no longer appears: it was raised by programmatic focus requests racing view attachment, and keyboard focus now comes only from user taps (confirmed with a full simulator log capture during keyboard interaction).
+- Shared-image thumbnails no longer re-read their file from disk on every row render; decoded images are memoized in an in-memory `NSCache`.
+- Fill-mode thumbnails no longer overflow their frame: `aspectRatio(.fill)` reported an oversized layout that covered the detail source row and crowded titles under Sort Later photos; images are now composited as an overlay on a proposal-sized surface and clipped at the real boundary.
 
 ### Verified
 
@@ -47,6 +57,7 @@
 - Final density, typography, modal, tag-scroll, and zero-confirm Safari share evidence is stored in `.superloopy/evidence/frontend/20260710-ios-density-alignment-refinement`.
 - Three native XCTest regressions pass on the iOS 26.5 iPhone 17 Pro simulator, with the embedded `ClipInboxShare.appex` validated during the same build.
 - Simulator smoke coverage passed for inbox filters, detail, card menu, share options, folders/new-folder, add/tag editor, search/recent history, Sort Later, and settings. Evidence is stored in `.superloopy/evidence/frontend/20260710-ios-tag-search-audit`.
+- Keyboard policy, detail-spacing, tag-edit, and folder/settings alignment changes were exercised live on the iOS 26.5 iPhone 17 Pro simulator (seven XCTest regressions passing, `containerToPush` absent from captured logs, icon centers pixel-matched). Evidence is stored in `.superloopy/evidence/frontend/20260711-keyboard-lock-folder`.
 
 ## 0.3.0 - 2026-07-10 (native iOS)
 

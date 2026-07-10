@@ -27,12 +27,20 @@ final class ShareViewController: UIViewController {
         Task { @MainActor in await saveAndComplete() }
     }
 
+    // DESIGN.md 토큰: bg.app, accent.green, border.soft, text.primary
+    private enum Palette {
+        static let bgApp = UIColor(red: 0xF3 / 255, green: 0xEF / 255, blue: 0xE7 / 255, alpha: 1)
+        static let accentGreen = UIColor(red: 0x9B / 255, green: 0xE7 / 255, blue: 0xB0 / 255, alpha: 1)
+        static let borderSoft = UIColor(red: 0xD8 / 255, green: 0xD1 / 255, blue: 0xC4 / 255, alpha: 1)
+        static let textPrimary = UIColor(red: 0x17 / 255, green: 0x17 / 255, blue: 0x14 / 255, alpha: 1)
+    }
+
     private func configureSavingView() {
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = Palette.bgApp
         activityIndicator.startAnimating()
         statusLabel.text = "Clip Inbox에 저장하는 중…"
         statusLabel.font = UIFont(name: "Pretendard-Regular", size: 15) ?? .preferredFont(forTextStyle: .body)
-        statusLabel.textColor = .label
+        statusLabel.textColor = Palette.textPrimary
 
         let stack = UIStackView(arrangedSubviews: [activityIndicator, statusLabel])
         stack.axis = .vertical
@@ -44,6 +52,48 @@ final class ShareViewController: UIViewController {
             stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
+    }
+
+    /// 저장 직후 앱 토스트와 같은 언어의 확인 카드를 잠깐 보여 준다.
+    @MainActor
+    private func showSavedConfirmation() {
+        activityIndicator.stopAnimating()
+        statusLabel.isHidden = true
+
+        let icon = UIImageView(image: UIImage(systemName: "checkmark.circle"))
+        icon.tintColor = Palette.textPrimary
+        icon.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 16, weight: .bold)
+
+        let label = UILabel()
+        label.text = "Clip Inbox에 저장됨"
+        label.font = UIFont(name: "Pretendard-Regular", size: 15) ?? .preferredFont(forTextStyle: .body)
+        label.textColor = Palette.textPrimary
+
+        let content = UIStackView(arrangedSubviews: [icon, label])
+        content.axis = .horizontal
+        content.alignment = .center
+        content.spacing = 8
+
+        let card = UIView()
+        card.backgroundColor = Palette.accentGreen
+        card.layer.cornerRadius = 10
+        card.layer.cornerCurve = .continuous
+        card.layer.borderWidth = 1
+        card.layer.borderColor = Palette.borderSoft.cgColor
+        card.translatesAutoresizingMaskIntoConstraints = false
+        content.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(content)
+        card.alpha = 0
+        view.addSubview(card)
+        NSLayoutConstraint.activate([
+            content.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            content.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
+            content.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+            content.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+            card.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            card.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
+        UIView.animate(withDuration: 0.18) { card.alpha = 1 }
     }
 
     @MainActor
@@ -72,7 +122,9 @@ final class ShareViewController: UIViewController {
                 createdAt: item.createdAt
             )
             try SharedClipQueue.enqueue(finalPayload)
-            statusLabel.text = "저장 완료"
+            showSavedConfirmation()
+            // 확인 카드를 읽을 수 있을 만큼만 머문 뒤 호스트 앱으로 돌아간다.
+            try? await Task.sleep(for: .milliseconds(850))
             extensionContext?.completeRequest(returningItems: nil)
         } catch {
             if let newlyStoredImageName { try? SharedClipQueue.removeImage(named: newlyStoredImageName) }

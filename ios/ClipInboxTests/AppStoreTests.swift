@@ -69,4 +69,66 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(reloaded.clip(id: added.id)?.tags, ["읽을거리"])
         XCTAssertNil(reloaded.clip(id: 5))
     }
+
+    func testUpdateTagsCleansValuesPersistsAndSkipsNoOp() throws {
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+        let original = try XCTUnwrap(store.clip(id: 1)?.tags)
+
+        store.updateTags(id: 1, tags: original)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: dataURL.path))
+
+        store.updateTags(id: 1, tags: ["  독서 ", "", "여행"])
+        XCTAssertEqual(store.clip(id: 1)?.tags, ["독서", "여행"])
+
+        let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
+        XCTAssertEqual(reloaded.clip(id: 1)?.tags, ["독서", "여행"])
+    }
+
+    func testDefaultFoldersCanBeRenamedAndReferencesPersist() throws {
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+
+        store.updatePreference(key: .defaultFolder, value: "인박스")
+        XCTAssertEqual(try store.renameFolder(from: "인박스", to: "받은 클립"), "받은 클립")
+        XCTAssertEqual(try store.renameFolder(from: "전체", to: "모든 클립"), "모든 클립")
+
+        let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
+        XCTAssertTrue(reloaded.folders.contains { $0.label == "받은 클립" && $0.icon == "inbox" })
+        XCTAssertTrue(reloaded.folders.contains { $0.label == "모든 클립" && $0.icon == "archive" })
+        XCTAssertFalse(reloaded.folders.contains { $0.label == "인박스" })
+        XCTAssertFalse(reloaded.folders.contains { $0.label == "전체" })
+        XCTAssertEqual(reloaded.preferences.defaultFolder, "받은 클립")
+        XCTAssertEqual(reloaded.clip(id: 5)?.folder, "받은 클립")
+        XCTAssertEqual(reloaded.folderCount("모든 클립"), reloaded.clips.count)
+    }
+
+    func testFolderRenameRejectsDuplicateNamesWithoutChangingData() {
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+
+        XCTAssertThrowsError(try store.renameFolder(from: "인박스", to: "디자인"))
+        XCTAssertTrue(store.folders.contains { $0.label == "인박스" })
+        XCTAssertEqual(store.clip(id: 5)?.folder, "인박스")
+    }
+
+    func testRoParticleFollowsFinalConsonant() {
+        XCTAssertEqual("디자인".withRoParticle, "디자인으로")
+        XCTAssertEqual("인박스".withRoParticle, "인박스로")
+        XCTAssertEqual("여행".withRoParticle, "여행으로")
+        XCTAssertEqual("나중에 볼 글".withRoParticle, "나중에 볼 글로")
+        XCTAssertEqual("Work".withRoParticle, "Work로")
+    }
+
+    func testEnablingAppLockDefersLockUntilLifecycleRequiresIt() {
+        let lock = AppLockController()
+
+        lock.configure(enabled: true)
+        XCTAssertTrue(lock.isEnabled)
+        XCTAssertFalse(lock.isLocked)
+
+        lock.lockIfNeeded()
+        XCTAssertTrue(lock.isLocked)
+
+        lock.configure(enabled: false)
+        XCTAssertFalse(lock.isEnabled)
+        XCTAssertFalse(lock.isLocked)
+    }
 }

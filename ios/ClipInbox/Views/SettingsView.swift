@@ -108,28 +108,13 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.element.key) { index, row in
                 NavigationLink(value: Route.settingDetail(row.key)) {
-                    HStack(spacing: Tokens.rowGap + 4) {
-                        Image(systemName: row.key.systemImage)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(Tokens.textPrimary)
-                            .frame(width: Tokens.iconColumn, height: Tokens.destinationIcon)
-                        Text(row.key.title)
-                            .font(Tokens.bodySemibold)
-                            .foregroundStyle(Tokens.textPrimary)
-                        Spacer()
-                        if !row.value.isEmpty {
-                            Text(row.value).font(Tokens.meta).foregroundStyle(Tokens.textSecondary)
-                        }
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(Tokens.textTertiary)
-                    }
-                    .padding(.horizontal, Tokens.cardPad)
-                    .frame(minHeight: Tokens.actionTarget)
+                    DestinationRow(systemImage: row.key.systemImage,
+                                   title: row.key.title,
+                                   value: row.value)
                 }
                 .buttonStyle(.plain)
                 if index < rows.count - 1 {
-                    Tokens.borderSoft.frame(height: 1).padding(.leading, Tokens.cardPad)
+                    RowDivider()
                 }
             }
         }
@@ -199,7 +184,7 @@ struct SettingDetailView: View {
         case .appLock: return ["켬", "끔"]
         case .theme: return ["라이트", "시스템 설정"]
         case .language: return ["한국어", "English"]
-        case .defaultFolder: return store.folders.filter { $0.label != "전체" }.map(\.label)
+        case .defaultFolder: return store.destinationFolders.map(\.label)
         default: return []
         }
     }
@@ -241,6 +226,7 @@ struct SettingDetailView: View {
                 Text("클립 \(store.clips.count)개와 폴더 \(max(store.folders.count - 1, 0))개, 현재 설정을 하나의 JSON 파일로 저장합니다.")
                     .font(Tokens.body)
                     .foregroundStyle(Tokens.textPrimary)
+                    .lineSpacing(Tokens.bodyLineSpacing)
             }
             Button {
                 do {
@@ -259,6 +245,7 @@ struct SettingDetailView: View {
                 Text("Clip Inbox 백업 JSON만 지원합니다. 가져오면 현재 로컬 데이터를 대체합니다.")
                     .font(Tokens.body)
                     .foregroundStyle(Tokens.textPrimary)
+                    .lineSpacing(Tokens.bodyLineSpacing)
             }
             Button {
                 showImporter = true

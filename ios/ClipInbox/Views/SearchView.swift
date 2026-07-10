@@ -3,6 +3,7 @@ import SwiftUI
 struct SearchView: View {
     @Environment(AppStore.self) private var store
     @State private var query = ""
+    @State private var settledQuery = ""
     @State private var searchFilter = "전체"
     @FocusState private var searchFieldFocused: Bool
 
@@ -20,7 +21,7 @@ struct SearchView: View {
     }
 
     private var content: some View {
-        let results = store.searchResults(query: query, filter: searchFilter)
+        let results = store.searchResults(query: settledQuery, filter: searchFilter)
         return ScreenScaffold {
             ScreenHeader("검색")
 
@@ -32,7 +33,8 @@ struct SearchView: View {
                     .font(Tokens.body)
                     .submitLabel(.search)
                     .focused($searchFieldFocused)
-                    .defaultFocus($searchFieldFocused, true)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
                     .onSubmit(recordCurrentSearch)
             }
             .padding(.horizontal, Tokens.cardPad)
@@ -60,8 +62,8 @@ struct SearchView: View {
                         ForEach(store.recentSearches, id: \.self) { label in
                             PlainSelectionRow(label: label, isSelected: query == label) {
                                 query = label
+                                settledQuery = label
                                 store.recordSearch(label)
-                                searchFieldFocused = true
                             }
                         }
                     }
@@ -86,14 +88,23 @@ struct SearchView: View {
 
             Spacer(minLength: Tokens.bottomSafe - Tokens.sectionGap * 2)
         }
-        .task {
-            try? await Task.sleep(for: Tokens.searchFocusDelay)
+        // 키보드는 검색창을 직접 탭했을 때만 올라오고, 다른 곳을 탭하면 내려간다.
+        .onTapGesture {
+            searchFieldFocused = false
+        }
+        .task(id: query) {
+            guard query != settledQuery else { return }
+            try? await Task.sleep(for: Tokens.searchDebounceDelay)
             guard !Task.isCancelled else { return }
-            searchFieldFocused = true
+            settledQuery = query
+        }
+        .onDisappear {
+            searchFieldFocused = false
         }
     }
 
     private func recordCurrentSearch() {
+        settledQuery = query
         store.recordSearch(query)
     }
 }

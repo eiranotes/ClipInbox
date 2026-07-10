@@ -172,6 +172,18 @@ struct DataSnapshot: Codable {
     var preferences: Preferences
 }
 
+extension String {
+    /// 마지막 글자의 받침 유무에 맞는 "로/으로" 조사를 붙인다.
+    /// 받침이 없거나 ㄹ 받침이면 "로", 그 외 받침은 "으로", 한글이 아니면 "로"를 쓴다.
+    var withRoParticle: String {
+        guard let scalar = unicodeScalars.last?.value, (0xAC00...0xD7A3).contains(scalar) else {
+            return self + "로"
+        }
+        let finalConsonant = (scalar - 0xAC00) % 28
+        return self + ((finalConsonant == 0 || finalConsonant == 8) ? "로" : "으로")
+    }
+}
+
 enum DefaultData {
     static let filterTags = ["인테리어", "레퍼런스", "아이디어", "여행"]
     static let suggestedTags = [

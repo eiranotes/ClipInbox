@@ -155,6 +155,47 @@ struct PlainSelectionRow: View {
     }
 }
 
+/// 폴더·설정 목적지 목록이 함께 쓰는 행 사이 구분선. 아이콘 열 시작(cardPad)에 맞춰 들여쓴다.
+struct RowDivider: View {
+    var body: some View {
+        Tokens.borderSoft
+            .frame(height: Tokens.borderChipWidth)
+            .padding(.leading, Tokens.cardPad)
+    }
+}
+
+/// 폴더와 설정처럼 목적지로 이동하는 목록 행의 공통 아이콘 기준선.
+struct DestinationRow: View {
+    let systemImage: String
+    let title: String
+    var value = ""
+
+    var body: some View {
+        HStack(spacing: Tokens.cardGap) {
+            Image(systemName: systemImage)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Tokens.textPrimary)
+                .frame(width: Tokens.iconColumn, height: Tokens.destinationIcon)
+            Text(title)
+                .font(Tokens.bodySemibold)
+                .foregroundStyle(Tokens.textPrimary)
+            Spacer(minLength: Tokens.rowGap)
+            if !value.isEmpty {
+                Text(value)
+                    .font(Tokens.meta)
+                    .foregroundStyle(Tokens.textSecondary)
+                    .lineLimit(1)
+            }
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(Tokens.textTertiary)
+        }
+        .padding(.horizontal, Tokens.cardPad)
+        .frame(minHeight: Tokens.actionTarget)
+        .contentShape(Rectangle())
+    }
+}
+
 // MARK: - 버튼
 
 struct PrimaryBoxButtonStyle: ButtonStyle {
@@ -272,6 +313,7 @@ struct ActionRow: View {
             }
             .padding(.horizontal, Tokens.space1)
             .frame(minHeight: Tokens.actionTarget)
+            .contentShape(Rectangle())
             .background(
                 RoundedRectangle(cornerRadius: Tokens.radiusChip, style: .continuous)
                     .fill(isSelected ? Tokens.accentYellow.opacity(0.16) : .clear)
@@ -298,13 +340,14 @@ struct StatePanel: View {
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(isDanger ? Tokens.danger : Tokens.textPrimary)
                 .frame(width: Tokens.iconColumn)
-            VStack(alignment: .leading, spacing: Tokens.space1) {
+            VStack(alignment: .leading, spacing: Tokens.rowGap) {
                 Text(title)
                     .font(Tokens.cardTitle)
                     .foregroundStyle(Tokens.textPrimary)
                 Text(message)
                     .font(Tokens.meta)
                     .foregroundStyle(Tokens.textSecondary)
+                    .lineSpacing(Tokens.metaLineSpacing)
             }
             Spacer(minLength: 0)
         }
@@ -326,6 +369,7 @@ struct EmptyStateView: View {
             Text(message)
                 .font(Tokens.meta)
                 .foregroundStyle(Tokens.textSecondary)
+                .lineSpacing(Tokens.metaLineSpacing)
                 .multilineTextAlignment(.center)
         }
         .padding(.vertical, Tokens.sectionGap * 2)
@@ -335,33 +379,47 @@ struct EmptyStateView: View {
 
 // MARK: - 썸네일 / 도메인 폴백
 
+/// 공유 이미지 파일을 행 렌더마다 디스크에서 다시 읽지 않도록 하는 메모리 캐시.
+enum SharedImageCache {
+    private static let cache = NSCache<NSString, UIImage>()
+
+    static func image(at url: URL) -> UIImage? {
+        let key = url.path as NSString
+        if let cached = cache.object(forKey: key) { return cached }
+        guard let image = UIImage(contentsOfFile: url.path) else { return nil }
+        cache.setObject(image, forKey: key)
+        return image
+    }
+}
+
 struct ClipThumbnail: View {
     let clip: Clip
     var compact = false
 
     var body: some View {
-        Group {
-            if let url = clip.sharedImageURL,
-               let uiImage = UIImage(contentsOfFile: url.path) {
-                Image(uiImage: uiImage)
+        // aspectRatio(.fill)는 제안보다 큰 크기를 보고해 프레임 밖으로 번지므로,
+        // 제안 크기를 그대로 갖는 Color.clear 위에 올려 경계에서 잘라 낸다.
+        Color.clear
+            .overlay(
+                Image(uiImage: thumbnailImage)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-            } else if let asset = clip.imageAssetName,
-                      let uiImage = UIImage(named: asset) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                Image("clip-image-fallback")
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            }
+            )
+            .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusThumbnail, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Tokens.radiusThumbnail, style: .continuous)
+                    .strokeBorder(Tokens.borderSoft, lineWidth: Tokens.borderChipWidth)
+            )
+    }
+
+    private var thumbnailImage: UIImage {
+        if let url = clip.sharedImageURL, let uiImage = SharedImageCache.image(at: url) {
+            return uiImage
         }
-        .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusThumbnail, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Tokens.radiusThumbnail, style: .continuous)
-                .strokeBorder(Tokens.borderSoft, lineWidth: Tokens.borderChipWidth)
-        )
+        if let asset = clip.imageAssetName, let uiImage = UIImage(named: asset) {
+            return uiImage
+        }
+        return UIImage(named: "clip-image-fallback") ?? UIImage()
     }
 }
 
@@ -444,5 +502,31 @@ extension View {
             .presentationDetents([.fraction(Tokens.sheetDetentFraction), .large])
             .presentationDragIndicator(.visible)
             .presentationBackground(Tokens.bgApp)
+    }
+}
+
+@MainActor
+enum Keyboard {
+    static func dismiss() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+    }
+
+    /// 키보드 프로세스를 앱 시작 직후 한 번 예열해 첫 입력 필드 탭에서도 키보드가 즉시 뜨게 한다.
+    /// 프레임이 0인 임시 필드라 화면에는 아무것도 나타나지 않는다.
+    static func prewarm() {
+        guard let window = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow) else { return }
+        let field = UITextField(frame: .zero)
+        window.addSubview(field)
+        field.becomeFirstResponder()
+        field.resignFirstResponder()
+        field.removeFromSuperview()
     }
 }

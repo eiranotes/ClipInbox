@@ -7,13 +7,20 @@ final class AppLockController {
     private(set) var isEnabled = false
     var isLocked = false
     var notice: String?
+    private(set) var isAuthenticating = false
 
-    func configure(enabled: Bool) {
+    @ObservationIgnored private var authenticationContext: LAContext?
+
+    func configure(enabled: Bool, lockImmediately: Bool = false) {
         isEnabled = enabled
-        if enabled, !isLocked {
+        if enabled, lockImmediately {
             isLocked = true
         } else if !enabled {
+            authenticationContext?.invalidate()
+            authenticationContext = nil
+            isAuthenticating = false
             isLocked = false
+            notice = nil
         }
     }
 
@@ -23,7 +30,16 @@ final class AppLockController {
 
     @MainActor
     func authenticate() async {
+        guard isEnabled, isLocked, !isAuthenticating else { return }
+
         let context = LAContext()
+        authenticationContext = context
+        isAuthenticating = true
+        defer {
+            authenticationContext = nil
+            isAuthenticating = false
+        }
+
         var error: NSError?
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
             // 시뮬레이터 등 인증 수단이 없는 환경에서는 잠금을 해제하되 사유를 남긴다.

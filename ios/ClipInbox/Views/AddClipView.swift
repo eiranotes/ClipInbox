@@ -70,6 +70,7 @@ struct AddClipView: View {
             BoardSection(title: "메모") {
                 TextEditor(text: $memo)
                     .font(Tokens.body)
+                    .lineSpacing(Tokens.bodyLineSpacing)
                     .scrollContentBackground(.hidden)
                     .padding(Tokens.rowGap)
                     .frame(minHeight: 100)
@@ -140,7 +141,7 @@ struct DestinationSheet: View {
 
             BoardSection(title: "폴더 선택") {
                 VStack(spacing: 0) {
-                    ForEach(store.folders.filter { $0.label != "전체" }) { folder in
+                    ForEach(store.destinationFolders) { folder in
                         ActionRow(systemImage: folder.systemImage, label: folder.label,
                                   value: "\(store.folderCount(folder.label))개 클립",
                                   isSelected: destination == folder.label) {

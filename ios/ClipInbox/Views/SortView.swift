@@ -50,7 +50,7 @@ struct SortView: View {
         let choices = sortChoices(for: clip)
         let selected = choices.contains(choice) ? choice : (choices.first ?? "기타")
 
-        VStack(alignment: .leading, spacing: Tokens.cardGap) {
+        VStack(alignment: .leading, spacing: Tokens.detailGap) {
             if clip.hasImageReference {
                 ClipThumbnail(clip: clip)
                     .frame(maxWidth: .infinity)
@@ -59,6 +59,7 @@ struct SortView: View {
             Text(clip.title)
                 .font(Tokens.sectionTitle)
                 .foregroundStyle(Tokens.textPrimary)
+                .lineSpacing(Tokens.titleLineSpacing)
             Text(clip.source)
                 .font(Tokens.meta)
                 .foregroundStyle(Tokens.textSecondary)
@@ -81,7 +82,7 @@ struct SortView: View {
             completed += 1
             syncChoice()
         } label: {
-            Text("\(selected)로 분류하고 다음")
+            Text("\(selected.withRoParticle) 분류하고 다음")
         }
         .buttonStyle(PrimaryBoxButtonStyle())
     }
