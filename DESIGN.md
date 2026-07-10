@@ -2,9 +2,9 @@
 
 ## 1. Atmosphere / Signature
 
-Clip Inbox uses a warm Korean mobile utility style with Trello-like card ownership. The signature is a soft ivory app surface, strong black outlines, large confident Korean titles, rounded white cards, quiet neutral chips, and a restrained four-color state set. It should feel useful, quick, and slightly playful without becoming a game board.
+Clip Inbox uses a warm Korean productive-minimal utility style. The signature is one continuous ivory canvas, list rows divided by quiet hairlines, two-row five-column text filters, content-led typography, and yellow reserved for the current selection or primary action. It should feel quick, editorial, and native rather than assembled from repeated cards.
 
-Design Read: Reading this as a mobile-first clipping utility for personal capture, warm-bold board language, leaning Trello cards plus iOS utility rhythm. DESIGN_VARIANCE 4, MOTION_INTENSITY 3, VISUAL_DENSITY 7.
+Design Read: Reading this as a high-frequency personal clipping utility, productive-minimal language, leaning compact list-first native iOS rhythm. DESIGN_VARIANCE 3, MOTION_INTENSITY 2, VISUAL_DENSITY 8.
 
 ## 2. Color
 
@@ -16,35 +16,35 @@ All production color values are declared here and mirrored as CSS variables.
 | color.bg.board | `--color-bg-board` | `#EEE8DD` | Board and section background |
 | color.bg.card | `--color-bg-card` | `#FFFFFF` | Clip card background |
 | color.bg.cardMuted | `--color-bg-card-muted` | `#FAF8F2` | Secondary panels |
-| color.text.primary | `--color-text-primary` | `#080808` | Main text and icons |
+| color.text.primary | `--color-text-primary` | `#171714` | Main text and icons |
 | color.text.secondary | `--color-text-secondary` | `#5F6368` | Metadata and secondary rows |
 | color.text.tertiary | `--color-text-tertiary` | `#9AA0A6` | Low priority text and placeholders |
-| color.border.strong | `--color-border-strong` | `#080808` | Card, button, and icon borders |
+| color.border.strong | `--color-border-strong` | `#292824` | Emphasized control borders only |
 | color.border.soft | `--color-border-soft` | `#D8D1C4` | Inner separators and quiet controls |
 | color.accent.yellow | `--color-accent-yellow` | `#FFD900` | Primary actions, selected controls, and needs-review state |
 | color.accent.blue | `--color-accent-blue` | `#BBD7FF` | Informational type marker and focus ring |
 | color.accent.green | `--color-accent-green` | `#9BE7B0` | Saved and success state |
 | color.danger | `--color-danger` | `#FF4B4B` | Destructive action |
-| color.shadow.hard | `--color-shadow-hard` | `#080808` | Hard shadow color |
+| color.shadow.hard | `--color-shadow-hard` | `#292824` | Legacy token; native application surfaces do not use hard shadows |
 
 Contrast note: Primary text on app, board, card, and yellow backgrounds passes normal text contrast. Secondary text is reserved for metadata on card or app backgrounds.
 
-Do not use pure white for the app background. Do not add purple gradients, glow fields, sports/ranking colors, or per-content pastel colors beyond yellow, blue, green, and danger.
+Do not use pure white for the app background. Do not add purple gradients, glow fields, hard shadows, sports/ranking colors, or per-content pastel colors beyond yellow, blue, green, and danger.
 
 ## 3. Typography
 
-Use a deliberate Apple system stack because the product spec targets an iOS utility app. Letter spacing is always `0`.
+Use Pretendard v1.3.9 from the official `orioncactus/pretendard` release. The native app bundles the Regular, SemiBold, and Bold OTF faces so the app and Share Extension do not depend on a network connection; the web prototype self-hosts the official variable WOFF2. Letter spacing is always `0`. System fonts are fallback-only, while SF Symbols retain native icon metrics.
 
 | Token | CSS Variable | Size | Weight | Line Height | Role |
 |---|---|---:|---:|---:|---|
-| type.screenTitle | `--type-screen-title-size` | 32px | 800 | 1.08 | Main screen title |
-| type.sectionTitle | `--type-section-title-size` | 20px | 800 | 1.15 | Board and section title |
-| type.cardTitle | `--type-card-title-size` | 18px | 800 | 1.2 | Clip title |
-| type.body | `--type-body-size` | 15px | 500 | 1.55 | Description, note, and row copy |
-| type.meta | `--type-meta-size` | 13px | 500 | 1.35 | Host, date, and folder metadata |
-| type.chip | `--type-chip-size` | 12px | 800 | 1 | Badges and chips |
-| type.button | `--type-button-size` | 16px | 800 | 1 | Button labels |
-| type.nav | `--type-nav-size` | 12px | 700 | 1 | Bottom navigation |
+| type.screenTitle | `--type-screen-title-size` | 26px | 700 | 1.12 | Main screen title |
+| type.sectionTitle | `--type-section-title-size` | 18px | 700 | 1.2 | Section title |
+| type.cardTitle | `--type-card-title-size` | 17px | 600 | 1.28 | Clip row title |
+| type.body | `--type-body-size` | 15px | 400 | 1.55 | Description, note, and row copy |
+| type.meta | `--type-meta-size` | 13px | 400 | 1.4 | Host, date, folder, and inline tags |
+| type.chip | `--type-chip-size` | 12px | 600 | 1 | Compact filters and state labels |
+| type.button | `--type-button-size` | 16px | 600 | 1 | Button labels |
+| type.nav | `--type-nav-size` | 11px | 600 | 1 | Bottom navigation |
 
 ## 4. Spacing
 
@@ -53,15 +53,17 @@ Base unit: 4px. Component spacing follows the product spec through named tokens.
 | Token | CSS Variable | Value | Role |
 |---|---|---:|---|
 | space.1 | `--space-1` | 4px | Smallest stack gap |
-| space.chipGap | `--space-chip` | 6px | Chip row gap |
+| space.chipGap | `--space-chip` | 8px | Filter and metadata gap |
 | space.rowGap | `--space-row` | 8px | Metadata and compact row gap |
 | space.cardGap | `--space-card-rhythm` | 12px | Card list gap |
-| space.cardPadding | `--space-card-pad` | 14px | Clip card padding |
+| space.cardPadding | `--space-card-pad` | 12px | Clip row and control padding |
 | space.screenX | `--space-screen-x` | 16px | Screen side inset |
-| space.panelPadding | `--space-panel-pad` | 16px | Board panel padding |
-| space.sectionGap | `--space-section` | 20px | Screen section gap |
-| space.screenTop | `--space-screen-start` | 14px | Top offset below status bar |
-| space.bottomSafe | `--space-bottom-safe` | 112px | Scroll space above nav |
+| space.panelPadding | `--space-panel-pad` | 16px | Focused form surface padding only |
+| space.sectionGap | `--space-section` | 24px | Screen section gap |
+| space.screenTop | `--space-screen-start` | 12px | Top offset below status bar |
+| space.bottomSafe | `--space-bottom-safe` | 24px | Content breathing room; nav uses safe-area inset |
+| space.sheetTop | native only | 20px | Workflow-sheet content inset below the grabber |
+| space.sheetBottom | native only | 20px | Workflow-sheet content inset after the final action |
 
 Responsive and control-size tokens:
 
@@ -69,7 +71,22 @@ Responsive and control-size tokens:
 |---|---|---:|---|
 | size.chipTarget | `--size-chip-target` | 40px | Minimum interactive chip height |
 | size.touchTarget | `--size-touch-target` | 44px | Icon and card-menu touch target |
-| size.actionTarget | `--size-action-target` | 56px | Primary, secondary, input, and row target |
+| size.actionTarget | `--size-action-target` | 52px | Primary, secondary, input, and row target |
+| size.headerHeight | native only | 44px | Shared root-screen header height and title baseline |
+| size.selectionIndicator | native only | 2px | Active text-filter underline |
+| count.selectionColumns | native only | 5 | Equal-width selector cells visible per row |
+| count.selectionRows | native only | 2 | Visible selector rows |
+| scale.selectionTextMinimum | native only | 0.72 | Minimum label scale inside a fixed-width selector cell |
+| ratio.sheetDetent | native only | 0.68 | Default workflow-sheet height relative to the available screen |
+| size.iconColumn | native only | 28px | Leading icon column in list and action rows |
+| size.destinationIcon | native only | 34px | Highlighted destination icon container |
+| size.clipThumbnailWidth | native only | 80px | Inbox clip thumbnail width |
+| size.clipThumbnailHeight | native only | 64px | Inbox clip thumbnail height |
+| size.clipRowContentHeight | native only | 68px | Fixed inbox row content height with or without media |
+| size.resultThumbnailWidth | native only | 64px | Search/folder thumbnail width |
+| size.resultThumbnailHeight | native only | 48px | Search/folder thumbnail height |
+| size.resultRowContentHeight | native only | 48px | Fixed compact-result content height with or without media |
+| size.detailImageHeight | native only | 220px | Detail image viewport height |
 | layout.appMax | `--layout-app-max` | 960px | Wide application-shell maximum |
 | layout.contentMax | `--layout-content-max` | 720px | Readable secondary-workflow measure |
 | layout.gridBreakpoint | `--layout-grid-breakpoint` | 760px | Two-column workbench threshold |
@@ -77,52 +94,58 @@ Responsive and control-size tokens:
 
 ## 5. Components
 
-Board section: `--color-bg-board`, `--border-panel`, `--radius-panel`, `--space-panel-pad`. It groups related cards and stacks on mobile.
+Section block: transparent on the app canvas. A section heading sits above content; hairline dividers and spacing create grouping. Use a filled surface only for an active text editor, input, confirmation, or empty/error state.
 
-Clip card: `--color-bg-card`, `--border-card`, `--radius-card`, `--space-card-pad`, no default shadow. Highlighted cards may use `--shadow-hard-sm`.
+Root screen header: every tab starts at the same 12px top inset and uses a fixed 44px header height. Titles share one vertical center whether trailing utilities are present or absent.
 
-Badge and chip: pill radius, soft token border, mostly neutral fill, and a small state dot when the badge needs meaning. Interactive chips have hover translate, active yellow fill, focus ring, and at least 40px height. Non-interactive badges stay compact. Content type badges share the blue informational marker; unsorted/new use yellow; saved uses green.
+Clip row: full-width navigation target with 12px vertical padding and a soft bottom divider. The inbox hierarchy is title first, source second, then an optional 80x64 thumbnail. Type, state, time, and tags are detail-only metadata. The menu remains an independent 44px trailing target. There is no outer row card or shadow.
 
-Primary box button: yellow fill, black text, black border, button radius, optional hard shadow. Disabled state uses card-muted fill and tertiary text.
+Badge and filter: type/state metadata is plain text with an optional semantic mark and appears only in focused/detail contexts. Inbox and search filters show five equal-width cells per row across two visible rows, with an 8px gap, a 44px touch target, and a 2px yellow active underline. The first ten options fill the visible 5x2 grid; additional options continue horizontally in the same two-row grid. Label length never changes cell width. There is no per-filter box or duplicate filter modal.
 
-Secondary box button: white fill, black text, black border, button radius. Destructive variant uses danger text and isolated placement.
+Tags: read-only tags appear only in detail. Editing screens show the selected value in one summary row, and tag selection uses the same two-row, five-column, equal-width underline grid as the main filter. Custom tags can grow beyond the first ten options through horizontal continuation. Tags never render as pill collections or irregular boxes.
 
-Utility icon button and card quick menu: square 44px target, card fill, black 2px border for top utilities, 14px radius, simple black icon.
+Primary button: flat yellow fill, near-black text, 10px radius, no shadow and no text raster shadow. Disabled state uses card-muted fill and tertiary text.
+
+Secondary button: transparent or white fill, near-black text, soft 1px border, 10px radius. Destructive actions use danger text and isolated placement.
+
+Utility icon button and row menu: square 44px hit target with no visible container in the default state. Only a selected state may use a compact yellow 8px-radius fill. Use a simple near-black icon and no heavy border.
 
 Bottom navigation: white/card-muted surface, top separator, five stable tabs, yellow selected icon fill.
 
+Workflow sheet: opens at 68% of the available height and can expand to large. Content receives 20px top and bottom insets inside the sheet so the header does not crowd the grabber, primary actions remain visible, and short workflows do not leave a full-screen empty field.
+
 Responsive shell: mobile stays a single card stack. At 760px and wider the inbox and folder collections may use two columns when each card remains at least 340px wide. At 860px and wider the shell expands to 960px; secondary workflows keep a centered 720px reading measure.
 
-Thumbnail: 12px radius, 2px black border on large detail imagery, soft border on compact thumbnails.
+Thumbnail: 8px radius with no border for large detail imagery and an optional soft 1px border for compact rows. No-image clips are text-only. The generated stacked-clips fallback is reserved for an image reference that fails to load.
 
 ## 6. Motion
 
-Motion is light and functional: `--motion-fast` 140ms, `--motion-base` 200ms, `--motion-ease` cubic-bezier(0.2, 0.8, 0.2, 1). Buttons and cards use transform and opacity only. Reduced-motion removes transforms and transitions.
+Motion is light and functional: `--motion-fast` 140ms, `--motion-base` 180ms, `--motion-ease` cubic-bezier(0.2, 0.8, 0.2, 1). Search focus uses an 80ms next-runloop handoff so the field becomes first responder as soon as the tab transition installs it. Buttons and rows use opacity only; sheets use the system transition. Reduced-motion removes custom transitions.
 
 ## 7. Depth
 
-Depth is border-first. Default cards do not shadow. Yellow primary buttons and selected cards may use a hard shadow: `2px 2px 0 #080808`. Marketing-only large shadow remains `3px 3px 0 #080808` and is not used in the app surface.
+Depth is tonal and divider-first. Native application surfaces use no drop shadows. White is reserved for focused controls, text editors, and explicit confirmation states; the continuous ivory canvas remains dominant.
 
 Radius tokens:
 
 | Token | CSS Variable | Value |
 |---|---|---:|
-| radius.card | `--radius-card` | 18px |
-| radius.panel | `--radius-panel` | 22px |
-| radius.button | `--radius-button` | 14px |
-| radius.chip | `--radius-chip` | 999px |
-| radius.input | `--radius-input` | 14px |
-| radius.thumbnail | `--radius-thumbnail` | 12px |
-| radius.shell | `--radius-shell` | 28px |
+| radius.card | `--radius-card` | 10px |
+| radius.panel | `--radius-panel` | 12px |
+| radius.button | `--radius-button` | 10px |
+| radius.chip | `--radius-chip` | 8px |
+| radius.input | `--radius-input` | 8px |
+| radius.thumbnail | `--radius-thumbnail` | 8px |
+| radius.shell | `--radius-shell` | 24px |
 
 Border tokens:
 
 | Token | CSS Variable | Value |
 |---|---|---|
-| border.card | `--border-card` | 2px solid `#080808` |
-| border.panel | `--border-panel` | 2px solid `#080808` |
-| border.button | `--border-button` | 2px solid `#080808` |
+| border.card | `--border-card` | 1px solid `#D8D1C4` |
+| border.panel | `--border-panel` | 1px solid `#D8D1C4` |
+| border.button | `--border-button` | 1px solid `#D8D1C4` |
 | border.chip | `--border-chip` | 1px solid `#D8D1C4` |
-| border.input | `--border-input` | 2px solid `#080808` |
+| border.input | `--border-input` | 1px solid `#D8D1C4` |
 
-Do not introduce extra shadows, lone dark sections, or a second accent color.
+Do not introduce extra cards, pill tags, heavy outlines, shadows, lone dark sections, or a second accent color.

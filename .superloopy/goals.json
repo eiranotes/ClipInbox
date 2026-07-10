@@ -2,7 +2,7 @@
   "version": 1,
   "mode": "strict",
   "createdAt": "2026-07-09T12:28:56.858Z",
-  "updatedAt": "2026-07-10T10:13:22.553Z",
+  "updatedAt": "2026-07-10T15:22:32.556Z",
   "briefPath": ".superloopy/brief.md",
   "evidencePath": ".superloopy/evidence",
   "goalsPath": ".superloopy/goals.json",
@@ -15,7 +15,7 @@
       "status": "complete",
       "attempt": 1,
       "createdAt": "2026-07-09T12:28:56.858Z",
-      "updatedAt": "2026-07-10T10:13:22.553Z",
+      "updatedAt": "2026-07-10T15:22:32.556Z",
       "criteria": [
         {
           "id": "C001",
@@ -23,9 +23,9 @@
           "scenario": "Happy path works from the real user-facing surface.",
           "essential": true,
           "status": "pass",
-          "artifact": ".superloopy/evidence/frontend/20260710-full-ui-functional-audit/VISUAL_QA.md",
-          "capturedAt": "2026-07-10T10:13:07.538Z",
-          "notes": "Responsive UI audit and complete CTA browser flow passed"
+          "artifact": ".superloopy/evidence/frontend/20260710-ios-tag-search-audit/VISUAL_QA.md",
+          "capturedAt": "2026-07-10T15:22:31.498Z",
+          "notes": "Native inbox, search, equal-row layout, focus, recent history, and CTA smoke passed"
         },
         {
           "id": "C002",
@@ -33,9 +33,9 @@
           "scenario": "Riskiest edge or failure path is handled.",
           "essential": true,
           "status": "pass",
-          "artifact": ".superloopy/evidence/frontend/20260710-full-ui-functional-audit/PERF.md",
-          "capturedAt": "2026-07-10T10:13:22.553Z",
-          "notes": "Mutation edge cases, delete and restore, compliance, and Lighthouse passed"
+          "artifact": ".superloopy/evidence/frontend/20260710-ios-tag-search-audit/PERF.md",
+          "capturedAt": "2026-07-10T15:22:31.989Z",
+          "notes": "Xcode build, embedded share extension validation, three tests, and design compliance passed"
         },
         {
           "id": "C003",
@@ -43,9 +43,9 @@
           "scenario": "Adjacent existing behavior still works.",
           "essential": true,
           "status": "pass",
-          "artifact": ".superloopy/evidence/frontend/20260710-full-ui-functional-audit/DESIGN_TOKENS.md",
-          "capturedAt": "2026-07-10T10:13:22.233Z",
-          "notes": "Existing behavior preserved under the expanded token contract"
+          "artifact": ".superloopy/evidence/frontend/20260710-ios-tag-search-audit/DESIGN_TOKENS.md",
+          "capturedAt": "2026-07-10T15:22:32.556Z",
+          "notes": "Five-column selectors and fixed clip rows remain inside the centralized token contract"
         }
       ],
       "startedAt": "2026-07-09T12:28:57.134Z",

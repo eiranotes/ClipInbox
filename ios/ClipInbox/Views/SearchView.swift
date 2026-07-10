@@ -1,0 +1,99 @@
+import SwiftUI
+
+struct SearchView: View {
+    @Environment(AppStore.self) private var store
+    @State private var query = ""
+    @State private var searchFilter = "전체"
+    @FocusState private var searchFieldFocused: Bool
+
+    private let filters = ["전체", "링크", "메모", "이미지", "스크린샷", "태그"]
+        + DefaultData.filterTags
+
+    var body: some View {
+        NavigationStack {
+            content
+                .toolbar(.hidden, for: .navigationBar)
+                .navigationDestination(for: Route.self) { route in
+                    route.destination.toolbar(.hidden, for: .navigationBar)
+                }
+        }
+    }
+
+    private var content: some View {
+        let results = store.searchResults(query: query, filter: searchFilter)
+        return ScreenScaffold {
+            ScreenHeader("검색")
+
+            HStack(spacing: Tokens.rowGap) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(Tokens.textSecondary)
+                TextField("제목, 메모, 태그로 검색", text: $query)
+                    .font(Tokens.body)
+                    .submitLabel(.search)
+                    .focused($searchFieldFocused)
+                    .defaultFocus($searchFieldFocused, true)
+                    .onSubmit(recordCurrentSearch)
+            }
+            .padding(.horizontal, Tokens.cardPad)
+            .frame(minHeight: Tokens.actionTarget)
+            .tokenSurface(radius: Tokens.radiusInput)
+
+            TwoRowHorizontalSelection(items: filters.map { label in
+                (label, searchFilter == label, { searchFilter = label })
+            })
+
+            VStack(alignment: .leading, spacing: Tokens.rowGap) {
+                Text("최근 검색")
+                    .font(Tokens.sectionTitle)
+                    .foregroundStyle(Tokens.textPrimary)
+                VStack(spacing: 0) {
+                    if store.recentSearches.isEmpty {
+                        Text("아직 검색한 기록이 없습니다")
+                            .font(Tokens.meta)
+                            .foregroundStyle(Tokens.textSecondary)
+                            .frame(maxWidth: .infinity, minHeight: Tokens.actionTarget, alignment: .leading)
+                            .overlay(alignment: .bottom) {
+                                Tokens.borderSoft.frame(height: Tokens.borderChipWidth)
+                            }
+                    } else {
+                        ForEach(store.recentSearches, id: \.self) { label in
+                            PlainSelectionRow(label: label, isSelected: query == label) {
+                                query = label
+                                store.recordSearch(label)
+                                searchFieldFocused = true
+                            }
+                        }
+                    }
+                }
+            }
+
+            BoardSection(title: "검색 결과", count: results.count) {
+                if results.isEmpty {
+                    EmptyStateView(systemImage: "magnifyingglass",
+                                   title: "검색 결과 없음",
+                                   message: "제목, URL, 메모, 태그를 바꿔 다시 찾아보세요.")
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(results) { clip in
+                            CompactResultRow(clip: clip) {
+                                recordCurrentSearch()
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(minLength: Tokens.bottomSafe - Tokens.sectionGap * 2)
+        }
+        .task {
+            try? await Task.sleep(for: Tokens.searchFocusDelay)
+            guard !Task.isCancelled else { return }
+            searchFieldFocused = true
+        }
+    }
+
+    private func recordCurrentSearch() {
+        store.recordSearch(query)
+    }
+}

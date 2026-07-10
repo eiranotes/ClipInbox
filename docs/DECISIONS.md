@@ -1,5 +1,93 @@
 # Decisions
 
+## 2026-07-10: Native SwiftUI Is the Product Source of Truth
+
+Decision: All future Clip Inbox product logic and UI implementation will be made in the native iOS code under `ios/`. The root `src/` web application remains a historical design prototype and is changed only when web work is explicitly requested.
+
+Why: The app is now built, installed, and exercised through Xcode with a native Share Extension, App Group storage, LocalAuthentication, and SwiftUI navigation. Mirroring new behavior in two runtimes would create drift and make it unclear which implementation is releaseable.
+
+Impact: Feature work targets Swift models, stores, views, shared queue code, and `ios/project.yml`. XcodeGen regeneration plus a simulator build of both `ClipInbox` and `ClipInboxShare` is the required verification path.
+
+## 2026-07-10: Filters and Tags Use One Direct Two-Row Selector
+
+Decision: Remove the separate inbox filter modal. Inbox, search, tag editing, and new-folder tag selection use one shared control with five equal-width cells per row across two visible rows; the active value uses a 2pt yellow underline and options beyond ten continue horizontally in the same two-row grid.
+
+Why: A visible filter plus a second filter modal duplicated the same action. Equal-width underline cells satisfy predictable scan alignment without recreating rounded pills, and a 0.72 minimum text scale handles longer Korean labels without changing control width.
+
+Impact: Filtering applies as soon as a label is tapped. The first ten options are always a 5x2 matrix on phone and larger widths, every touch target stays 44pt, and custom tags can continue horizontally without introducing a third row. Inbox tags remain detail-only.
+
+## 2026-07-10: Clip Rows Reserve Independent Navigation, Media, and Menu Space
+
+Decision: Inbox rows place the navigation label and the 44pt menu button as sibling controls instead of overlaying the menu above card content. Inbox content is fixed at 68pt and compact search/folder content at 48pt, whether or not a thumbnail exists.
+
+Why: Overlay composition made text, image, reserved menu space, and the menu itself compete at narrow widths. Intrinsic content height also allowed image and no-image rows to drift.
+
+Impact: Text and thumbnails cannot overlap the menu, image/no-image rows align to the same divider rhythm, and the full content region still opens detail while the menu remains independently accessible.
+
+## 2026-07-10: Recent Search History Records Real User Searches Separately
+
+Decision: Remove hardcoded recent-search examples. Record a query only when Search is submitted or a result is opened, normalize and deduplicate it case-insensitively, keep the newest five, and persist the list in app `UserDefaults` outside the version-2 clip backup schema. Search requests default focus and repeats it after an 80ms next-runloop handoff.
+
+Why: Static examples misrepresented history, while adding UI-only history to the cross-platform clip backup would change its compatibility contract. A first-responder handoff prevents the tab transition from swallowing the initial focus request.
+
+Impact: Recent searches reflect actual behavior, survive app restart, and do not alter JSON import/export. Entering Search presents an active caret immediately; on devices without a connected hardware keyboard this also presents the software keyboard.
+
+## 2026-07-10: Pretendard Is Bundled, Not Fetched at Runtime
+
+Decision: Use the official Pretendard v1.3.9 release as the product typeface. The app registers Regular, SemiBold, and Bold OTF faces, the Share Extension registers Regular, and the web prototype self-hosts the official variable WOFF2. The SIL OFL 1.1 license is shipped beside each asset set.
+
+Why: Pretendard gives Korean labels a more consistent compact rhythm across the app and web reference. Bundling avoids a network dependency in the native app and during the brief Share Extension lifecycle.
+
+Impact: SwiftUI typography tokens now use exact Pretendard PostScript names, inherited body text defaults to Pretendard, and only SF Symbols retain system font metrics. The font files add about 4.7MB to the main simulator app and 1.5MB to the extension.
+
+## 2026-07-10: Share Selection Is the Save Confirmation
+
+Decision: Selecting Clip Inbox in the iOS share sheet immediately parses and queues the item, then completes the extension request. A compact saving state is shown only while work is in progress; a button appears only when an error needs dismissal.
+
+Why: The user's intent is already explicit when they choose the app from the system share sheet. Requiring a second Save/OK step slowed the highest-frequency capture flow.
+
+Impact: Safari and Photos return to their host as soon as the atomic App Group write completes. The containing app imports the payload on appearance or activation. Folder/tag/memo adjustments remain available after capture inside Clip Inbox.
+
+## 2026-07-10: Native UI Uses a List-First Productive-Minimal Surface
+
+Decision: Apply the supplied `reference-driven-ui-builder` skill as a structured adaptation, using a quiet editorial/productive-minimal native iOS mode. The app uses one warm ivory canvas, hairline-separated content rows, small-radius controls, regular-weight metadata, and yellow only for selection or a primary action. Outer cards, decorative pills, and hard shadows are not used for primary content hierarchy.
+
+Why: The prior translation repeated rounded cards, tags, menus, and nested panels at every level. That reduced scan speed, made yellow/black labels appear doubled when combined with hard shadows, and caused important actions in detail screens to compete with the bottom navigation.
+
+Impact: Inbox clips, folders, search results, Sort Later, settings, share actions, and detail organization now share a flat row grammar. Whole clip rows navigate to detail; workflow sheets open at 68% and can expand to large; detail notes edit in place; missing-media clips stay text-only; and a generated fallback is shown only when an explicit image reference cannot be decoded.
+
+## 2026-07-10: Share Extension Uses an App Group File Queue
+
+Decision: Embed a `com.apple.share-services` extension (`ClipInboxShare.appex`) and pass each URL, text, or image capture to the containing app as one atomic JSON file under `group.app.clipinbox.ClipInbox`. Shared Photos images are normalized to bounded JPEGs in the same App Group and referenced by a validated UUID filename.
+
+Why: The extension and app run in separate processes and private containers. Per-item atomic files avoid a shared mutable JSON database, allow the extension to finish while the app is closed, and prevent concurrent writers from corrupting the existing version-2 app snapshot.
+
+Impact: The app drains the queue whenever it appears or becomes active, normalizes each payload through the existing safety rules, persists before deleting queue files, renders shared-image thumbnails directly from the App Group, and removes their files when the clip is deleted. Physical-device distribution requires matching App Group provisioning on both targets.
+
+## 2026-07-10: Native Port Lives in `ios/` and Is Generated With XcodeGen
+
+Decision: The SwiftUI port is a sibling `ios/` directory with a committed `project.yml`; `ClipInbox.xcodeproj` is regenerated with `xcodegen generate` rather than hand-maintained.
+
+Why: The web prototype remains the reviewable spec artifact, and a declarative project file keeps the Xcode project reproducible and diff-friendly on this shared volume. XcodeGen was already installed; Tuist was not.
+
+Impact: Adding Swift files only requires re-running `xcodegen generate`. Build verification on this external volume needs DerivedData on the local disk plus `COMPILER_INDEX_STORE_ENABLE=NO`, because the volume's rename semantics break the compiler index store.
+
+## 2026-07-10: Native Persistence Reuses the Web Version-2 Backup Schema
+
+Decision: The Swift `Clip`/`Folder`/`Preferences` Codable models encode exactly the web prototype's version-2 JSON (including the `app-lock`/`default-folder` keys and `/public/images/...` asset paths, mapped to asset-catalog names), and the same normalization rules run on load and import.
+
+Why: One schema means a backup exported from the web prototype restores in the native app and vice versa, and the hardened import validation did not have to be redesigned.
+
+Impact: Verified by seeding a web-format JSON into the simulator app container and watching it load through the normal startup path. Future schema changes must update both implementations together.
+
+## 2026-07-10: CTA Screens Map to Native Idioms, Not One-to-One Web Screens
+
+Decision: Web CTA "destination screens" become native patterns: direct inline filtering, sheets for share/move/edit/tag editor/destination/card menu, alerts and confirmation dialogs for delete and external-link confirmation, pushed views for detail/folder detail/setting detail, and a direct toggle plus toast instead of the bookmark confirmation screen.
+
+Why: The web prototype rendered every flow as a full screen because it had no navigation containers; SwiftUI has purpose-built containers, and replicating web screens would fight platform conventions the spec itself calls "iOS utility rhythm."
+
+Impact: All CTA capabilities survive (persisted mutations, clipboard, system share via ShareLink, share-card image via ImageRenderer, JSON export/import via file dialogs, app lock via LocalAuthentication) while navigation feels native.
+
 ## 2026-07-10: Responsive Workbench Instead of a Fixed Phone Preview
 
 Decision: Keep the single-column 390px mobile layout, expand to a 736px two-column tablet shell at 768px, and cap the desktop workbench at 960px with two 456px card columns.

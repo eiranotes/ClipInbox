@@ -1,0 +1,91 @@
+name: ClipInbox
+options:
+  bundleIdPrefix: app.clipinbox
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    MARKETING_VERSION: "0.3.0"
+    CURRENT_PROJECT_VERSION: "1"
+    GENERATE_INFOPLIST_FILE: NO
+    INFOPLIST_KEY_CFBundleDisplayName: "Clip Inbox"
+    INFOPLIST_KEY_UILaunchScreen_Generation: YES
+    INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+    INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+    INFOPLIST_KEY_NSFaceIDUsageDescription: "앱 잠금이 켜져 있을 때 클립을 보호하기 위해 Face ID를 사용합니다."
+targets:
+  ClipInbox:
+    type: application
+    platform: iOS
+    info:
+      path: ClipInbox/Info.plist
+      properties:
+        CFBundleDisplayName: "Clip Inbox"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        LSRequiresIPhoneOS: true
+        MinimumOSVersion: "$(IPHONEOS_DEPLOYMENT_TARGET)"
+        NSFaceIDUsageDescription: "앱 잠금이 켜져 있을 때 클립을 보호하기 위해 Face ID를 사용합니다."
+        UILaunchScreen: {}
+        UIAppFonts:
+          - Pretendard-Regular.otf
+          - Pretendard-SemiBold.otf
+          - Pretendard-Bold.otf
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    sources:
+      - path: ClipInbox
+    dependencies:
+      - target: ClipInboxShare
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.clipinbox.ClipInbox
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_ENTITLEMENTS: ClipInbox/ClipInbox.entitlements
+  ClipInboxShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ClipShareExtension
+      - path: ClipInbox/Shared
+      - path: ClipInbox/Fonts/Pretendard-Regular.otf
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.clipinbox.ClipInbox.Share
+        PRODUCT_NAME: ClipInboxShare
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: ClipShareExtension/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ClipShareExtension/ClipInboxShare.entitlements
+        APPLICATION_EXTENSION_API_ONLY: YES
+  ClipInboxTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: ClipInboxTests
+    dependencies:
+      - target: ClipInbox
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.clipinbox.ClipInboxTests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  ClipInbox:
+    build:
+      targets:
+        ClipInbox: all
+        ClipInboxTests: [test]
+    test:
+      targets:
+        - ClipInboxTests

@@ -1,0 +1,117 @@
+import SwiftUI
+
+// DESIGN.md 토큰 계약의 Swift 대응. 값 변경은 DESIGN.md와 함께 맞춘다.
+
+extension Color {
+    init(hex: UInt32) {
+        self.init(.sRGB,
+                  red: Double((hex >> 16) & 0xFF) / 255,
+                  green: Double((hex >> 8) & 0xFF) / 255,
+                  blue: Double(hex & 0xFF) / 255)
+    }
+}
+
+enum Tokens {
+    // Color
+    static let bgApp = Color(hex: 0xF3EFE7)
+    static let bgBoard = Color(hex: 0xEEE8DD)
+    static let bgCard = Color(hex: 0xFFFFFF)
+    static let bgCardMuted = Color(hex: 0xFAF8F2)
+    static let textPrimary = Color(hex: 0x171714)
+    static let textSecondary = Color(hex: 0x5F6368)
+    static let textTertiary = Color(hex: 0x9AA0A6)
+    static let borderStrong = Color(hex: 0x292824)
+    static let borderSoft = Color(hex: 0xD8D1C4)
+    static let accentYellow = Color(hex: 0xFFD900)
+    static let accentBlue = Color(hex: 0xBBD7FF)
+    static let accentGreen = Color(hex: 0x9BE7B0)
+    static let danger = Color(hex: 0xFF4B4B)
+
+    // Typography (letter spacing 0, bundled Pretendard v1.3.9)
+    static let screenTitle = Font.custom("Pretendard-Bold", size: 26)
+    static let sectionTitle = Font.custom("Pretendard-Bold", size: 18)
+    static let cardTitle = Font.custom("Pretendard-SemiBold", size: 17)
+    static let previewTitle = Font.custom("Pretendard-Bold", size: 28)
+    static let body = Font.custom("Pretendard-Regular", size: 15)
+    static let bodySemibold = Font.custom("Pretendard-SemiBold", size: 15)
+    static let bodyBold = Font.custom("Pretendard-Bold", size: 15)
+    static let meta = Font.custom("Pretendard-Regular", size: 13)
+    static let metaSemibold = Font.custom("Pretendard-SemiBold", size: 13)
+    static let metaBold = Font.custom("Pretendard-Bold", size: 13)
+    static let chip = Font.custom("Pretendard-SemiBold", size: 12)
+    static let button = Font.custom("Pretendard-SemiBold", size: 16)
+    static let nav = Font.custom("Pretendard-SemiBold", size: 11)
+
+    // Spacing (base 4px)
+    static let space1: CGFloat = 4
+    static let chipGap: CGFloat = 8
+    static let rowGap: CGFloat = 8
+    static let cardGap: CGFloat = 12
+    static let cardPad: CGFloat = 12
+    static let screenX: CGFloat = 16
+    static let panelPad: CGFloat = 16
+    static let sectionGap: CGFloat = 24
+    static let screenTop: CGFloat = 12
+    static let bottomSafe: CGFloat = 24
+    static let sheetTop: CGFloat = 20
+    static let sheetBottom: CGFloat = 20
+
+    // Control sizes
+    static let chipTarget: CGFloat = 40
+    static let touchTarget: CGFloat = 44
+    static let actionTarget: CGFloat = 52
+    static let headerHeight: CGFloat = 44
+    static let selectionIndicator: CGFloat = 2
+    static let selectionColumnCount = 5
+    static let selectionRowCount = 2
+    static let selectionTextMinimumScale: CGFloat = 0.72
+    static let iconColumn: CGFloat = 28
+    static let destinationIcon: CGFloat = 34
+    static let clipThumbnailWidth: CGFloat = 80
+    static let clipThumbnailHeight: CGFloat = 64
+    static let clipRowContentHeight: CGFloat = 68
+    static let resultThumbnailWidth: CGFloat = 64
+    static let resultThumbnailHeight: CGFloat = 48
+    static let resultRowContentHeight: CGFloat = 48
+    static let detailImageHeight: CGFloat = 220
+    static let sheetDetentFraction: CGFloat = 0.68
+    static let contentMax: CGFloat = 720
+    static let gridBreakpoint: CGFloat = 760
+
+    // Radius
+    static let radiusCard: CGFloat = 10
+    static let radiusPanel: CGFloat = 12
+    static let radiusButton: CGFloat = 10
+    static let radiusChip: CGFloat = 8
+    static let radiusInput: CGFloat = 8
+    static let radiusThumbnail: CGFloat = 8
+
+    // Border widths
+    static let borderCardWidth: CGFloat = 1
+    static let borderChipWidth: CGFloat = 1
+
+    // Motion
+    static let motionFast: Double = 0.14
+    static let motionBase: Double = 0.18
+    static let searchFocusDelay: Duration = .milliseconds(80)
+}
+
+extension View {
+    /// 입력과 선택 컨트롤에 쓰는 얇은 표면. 콘텐츠 목록의 외곽 카드에는 사용하지 않는다.
+    func tokenSurface(fill: Color = Tokens.bgCard, radius: CGFloat = Tokens.radiusCard,
+                      border: Color = Tokens.borderSoft, borderWidth: CGFloat = Tokens.borderCardWidth) -> some View {
+        background(
+            RoundedRectangle(cornerRadius: radius, style: .continuous)
+                .fill(fill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: radius, style: .continuous)
+                        .strokeBorder(border, lineWidth: borderWidth)
+                )
+        )
+    }
+
+    /// 레거시 호출 호환용. 네이티브 UI에서는 텍스트 래스터까지 복제하는 하드 섀도를 사용하지 않는다.
+    func hardShadow() -> some View {
+        self
+    }
+}

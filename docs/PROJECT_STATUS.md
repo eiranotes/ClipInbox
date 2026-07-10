@@ -2,18 +2,19 @@
 
 ## Current State
 
-Clip Inbox is a new local static prototype repository initialized on `main`. The current implementation follows `clip_inbox_trello_token_ui_spec_v1_5.md` and focuses on the Trello-like visual token system for a mobile-first clipping app.
+Clip Inbox's production source of truth is now the native SwiftUI iOS app under `ios/`. The dependency-free web implementation under `src/` is retained as a historical design prototype and is no longer a target for product-logic changes unless web work is explicitly requested. The native app uses a productive-minimal, list-first interface: one warm canvas, hairline-separated rows, quieter metadata, and yellow reserved for selection and primary actions.
 
 Implemented screens:
 
-- Inbox with filter chips, utility controls, clip cards, thumbnails, and fallback domain card.
-- Share extension save flow with preview-loading state, save destination, tags, memo, disabled saved state, and toast.
-- Detail view with preview, note, organization, and actions.
-- Folder list with card-like rows and counts.
-- Search with input, recent chips, results, and empty state.
+- Inbox with a two-row, five-column equal-width filter grid, full-row clip navigation, optional thumbnails, and text-only rows that keep the same height as media rows.
+- Share Extension that saves immediately after the user taps Clip Inbox in the system share sheet; there is no second Save/OK confirmation.
+- Detail view with optional preview, directly editable note, flat organization rows, and actions kept above the bottom navigation.
+- Folder list with flat rows and counts.
+- Search with immediate field focus, the shared 5x2 category selector, persisted real recent searches, results, and empty state.
 - Sort Later classification flow without scores or percentages.
-- Settings with app lock, theme, language, default folder, JSON export/import, app info, contact, delete, and icon preview.
-- CTA destination screens for filter, card menu, bookmark, share, more actions, external link confirmation, folder move, clip edit, delete confirmation, save destination, tag editor, new folder, folder detail, and setting detail.
+- Settings with app lock, theme, language, default folder, JSON export/import, app info, contact, and delete; the decorative app-icon preview was removed.
+- CTA destination screens for card menu, share, more actions, external link confirmation, folder move, clip edit, delete confirmation, save destination, tag editor, new folder, folder detail, and setting detail. Inbox filtering is direct and bookmark is an immediate toggle.
+- Native iOS Share Extension exposed in Safari and Photos, with App Group delivery into the app for links, text, and images.
 
 ## Completed Work
 
@@ -40,14 +41,36 @@ Implemented screens:
 - Replaced the nested interactive clip-card structure with a semantic card hit target plus independent menu/tag controls.
 - Captured complete evidence in `.superloopy/evidence/frontend/20260710-full-ui-functional-audit`.
 
+- Ported the full prototype to a native SwiftUI iOS app under `ios/` (XcodeGen `project.yml` → `ClipInbox.xcodeproj`, iOS 17+, version 0.3.0): design tokens, all screens (inbox/filter/detail/share/move/edit/delete/save flow/destination/tag editor/folders/new folder/folder detail/search/sort/settings/setting detail), local JSON persistence compatible with the web version-2 backup format, fileExporter/fileImporter backup, UIPasteboard/ShareLink/ImageRenderer share card, and LocalAuthentication app lock.
+- Verified the native build on the iOS 26.5 simulator (iPhone 17 Pro): build succeeds, the app launches, the app-lock gate renders, and a web-format backup JSON seeded into the app container loads through the shared normalization path. Evidence in `.superloopy/evidence/ios/20260710-swiftui-port`.
+- Added and embedded `ClipInboxShare.appex`, configured concrete URL/text/image activation rules, and connected it to the containing app through `group.app.clipinbox.ClipInbox`.
+- Verified Safari link and Photos image saves end to end: the extension is visible with the generated icon, payloads leave the App Group queue after import, and both link metadata and shared image thumbnails render in the inbox. Evidence in `.superloopy/evidence/ios/20260710-share-extension`.
+- Applied the supplied `reference-driven-ui-builder` workflow as a structured adaptation and rebuilt the native surface around a quiet editorial/productive-minimal direction.
+- Removed nested card/panel treatments from inbox, detail, folders, settings, share actions, and Sort Later; normalized primary/secondary/list CTAs and consolidated workflow-sheet presentation behind one modifier.
+- Added direct note editing and persistence in detail, list-wide detail hit targets with an independent quick menu, text-only no-image rendering, and an image-load-failure-only generated fallback asset.
+- Verified the redesigned native app on the iOS 26.5 iPhone 17 Pro simulator: clean build, no-image and image detail states, full-row navigation, bookmark/save feedback, and note-edit persistence. Evidence in `.superloopy/evidence/frontend/20260710-ios-list-first-redesign`.
+- Removed the duplicate filter modal and count-only list header, moved inbox/search/tag selection to two independently scrollable text rows, aligned all five root headers to the same 44pt slot, removed the Settings icon preview, and set workflow sheets to a compact 68% default with 20pt content insets.
+- Bundled official Pretendard v1.3.9 Regular/SemiBold/Bold OTF faces in the app, Regular in the Share Extension, and the official variable WOFF2 in the web prototype; both bundles include the SIL OFL license.
+- Changed the Share Extension from a compose controller to one-shot auto-save. Safari `example.com` now follows Share → Clip Inbox → immediate return to Safari, and the containing app imports the queued link without another confirmation.
+- Rebuilt and exercised the complete refinement on the iOS 26.5 iPhone 17 Pro simulator. Evidence in `.superloopy/evidence/frontend/20260710-ios-density-alignment-refinement`.
+- Declared `ios/` SwiftUI and Share Extension code as the sole production implementation path, documented the XcodeGen/build workflow in the project-level `AGENTS.md`, and retained `src/` as reference-only.
+- Regenerated the Xcode project and verified both simulator and unsigned generic iPhoneOS builds; completed the iPad orientation declaration so Xcode validation no longer reports the incomplete-orientation warning.
+- Replaced overlay-based inbox card composition with sibling navigation, thumbnail, and menu regions; image and text no longer compete for the same layer, and image/no-image inbox and compact-result rows now use fixed content heights.
+- Expanded inbox/search filters and tag suggestions to ten practical defaults rendered as five equal-width controls per row across two rows, with horizontal continuation only beyond ten items.
+- Added persisted, deduplicated, five-item recent search history and default/next-runloop focus handoff; verified the caret is active immediately on Search tab entry and the submitted `거실` query survives app restart.
+- Added `ClipInboxTests` and passed three XCTest regressions covering tag filtering/search, recent-search persistence, and core mutation reload behavior. Runtime screenshots and CTA smoke evidence are in `.superloopy/evidence/frontend/20260710-ios-tag-search-audit`.
+
 ## Next Steps
 
-- Optionally port the prototype into SwiftUI components if the native app source becomes available.
-- Optionally port local persistence, JSON import/export, app lock, and iOS Share Sheet integration into a native implementation.
+- Replace the static `time` strings with `Date`-based values and a relative formatter once real capture exists.
+- Run the app on a Face ID-enrolled device/simulator session to exercise the interactive unlock path end to end.
+- Verify the same App Group capability with the distribution team's signing profile on a physical device before release.
 
 ## Known Risks
 
 - The Open Design refinement now succeeds: project `clip-inbox-cta-token-refinement` produced `clip-card.html`, which was ported into the app. The earlier Fable 5 usage-limit failure is resolved.
-- This is a static web prototype of the UI spec, not a native SwiftUI app or iOS share extension binary.
-- Native Face ID/app-lock and iOS Share Extension behavior cannot execute in this web prototype; their selected settings are stored locally without claiming OS integration.
+- The bottom-tab `추가` screen remains a demo/manual-entry flow; real external capture now uses the Share Extension.
+- Simulator registration and data transfer are proven. A physical-device build still requires the same Apple Developer team and App Group capability on both the app and extension provisioning profiles.
+- On the external volume, `xcodebuild` fails with index-store rename errors unless DerivedData lives on the local disk and `COMPILER_INDEX_STORE_ENABLE=NO` is set (see DECISIONS).
+- The headless simulator cannot complete the Face ID prompt, so the interactive unlock path is verified only up to the lock screen and automatic fallback; the settings-driven lock/unlock logic itself is exercised.
 - Lighthouse was rerun three times per form factor after import hardening: mobile median 99/100/100/100 and desktop median 100/100/100/100. The remaining mobile performance point is limited by source minification, cache headers, and alternate image encoding in the dependency-free static serving path.

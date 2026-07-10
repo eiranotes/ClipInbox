@@ -1,19 +1,27 @@
+@font-face {
+  font-family: "Pretendard Variable";
+  font-style: normal;
+  font-weight: 45 920;
+  font-display: swap;
+  src: url("../public/fonts/PretendardVariable.woff2") format("woff2-variations");
+}
+
 :root {
   color-scheme: light;
   --color-bg-app: #F3EFE7;
   --color-bg-board: #EEE8DD;
   --color-bg-card: #FFFFFF;
   --color-bg-card-muted: #FAF8F2;
-  --color-text-primary: #080808;
+  --color-text-primary: #171714;
   --color-text-secondary: #5F6368;
   --color-text-tertiary: #9AA0A6;
-  --color-border-strong: #080808;
+  --color-border-strong: #292824;
   --color-border-soft: #D8D1C4;
   --color-accent-yellow: #FFD900;
   --color-accent-green: #9BE7B0;
   --color-accent-blue: #BBD7FF;
   --color-danger: #FF4B4B;
-  --color-shadow-hard: #080808;
+  --color-shadow-hard: #292824;
   --border-card: 2px solid var(--color-border-strong);
   --border-panel: 2px solid var(--color-border-strong);
   --border-button: 2px solid var(--color-border-strong);
@@ -66,7 +74,7 @@
   --motion-fast: 140ms;
   --motion-base: 200ms;
   --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", system-ui, sans-serif;
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   font-size: 16px;
   letter-spacing: 0;
 }
