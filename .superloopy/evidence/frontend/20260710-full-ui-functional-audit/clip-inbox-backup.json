@@ -1,0 +1,187 @@
+{
+  "version": 2,
+  "clips": [
+    {
+      "id": 6,
+      "type": "link",
+      "state": "new",
+      "title": "기능 점검 클립",
+      "source": "brunch.co.kr",
+      "url": "https://brunch.co.kr/",
+      "time": "방금 전",
+      "folder": "업무",
+      "tags": [
+        "거실",
+        "레퍼런스",
+        "아이디어"
+      ],
+      "folderSuggestions": [
+        "디자인",
+        "디자인",
+        "나중에"
+      ],
+      "image": "/public/images/clip-living-room.png",
+      "description": "공유 화면에서 방금 저장한 클립입니다.",
+      "memo": "편집 후 실제로 반영된 메모",
+      "bookmarked": true
+    },
+    {
+      "id": 1,
+      "type": "link",
+      "state": "unsorted",
+      "title": "미니멀 거실 인테리어 참고",
+      "source": "m.blog.naver.com",
+      "url": "https://m.blog.naver.com/",
+      "time": "2시간 전",
+      "folder": "디자인",
+      "tags": [
+        "인테리어",
+        "거실",
+        "미니멀"
+      ],
+      "folderSuggestions": [
+        "디자인",
+        "인테리어",
+        "나중에"
+      ],
+      "image": "/public/images/clip-living-room.png",
+      "description": "밝은 거실 레이아웃과 제품 상세 페이지에 맞는 무드 참고.",
+      "memo": "썸네일 비율과 여백이 좋아서 홈 섹션 이미지 참고로 보관.",
+      "bookmarked": false
+    },
+    {
+      "id": 2,
+      "type": "image",
+      "title": "모바일 대시보드 UI 레퍼런스",
+      "source": "Pinterest",
+      "url": "https://www.pinterest.com/",
+      "time": "5시간 전",
+      "folder": "디자인",
+      "tags": [
+        "UI/UX",
+        "대시보드",
+        "레퍼런스"
+      ],
+      "folderSuggestions": [
+        "디자인",
+        "UI",
+        "업무"
+      ],
+      "image": "/public/images/clip-dashboard.png",
+      "description": "카드 밀도와 차트 영역 구성을 보기 위한 이미지 저장.",
+      "memo": "",
+      "bookmarked": false
+    },
+    {
+      "id": 3,
+      "type": "memo",
+      "state": "new",
+      "title": "신규 제품 소개 문구 아이디어",
+      "source": "나의 메모",
+      "url": "",
+      "time": "어제",
+      "folder": "아이디어",
+      "tags": [
+        "카피라이팅",
+        "제품소개",
+        "아이디어"
+      ],
+      "folderSuggestions": [
+        "업무",
+        "아이디어"
+      ],
+      "image": "/public/images/clip-lightbulb.png",
+      "description": "짧은 첫 문장, 보관 이유, 다음 행동을 한 카드에 담기.",
+      "memo": "",
+      "bookmarked": false
+    },
+    {
+      "id": 4,
+      "type": "link",
+      "title": "주말 강릉 여행 코스",
+      "source": "visitgangneung.net",
+      "url": "https://www.gn.go.kr/tour",
+      "time": "어제",
+      "folder": "여행",
+      "tags": [
+        "여행",
+        "강릉",
+        "코스"
+      ],
+      "folderSuggestions": [
+        "여행",
+        "나중에"
+      ],
+      "image": "/public/images/clip-beach.png",
+      "description": "친구에게 공유할 후보 일정. 나중에 폴더에서 정리.",
+      "memo": "",
+      "bookmarked": false
+    },
+    {
+      "id": 5,
+      "type": "screenshot",
+      "state": "unsorted",
+      "title": "메타데이터 없는 상품 이미지",
+      "source": "product-store.co.kr",
+      "url": "https://product-store.co.kr/",
+      "time": "3일 전",
+      "folder": "인박스",
+      "tags": [
+        "스크린샷",
+        "확인필요"
+      ],
+      "folderSuggestions": [
+        "쇼핑",
+        "나중에"
+      ],
+      "description": "미리보기 이미지를 못 받았지만 저장 자체는 완료된 상태.",
+      "memo": "",
+      "bookmarked": false
+    }
+  ],
+  "folders": [
+    {
+      "icon": "archive",
+      "label": "전체"
+    },
+    {
+      "icon": "inbox",
+      "label": "인박스"
+    },
+    {
+      "icon": "folder",
+      "label": "디자인"
+    },
+    {
+      "icon": "bookmark",
+      "label": "자기계발"
+    },
+    {
+      "icon": "folder",
+      "label": "업무"
+    },
+    {
+      "icon": "globe",
+      "label": "여행"
+    },
+    {
+      "icon": "file",
+      "label": "맛집"
+    },
+    {
+      "icon": "note",
+      "label": "아이디어"
+    },
+    {
+      "icon": "folder",
+      "label": "읽을거리",
+      "defaultTag": "업무"
+    }
+  ],
+  "preferences": {
+    "app-lock": "켬",
+    "theme": "시스템 설정",
+    "language": "한국어",
+    "default-folder": "인박스"
+  }
+}

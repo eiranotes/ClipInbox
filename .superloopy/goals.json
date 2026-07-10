@@ -2,7 +2,7 @@
   "version": 1,
   "mode": "strict",
   "createdAt": "2026-07-09T12:28:56.858Z",
-  "updatedAt": "2026-07-09T12:29:35.150Z",
+  "updatedAt": "2026-07-10T10:13:22.553Z",
   "briefPath": ".superloopy/brief.md",
   "evidencePath": ".superloopy/evidence",
   "goalsPath": ".superloopy/goals.json",
@@ -15,7 +15,7 @@
       "status": "complete",
       "attempt": 1,
       "createdAt": "2026-07-09T12:28:56.858Z",
-      "updatedAt": "2026-07-09T12:29:35.150Z",
+      "updatedAt": "2026-07-10T10:13:22.553Z",
       "criteria": [
         {
           "id": "C001",
@@ -23,9 +23,9 @@
           "scenario": "Happy path works from the real user-facing surface.",
           "essential": true,
           "status": "pass",
-          "artifact": ".superloopy/evidence/frontend/20260709-204729-clip-inbox-trello-token/VISUAL_QA.md",
-          "capturedAt": "2026-07-09T12:29:11.560Z",
-          "notes": "Real browser screenshots and state walkthrough pass."
+          "artifact": ".superloopy/evidence/frontend/20260710-full-ui-functional-audit/VISUAL_QA.md",
+          "capturedAt": "2026-07-10T10:13:07.538Z",
+          "notes": "Responsive UI audit and complete CTA browser flow passed"
         },
         {
           "id": "C002",
@@ -33,9 +33,9 @@
           "scenario": "Riskiest edge or failure path is handled.",
           "essential": true,
           "status": "pass",
-          "artifact": ".superloopy/evidence/frontend/20260709-204729-clip-inbox-trello-token/PERF.md",
-          "capturedAt": "2026-07-09T12:29:11.234Z",
-          "notes": "Token compliance, browser QA, and Lighthouse passed."
+          "artifact": ".superloopy/evidence/frontend/20260710-full-ui-functional-audit/PERF.md",
+          "capturedAt": "2026-07-10T10:13:22.553Z",
+          "notes": "Mutation edge cases, delete and restore, compliance, and Lighthouse passed"
         },
         {
           "id": "C003",
@@ -43,9 +43,9 @@
           "scenario": "Adjacent existing behavior still works.",
           "essential": true,
           "status": "pass",
-          "artifact": ".superloopy/evidence/frontend/20260709-204729-clip-inbox-trello-token/ds-compliance.json",
-          "capturedAt": "2026-07-09T12:29:11.861Z",
-          "notes": "Design-system compliance has no violations."
+          "artifact": ".superloopy/evidence/frontend/20260710-full-ui-functional-audit/DESIGN_TOKENS.md",
+          "capturedAt": "2026-07-10T10:13:22.233Z",
+          "notes": "Existing behavior preserved under the expanded token contract"
         }
       ],
       "startedAt": "2026-07-09T12:28:57.134Z",
