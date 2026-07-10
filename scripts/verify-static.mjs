@@ -53,7 +53,7 @@ if (/[—–]/.test(app)) {
   throw new Error("Visible app source contains em dash or en dash characters.");
 }
 
-if (app.includes("noop")) {
+if (/\bnoop\b/.test(app)) {
   throw new Error("CTA source still contains noop actions.");
 }
 

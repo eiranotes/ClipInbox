@@ -63,21 +63,35 @@ Base unit: 4px. Component spacing follows the product spec through named tokens.
 | space.screenTop | `--space-screen-start` | 14px | Top offset below status bar |
 | space.bottomSafe | `--space-bottom-safe` | 112px | Scroll space above nav |
 
+Responsive and control-size tokens:
+
+| Token | CSS Variable | Value | Role |
+|---|---|---:|---|
+| size.chipTarget | `--size-chip-target` | 40px | Minimum interactive chip height |
+| size.touchTarget | `--size-touch-target` | 44px | Icon and card-menu touch target |
+| size.actionTarget | `--size-action-target` | 56px | Primary, secondary, input, and row target |
+| layout.appMax | `--layout-app-max` | 960px | Wide application-shell maximum |
+| layout.contentMax | `--layout-content-max` | 720px | Readable secondary-workflow measure |
+| layout.gridBreakpoint | `--layout-grid-breakpoint` | 760px | Two-column workbench threshold |
+| layout.desktopBreakpoint | `--layout-desktop-breakpoint` | 860px | Framed desktop-shell threshold |
+
 ## 5. Components
 
 Board section: `--color-bg-board`, `--border-panel`, `--radius-panel`, `--space-panel-pad`. It groups related cards and stacks on mobile.
 
 Clip card: `--color-bg-card`, `--border-card`, `--radius-card`, `--space-card-pad`, no default shadow. Highlighted cards may use `--shadow-hard-sm`.
 
-Badge and chip: pill radius, soft token border, mostly neutral fill, and a small state dot when the badge needs meaning. Interactive chips have hover translate, active yellow fill, focus ring, and at least 32px height. Content type badges share the blue informational marker; unsorted/new use yellow; saved uses green.
+Badge and chip: pill radius, soft token border, mostly neutral fill, and a small state dot when the badge needs meaning. Interactive chips have hover translate, active yellow fill, focus ring, and at least 40px height. Non-interactive badges stay compact. Content type badges share the blue informational marker; unsorted/new use yellow; saved uses green.
 
 Primary box button: yellow fill, black text, black border, button radius, optional hard shadow. Disabled state uses card-muted fill and tertiary text.
 
 Secondary box button: white fill, black text, black border, button radius. Destructive variant uses danger text and isolated placement.
 
-Utility icon button: square 44px target, card fill, black 2px border, 14px radius, simple black icon.
+Utility icon button and card quick menu: square 44px target, card fill, black 2px border for top utilities, 14px radius, simple black icon.
 
 Bottom navigation: white/card-muted surface, top separator, five stable tabs, yellow selected icon fill.
+
+Responsive shell: mobile stays a single card stack. At 760px and wider the inbox and folder collections may use two columns when each card remains at least 340px wide. At 860px and wider the shell expands to 960px; secondary workflows keep a centered 720px reading measure.
 
 Thumbnail: 12px radius, 2px black border on large detail imagery, soft border on compact thumbnails.
 
@@ -99,6 +113,7 @@ Radius tokens:
 | radius.chip | `--radius-chip` | 999px |
 | radius.input | `--radius-input` | 14px |
 | radius.thumbnail | `--radius-thumbnail` | 12px |
+| radius.shell | `--radius-shell` | 28px |
 
 Border tokens:
 
