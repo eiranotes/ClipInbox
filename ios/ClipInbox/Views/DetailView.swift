@@ -133,7 +133,7 @@ struct DetailView: View {
 
                 VStack(spacing: Tokens.cardGap) {
                     Button {
-                        showExternalConfirm = true
+                        openLink(clip)
                     } label: {
                         Label(clip.url.isEmpty ? "열 수 있는 링크 없음" : "링크 열기",
                               systemImage: "arrow.up.right.square")
@@ -201,6 +201,16 @@ struct DetailView: View {
     private func saveNote() {
         store.updateMemo(id: clipID, memo: noteDraft)
         noteDirty = false
+    }
+
+    private func openLink(_ clip: Clip) {
+        guard let url = URL(string: clip.url) else { return }
+        if store.linkOpenMode == .confirm {
+            showExternalConfirm = true
+        } else {
+            openURL(url)
+            store.showToast("브라우저에서 원본 열기를 요청했습니다")
+        }
     }
 
     private func organizeRow(label: String, value: String, systemImage: String,

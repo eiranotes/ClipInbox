@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 
 final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
     private var configuration = SharedClipConfiguration.standard
-    private var pendingImageData: Data?
+    private var pendingImageAsset: SharedImageAsset?
     private var pendingPayload: SharedClipPayload?
     private var selectedFolder = ""
     private var hasStarted = false
@@ -304,8 +304,8 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         var newlyStoredImageName: String?
         do {
             let sharedImageName: String?
-            if let pendingImageData {
-                sharedImageName = try SharedClipQueue.storeImageData(pendingImageData, for: item.id)
+            if let pendingImageAsset {
+                sharedImageName = try SharedClipQueue.storeImageAsset(pendingImageAsset, for: item.id)
                 newlyStoredImageName = sharedImageName
             } else {
                 sharedImageName = item.sharedImageName
@@ -385,9 +385,21 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         let attributedText = items.compactMap(\.attributedContentText?.string).first
         let providers = items.flatMap { $0.attachments ?? [] }
 
+        // Photos와 일부 이미지 앱은 이미지와 파일 URL을 함께 제공한다. 이미지
+        // provider가 하나라도 있으면 먼저 원본 이미지 표현을 읽어 URL 클립으로
+        // 잘못 저장하지 않는다.
+        for provider in providers where provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+            if let imageAsset = await loadImageAsset(from: provider) {
+                pendingImageAsset = imageAsset
+                return SharedClipPayload(type: .image,
+                                         title: clean(attributedTitle, fallback: localized("공유한 이미지"), limit: 200),
+                                         source: localized("사진"), text: clean(attributedText, limit: 500),
+                                         folder: configuration.defaultFolder)
+            }
+        }
+
         var sharedURL: URL?
         var sharedText = attributedText
-        var imageData: Data?
 
         for provider in providers {
             if sharedURL == nil, provider.hasItemConformingToTypeIdentifier(UTType.url.identifier),
@@ -398,10 +410,6 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
                let item = try? await loadItem(from: provider, typeIdentifier: UTType.plainText.identifier) {
                 sharedText = item as? String ?? (item as? NSString).map { String($0) }
             }
-            if imageData == nil, provider.hasItemConformingToTypeIdentifier(UTType.image.identifier),
-               let item = try? await loadItem(from: provider, typeIdentifier: UTType.image.identifier) {
-                imageData = normalizedJPEGData(from: item)
-            }
         }
 
         if let url = sharedURL {
@@ -410,13 +418,6 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
                                      title: clean(attributedTitle, fallback: clean(sharedText, fallback: host, limit: 200), limit: 200),
                                      source: host, url: url.absoluteString,
                                      text: clean(sharedText, limit: 500),
-                                     folder: configuration.defaultFolder)
-        }
-        if imageData != nil {
-            pendingImageData = imageData
-            return SharedClipPayload(type: .image,
-                                     title: clean(attributedTitle, fallback: localized("공유한 이미지"), limit: 200),
-                                     source: localized("사진"), text: clean(sharedText, limit: 500),
                                      folder: configuration.defaultFolder)
         }
         if let sharedText, !sharedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -445,22 +446,50 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         return trimmed.isEmpty ? fallback : String(trimmed.prefix(limit))
     }
 
-    private func normalizedJPEGData(from item: NSSecureCoding) -> Data? {
-        let image: UIImage?
-        if let uiImage = item as? UIImage { image = uiImage }
-        else if let url = item as? URL { image = (try? Data(contentsOf: url)).flatMap(UIImage.init(data:)) }
-        else if let url = item as? NSURL { image = (try? Data(contentsOf: url as URL)).flatMap(UIImage.init(data:)) }
-        else if let data = item as? Data { image = UIImage(data: data) }
-        else { image = nil }
-        guard let image else { return nil }
+    private func loadImageAsset(from provider: NSItemProvider) async -> SharedImageAsset? {
+        let imageIdentifiers = provider.registeredTypeIdentifiers
+            .filter { UTType($0)?.conforms(to: .image) == true }
+        // provider의 선호 순서는 유지하되 추상 public.image만 마지막으로 미룬다.
+        let identifiers = imageIdentifiers.filter { UTType($0) != .image }
+            + imageIdentifiers.filter { UTType($0) == .image }
 
-        let maxDimension: CGFloat = 1_600
-        let sourceMax = max(image.size.width, image.size.height)
-        guard sourceMax > maxDimension else { return image.jpegData(compressionQuality: 0.82) }
-        let scale = maxDimension / sourceMax
-        let target = CGSize(width: image.size.width * scale, height: image.size.height * scale)
-        let renderer = UIGraphicsImageRenderer(size: target)
-        let resized = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: target)) }
-        return resized.jpegData(compressionQuality: 0.82)
+        for identifier in identifiers {
+            if let data = try? await loadDataRepresentation(from: provider, typeIdentifier: identifier),
+               let asset = SharedImageAsset(data: data, typeIdentifier: identifier) {
+                return asset
+            }
+        }
+
+        guard let item = try? await loadItem(from: provider, typeIdentifier: UTType.image.identifier) else {
+            return nil
+        }
+        let typeIdentifier = identifiers.first
+        if let url = item as? URL, let data = try? Data(contentsOf: url) {
+            return SharedImageAsset(data: data,
+                                    typeIdentifier: typeIdentifier,
+                                    suggestedFileExtension: url.pathExtension)
+        }
+        if let url = item as? NSURL, let data = try? Data(contentsOf: url as URL) {
+            return SharedImageAsset(data: data,
+                                    typeIdentifier: typeIdentifier,
+                                    suggestedFileExtension: (url as URL).pathExtension)
+        }
+        if let data = item as? Data {
+            return SharedImageAsset(data: data, typeIdentifier: typeIdentifier)
+        }
+        if let image = item as? UIImage, let data = image.pngData() {
+            return SharedImageAsset(data: data, typeIdentifier: UTType.png.identifier)
+        }
+        return nil
+    }
+
+    private func loadDataRepresentation(from provider: NSItemProvider, typeIdentifier: String) async throws -> Data {
+        try await withCheckedThrowingContinuation { continuation in
+            provider.loadDataRepresentation(forTypeIdentifier: typeIdentifier) { data, error in
+                if let error { continuation.resume(throwing: error) }
+                else if let data { continuation.resume(returning: data) }
+                else { continuation.resume(throwing: ShareError.missingPayload) }
+            }
+        }
     }
 }

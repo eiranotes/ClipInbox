@@ -105,6 +105,9 @@
 "이 클립에 대한 메모를 입력하세요" = "Add a note about this clip";
 "정리" = "Organize";
 "링크 열기" = "Open link";
+"링크 열기 방식" = "Open links";
+"바로 열기" = "Open immediately";
+"열기 전 확인" = "Ask before opening";
 "열 수 있는 링크 없음" = "No link available";
 "이동" = "Move";
 "편집" = "Edit";

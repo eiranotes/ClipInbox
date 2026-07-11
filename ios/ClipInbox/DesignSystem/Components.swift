@@ -637,17 +637,4 @@ enum Keyboard {
         )
     }
 
-    /// 키보드 프로세스를 앱 시작 직후 한 번 예열해 첫 입력 필드 탭에서도 키보드가 즉시 뜨게 한다.
-    /// 프레임이 0인 임시 필드라 화면에는 아무것도 나타나지 않는다.
-    static func prewarm() {
-        guard let window = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .flatMap(\.windows)
-            .first(where: \.isKeyWindow) else { return }
-        let field = UITextField(frame: .zero)
-        window.addSubview(field)
-        field.becomeFirstResponder()
-        field.resignFirstResponder()
-        field.removeFromSuperview()
-    }
 }

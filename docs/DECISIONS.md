@@ -287,3 +287,27 @@ Decision: Fresh and reset data shows `전체`, `기본 폴더`, then `폴더 1` 
 Why: Preset category names such as screenshots, interiors, references, ideas, or travel imply a fixed taxonomy. Generic numbered folders make the rename affordance and user ownership explicit while preserving the aggregate and incoming destinations.
 
 Impact: `기본 폴더` is always the second row and the default Share destination. Sample clips distribute across the five numbered folders; existing persisted installations keep their chosen names until reset or manual rename.
+
+## 2026-07-11: Shared Images Preserve Their Original Representation
+
+Decision: If a Share payload exposes any image provider, classify it as an image before inspecting URL/text providers. Copy the provider's supported PNG, JPEG, HEIC, HEIF, TIFF, GIF, or WebP representation unchanged into the App Group and retain its UUID filename extension.
+
+Why: Photos and image-oriented share sources can expose both a file URL and image data. URL-first parsing saved those captures as links, while the previous 1600px JPEG 0.82 normalization discarded pixels and introduced compression loss.
+
+Impact: Image shares have an empty external URL, render from the local file in rows/detail/full-screen zoom, and preserve source bytes and dimensions. Storage usage now matches the original file size. Filename validation and cleanup cover the supported extension set.
+
+## 2026-07-11: Link Confirmation Is Optional and Defaults to Direct Open
+
+Decision: Persist link-opening behavior separately from the version-2 backup as `direct` or `confirm`, with `direct` as the fresh/reset default. Detail and card-menu actions share the same policy.
+
+Why: Frequent link opening should stay one tap by default, while users who want an external-browser boundary can opt into the existing confirmation dialog without changing clip data or the cross-platform backup schema.
+
+Impact: Settings shows `링크 열기 방식`; `바로 열기` opens immediately and `열기 전 확인` presents the browser question. The choice survives relaunch and resets with all local data.
+
+## 2026-07-11: Share Configuration Uses a File and Keyboard Prewarming Is Removed
+
+Decision: Store the Share Extension configuration as one atomic App Group JSON file, migrate the legacy preference plist without invoking CFPrefs, and remove the launch-time zero-frame text-field first-responder cycle.
+
+Why: The configuration was already a single Codable blob, so CFPrefs added no benefit and produced a simulator AnyUser/container warning. Synthetic keyboard prewarming connected and immediately detached private text-input reporters, producing `Reporter disconnected` noise.
+
+Impact: App and extension configuration remains cross-process and atomic, legacy values migrate on first read, and the keyboard still appears only after an actual user tap. The CA launch-measurement message remains OS telemetry, not an app failure. A Share Extension cannot legally auto-open the containing app on iOS, and share-sheet Favorites order remains user-controlled.

@@ -1,4 +1,6 @@
 import XCTest
+import UIKit
+import UniformTypeIdentifiers
 @testable import ClipInbox
 
 final class AppStoreTests: XCTestCase {
@@ -182,5 +184,40 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(reloaded.preferences.sharedSaveMode, .review)
         XCTAssertEqual(L10n.text("설정", language: .english), "Settings")
         XCTAssertEqual(L10n.text("설정", language: .japanese), "設定")
+    }
+
+    func testLinkOpeningDefaultsToDirectAndPersistsConfirmationChoice() {
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+
+        XCTAssertEqual(store.linkOpenMode, .direct)
+        store.updateLinkOpenMode(.confirm)
+
+        let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
+        XCTAssertEqual(reloaded.linkOpenMode, .confirm)
+    }
+
+    func testSharedImageAssetPreservesOriginalBytesFormatAndDimensions() throws {
+        let sourceSize = CGSize(width: 2_400, height: 1_800)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let image = UIGraphicsImageRenderer(size: sourceSize, format: format).image { context in
+            UIColor.systemYellow.setFill()
+            context.fill(CGRect(origin: .zero, size: sourceSize))
+        }
+        let originalData = try XCTUnwrap(image.pngData())
+        let asset = try XCTUnwrap(SharedImageAsset(data: originalData, typeIdentifier: UTType.png.identifier))
+        let mislabeledAsset = try XCTUnwrap(SharedImageAsset(
+            data: originalData,
+            typeIdentifier: UTType.jpeg.identifier,
+            suggestedFileExtension: "jpg"
+        ))
+        let decoded = try XCTUnwrap(UIImage(data: asset.data))
+
+        XCTAssertEqual(asset.data, originalData)
+        XCTAssertEqual(asset.fileExtension, "png")
+        XCTAssertEqual(mislabeledAsset.fileExtension, "png")
+        XCTAssertEqual(decoded.size, sourceSize)
+        XCTAssertTrue(SharedClipQueue.isValidImageFileName("C8D6F4A3-3120-4A18-A105-43F4ED7B2EB1.png"))
+        XCTAssertFalse(SharedClipQueue.isValidImageFileName("../image.png"))
     }
 }

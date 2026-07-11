@@ -77,7 +77,7 @@ struct CardActionsSheet: View {
                     VStack(spacing: Tokens.rowGap) {
                         if !clip.url.isEmpty {
                             ActionRow(systemImage: "arrow.up.right.square", label: "링크 열기", value: "원본 페이지 확인") {
-                                showExternalConfirm = true
+                                openLink(clip)
                             }
                         }
                         ActionRow(systemImage: "bookmark", label: "북마크",
@@ -119,6 +119,15 @@ struct CardActionsSheet: View {
             } message: {
                 Text("이 클립은 인박스와 폴더에서 즉시 제거됩니다.")
             }
+        }
+    }
+
+    private func openLink(_ clip: Clip) {
+        guard let url = URL(string: clip.url) else { return }
+        if store.linkOpenMode == .confirm {
+            showExternalConfirm = true
+        } else {
+            openURL(url)
         }
     }
 }

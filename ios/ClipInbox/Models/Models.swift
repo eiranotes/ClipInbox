@@ -171,6 +171,11 @@ struct Preferences: Codable, Equatable {
     }
 }
 
+enum LinkOpenMode: String, CaseIterable {
+    case direct
+    case confirm
+}
+
 struct DataSnapshot: Codable {
     var version: Int
     var clips: [Clip]

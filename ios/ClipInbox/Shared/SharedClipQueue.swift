@@ -1,4 +1,6 @@
 import Foundation
+import ImageIO
+import UniformTypeIdentifiers
 
 enum SharedSaveMode: String, Codable, CaseIterable {
     case quick
@@ -73,9 +75,38 @@ struct SharedClipPayload: Codable, Identifiable {
     }
 }
 
+/// Share Extension에서 받은 이미지의 압축 바이트와 파일 형식을 그대로 보존한다.
+/// 픽셀 리사이즈나 JPEG 재인코딩은 하지 않는다.
+struct SharedImageAsset: Equatable {
+    let data: Data
+    let fileExtension: String
+
+    init?(data: Data, typeIdentifier: String? = nil, suggestedFileExtension: String? = nil) {
+        guard !data.isEmpty,
+              let source = CGImageSourceCreateWithData(data as CFData, nil),
+              CGImageSourceGetCount(source) > 0 else { return nil }
+
+        let detectedType = CGImageSourceGetType(source) as String?
+        let candidates = [
+            detectedType.flatMap { UTType($0)?.preferredFilenameExtension },
+            typeIdentifier.flatMap { UTType($0)?.preferredFilenameExtension },
+            suggestedFileExtension
+        ]
+        guard let fileExtension = candidates.compactMap(SharedClipQueue.safeImageFileExtension).first else {
+            return nil
+        }
+        self.data = data
+        self.fileExtension = fileExtension
+    }
+}
+
 enum SharedClipQueue {
     static let appGroupIdentifier = "group.app.clipinbox.ClipInbox"
-    private static let configurationKey = "clip-inbox-share-configuration-v1"
+    private static let configurationFileName = "ShareConfiguration-v1.json"
+    private static let legacyConfigurationKey = "clip-inbox-share-configuration-v1"
+    private static let supportedImageFileExtensions = Set([
+        "jpg", "jpeg", "png", "heic", "heif", "tif", "tiff", "gif", "webp"
+    ])
 
     struct Item {
         let fileURL: URL
@@ -91,18 +122,22 @@ enum SharedClipQueue {
     }
 
     static func loadConfiguration() -> SharedClipConfiguration {
-        guard let defaults = UserDefaults(suiteName: appGroupIdentifier),
-              let data = defaults.data(forKey: configurationKey),
-              let value = try? JSONDecoder().decode(SharedClipConfiguration.self, from: data) else {
-            return .standard
+        if let fileURL = try? configurationFileURL(),
+           let data = try? Data(contentsOf: fileURL),
+           let value = try? JSONDecoder().decode(SharedClipConfiguration.self, from: data) {
+            return value
         }
-        return value
+        if let legacy = loadLegacyConfiguration() {
+            saveConfiguration(legacy)
+            return legacy
+        }
+        return .standard
     }
 
     static func saveConfiguration(_ configuration: SharedClipConfiguration) {
-        guard let defaults = UserDefaults(suiteName: appGroupIdentifier),
+        guard let fileURL = try? configurationFileURL(),
               let data = try? JSONEncoder().encode(configuration) else { return }
-        defaults.set(data, forKey: configurationKey)
+        try? data.write(to: fileURL, options: [.atomic, .completeFileProtectionUnlessOpen])
     }
 
     static func enqueue(_ payload: SharedClipPayload) throws {
@@ -136,16 +171,15 @@ enum SharedClipQueue {
         try FileManager.default.removeItem(at: item.fileURL)
     }
 
-    static func storeImageData(_ data: Data, for id: UUID) throws -> String {
-        let fileName = "\(id.uuidString).jpg"
+    static func storeImageAsset(_ asset: SharedImageAsset, for id: UUID) throws -> String {
+        let fileName = "\(id.uuidString).\(asset.fileExtension)"
         let fileURL = try imagesDirectoryURL().appendingPathComponent(fileName)
-        try data.write(to: fileURL, options: [.atomic, .completeFileProtectionUnlessOpen])
+        try asset.data.write(to: fileURL, options: [.atomic, .completeFileProtectionUnlessOpen])
         return fileName
     }
 
     static func imageURL(named fileName: String) -> URL? {
-        guard fileName == (fileName as NSString).lastPathComponent,
-              fileName.range(of: #"^[A-F0-9-]{36}\.jpg$"#, options: [.regularExpression, .caseInsensitive]) != nil else {
+        guard isValidImageFileName(fileName) else {
             return nil
         }
         return try? imagesDirectoryURL().appendingPathComponent(fileName)
@@ -159,9 +193,47 @@ enum SharedClipQueue {
     static func removeAllImages() throws {
         let directory = try imagesDirectoryURL()
         let urls = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
-        for url in urls where url.pathExtension.lowercased() == "jpg" {
+        for url in urls where isValidImageFileName(url.lastPathComponent) {
             try FileManager.default.removeItem(at: url)
         }
+    }
+
+    static func isValidImageFileName(_ fileName: String) -> Bool {
+        guard fileName == (fileName as NSString).lastPathComponent else { return false }
+        let stem = (fileName as NSString).deletingPathExtension
+        guard UUID(uuidString: stem) != nil else { return false }
+        return safeImageFileExtension((fileName as NSString).pathExtension) != nil
+    }
+
+    static func safeImageFileExtension(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let normalized = value.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased()
+        return supportedImageFileExtensions.contains(normalized) ? normalized : nil
+    }
+
+    private static func configurationFileURL() throws -> URL {
+        guard let container = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: appGroupIdentifier
+        ) else {
+            throw QueueError.appGroupUnavailable
+        }
+        return container.appendingPathComponent(configurationFileName)
+    }
+
+    /// 이전 빌드의 App Group UserDefaults 값을 CFPrefs API 없이 한 번만 읽어
+    /// 파일 기반 설정으로 옮긴다. simulator의 AnyUser/container 경고도 피한다.
+    private static func loadLegacyConfiguration() -> SharedClipConfiguration? {
+        guard let container = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: appGroupIdentifier
+        ) else { return nil }
+        let fileURL = container
+            .appendingPathComponent("Library/Preferences", isDirectory: true)
+            .appendingPathComponent("\(appGroupIdentifier).plist")
+        guard let plistData = try? Data(contentsOf: fileURL),
+              let plist = try? PropertyListSerialization.propertyList(from: plistData, format: nil),
+              let dictionary = plist as? [String: Any],
+              let configurationData = dictionary[legacyConfigurationKey] as? Data else { return nil }
+        return try? JSONDecoder().decode(SharedClipConfiguration.self, from: configurationData)
     }
 
     private static func pendingDirectoryURL() throws -> URL {

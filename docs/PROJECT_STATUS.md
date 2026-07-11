@@ -10,9 +10,9 @@ Implemented screens:
 - Share Extension with two user-selectable behaviors: immediate save shows one compact localized checkmark card for about 2 seconds before returning, while review mode exposes only folder, memo, save, and cancel controls.
 - Detail view with a 16pt content rhythm that fits one viewport through the 링크 열기 action (140pt aspect-fit preview, 72pt note editor), a zoomable full-screen image viewer, directly editable note and tags, flat organization rows, and actions kept above the bottom navigation.
 - Folder list with flat rows and counts, using `전체`, second-row `기본 폴더`, and rename-oriented `폴더 1` through `폴더 5` on fresh/reset data.
-- Search with the shared 5x2 category selector, persisted real recent searches, results, and empty state. The keyboard opens only from a direct field tap, is prewarmed at launch for instant presentation, and dismisses on outside taps or tab switches.
+- Search with the shared 5x2 category selector, persisted real recent searches, results, and empty state. The keyboard opens only from a direct field tap and dismisses on outside taps or tab switches; synthetic launch-time prewarming was removed after runtime log diagnosis.
 - Sort Later classification flow without scores or percentages.
-- Settings with app lock, functional light/dark/system theme, Korean/English/Japanese language selection, default folder, global tag management, Share save behavior, JSON export/import, app info, contact, and delete. Detail screens omit the redundant explanation panel and use content-aware vertical spacing.
+- Settings with app lock, functional light/dark/system theme, Korean/English/Japanese language selection, default folder, global tag management, Share save behavior, direct/confirm link opening, JSON export/import, app info, contact, and delete. Link opening defaults to direct. Detail screens omit the redundant explanation panel and use content-aware vertical spacing.
 - CTA destination screens for card menu, share, more actions, external link confirmation, folder move, clip edit, delete confirmation, save destination, tag editor, new folder, folder detail, and setting detail. Inbox filtering is direct and bookmark is an immediate toggle.
 - Native iOS Share Extension exposed in Safari and Photos, with App Group delivery into the app for links, text, and images.
 
@@ -67,6 +67,7 @@ Implemented screens:
 - Added a persisted tag catalog with global add/rename/delete actions, reference propagation across clip tags and folder defaults, and XCTest coverage while retaining version-2 JSON backup compatibility.
 - Added adaptive dark tokens, working light/dark/system selection, content-aware workflow-sheet detents, aspect-fit/zoomable detail media, leading-edge swipe back, and a compact checkmark Share confirmation.
 - Reworked keyboard behavior so non-input taps dismiss it across input screens, the tag-selection sheet remains unchanged, and the bottom navigation hides rather than moving above the keyboard. Runtime evidence is in `.superloopy/evidence/frontend/20260711-ux-theme-tags`.
+- Fixed image Share ingestion so an image-plus-URL payload is stored as an image, preserves the provider's original PNG/JPEG/HEIC-compatible bytes and dimensions, and remains full resolution in the zoom viewer. Added a direct/confirm link-opening preference, moved extension configuration from App Group CFPrefs to an atomic JSON file, and removed launch-time keyboard prewarming. Runtime and hash evidence is in `.superloopy/evidence/frontend/20260711-share-image-link-settings`.
 
 ## Next Steps
 
@@ -81,6 +82,8 @@ Implemented screens:
 - The bottom-tab `추가` screen remains a demo/manual-entry flow; real external capture now uses the Share Extension.
 - Simulator registration and data transfer are proven. A physical-device build still requires the same Apple Developer team and App Group capability on both the app and extension provisioning profiles.
 - On the external volume, `xcodebuild` fails with index-store rename errors unless DerivedData lives on the local disk and `COMPILER_INDEX_STORE_ENABLE=NO` is set (see DECISIONS).
+- Original shared images now intentionally retain their source bytes, so very large Photos files consume their full local size until the clip or all app data is deleted.
+- iOS does not let a `com.apple.share-services` extension open its containing app through supported APIs, and the app cannot force itself to the first share-sheet position. The current default returns to the host app; users can place Clip Inbox first through the share sheet's More → Edit → Favorites order.
 - The headless simulator cannot complete the Face ID prompt, so the interactive unlock path is verified only up to the lock screen and automatic fallback; the settings-driven lock/unlock logic itself is exercised.
 - Store submission is blocked until an owned support email and HTTPS support/privacy URLs are supplied; placeholders are documented but intentionally not invented.
 - Lighthouse was rerun three times per form factor after import hardening: mobile median 99/100/100/100 and desktop median 100/100/100/100. The remaining mobile performance point is limited by source minification, cache headers, and alternate image encoding in the dependency-free static serving path.

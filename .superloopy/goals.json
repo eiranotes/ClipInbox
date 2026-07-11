@@ -2,7 +2,7 @@
   "version": 1,
   "mode": "strict",
   "createdAt": "2026-07-09T12:28:56.858Z",
-  "updatedAt": "2026-07-11T02:55:14.643Z",
+  "updatedAt": "2026-07-11T03:33:18.729Z",
   "briefPath": ".superloopy/brief.md",
   "evidencePath": ".superloopy/evidence",
   "goalsPath": ".superloopy/goals.json",
@@ -15,7 +15,7 @@
       "status": "complete",
       "attempt": 1,
       "createdAt": "2026-07-09T12:28:56.858Z",
-      "updatedAt": "2026-07-11T02:55:14.643Z",
+      "updatedAt": "2026-07-11T03:33:18.729Z",
       "criteria": [
         {
           "id": "C001",
@@ -23,9 +23,9 @@
           "scenario": "Happy path works from the real user-facing surface.",
           "essential": true,
           "status": "pass",
-          "artifact": ".superloopy/evidence/frontend/20260711-ux-theme-tags/VISUAL_QA.md",
-          "capturedAt": "2026-07-11T02:55:14.643Z",
-          "notes": "SwiftUI keyboard, tags, modal, detail media, transparent Share overlay, swipe-back, dark theme, and default-folder QA passed"
+          "artifact": ".superloopy/evidence/frontend/20260711-share-image-link-settings/VISUAL_QA.md",
+          "capturedAt": "2026-07-11T03:33:18.729Z",
+          "notes": "Original image bytes and dimensions preserved; link-open preference and runtime diagnostics verified."
         },
         {
           "id": "C002",

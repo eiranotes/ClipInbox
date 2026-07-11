@@ -135,6 +135,8 @@ Workflow sheet: short action menus open at 58%, medium selectors at 76%, and des
 
 Setting detail: the duplicated explanatory card is absent. Default-folder selection starts directly below the header because its list is long; short option groups begin after 72px and one-action details begin after 132px so their controls sit around the middle rhythm instead of clinging to the top edge.
 
+Link opening: Settings offers `바로 열기` and `열기 전 확인`. Direct opening is the default; confirmation is an explicit user preference and applies consistently to detail and card-menu link actions.
+
 Tag management: Settings exposes one flat tag list with explicit edit and delete icon targets. Renaming updates every clip and folder-default reference; deleting removes the tag from those references. Destructive affordances use danger text and never rely on swipe-only discovery.
 
 Detail image: the full source image uses aspect-fit inside a maximum 140px preview, even when that leaves horizontal or vertical breathing room. Tapping it opens a dark-compatible full-screen viewer with close, pinch, and double-tap zoom controls.
@@ -145,7 +147,7 @@ Thumbnail: 8px radius with no border for large detail imagery and an optional so
 
 ## 6. Motion
 
-Motion is light and functional: `--motion-fast` 140ms, `--motion-base` 180ms, `--motion-ease` cubic-bezier(0.2, 0.8, 0.2, 1). The keyboard is raised only by a direct tap on a text field or editor; screens and workflow sheets never request focus programmatically. The keyboard process is prewarmed once right after launch so the first tap presents the keyboard without cold-start delay. Tapping outside an input dismisses the keyboard on every input surface except the intentionally unchanged tag-selection sheet; the bottom navigation hides while the keyboard is visible instead of being lifted above it. Search result evaluation follows input by 120ms so Korean composition and key events stay responsive while results update after the user pauses. Pushed detail screens support a left-edge swipe to return. Buttons and rows use opacity only; sheets use the system transition. Reduced-motion removes custom transitions.
+Motion is light and functional: `--motion-fast` 140ms, `--motion-base` 180ms, `--motion-ease` cubic-bezier(0.2, 0.8, 0.2, 1). The keyboard is raised only by a direct tap on a text field or editor; screens and workflow sheets never request focus programmatically and do not synthesize a launch-time first-responder cycle. Tapping outside an input dismisses the keyboard on every input surface except the intentionally unchanged tag-selection sheet; the bottom navigation hides while the keyboard is visible instead of being lifted above it. Search result evaluation follows input by 120ms so Korean composition and key events stay responsive while results update after the user pauses. Pushed detail screens support a left-edge swipe to return. Buttons and rows use opacity only; sheets use the system transition. Reduced-motion removes custom transitions.
 
 ## 7. Depth
 

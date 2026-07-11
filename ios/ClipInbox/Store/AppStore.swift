@@ -53,20 +53,22 @@ final class AppStore {
     var preferences: Preferences
     private(set) var recentSearches: [String]
     private(set) var tagCatalog: [String]
+    private(set) var linkOpenMode: LinkOpenMode
 
     var toast: String?
     private var toastTask: Task<Void, Never>?
 
     private let fileURL: URL
-    private let recentSearchDefaults: UserDefaults
+    private let userDefaults: UserDefaults
     private static let recentSearchesKey = "clip-inbox-recent-searches-v1"
     private static let recentSearchLimit = 5
     private static let tagCatalogKey = "clip-inbox-tag-catalog-v1"
+    private static let linkOpenModeKey = "clip-inbox-link-open-mode-v1"
 
     init(fileURL: URL? = nil, userDefaults: UserDefaults = .standard) {
         let base = fileURL ?? Self.defaultFileURL()
         self.fileURL = base
-        recentSearchDefaults = userDefaults
+        self.userDefaults = userDefaults
         recentSearches = Self.normalizeRecentSearches(
             userDefaults.stringArray(forKey: Self.recentSearchesKey) ?? []
         )
@@ -75,6 +77,7 @@ final class AppStore {
         } else {
             tagCatalog = DefaultData.suggestedTags
         }
+        linkOpenMode = LinkOpenMode(rawValue: userDefaults.string(forKey: Self.linkOpenModeKey) ?? "") ?? .direct
         if let data = try? Data(contentsOf: base),
            let snapshot = try? JSONDecoder().decode(DataSnapshot.self, from: data) {
             let normalized = Self.normalize(snapshot)
@@ -238,11 +241,7 @@ final class AppStore {
     }
 
     static func safeSharedImageName(_ value: String?) -> String? {
-        guard let value,
-              value == (value as NSString).lastPathComponent,
-              value.range(of: #"^[A-F0-9-]{36}\.jpg$"#, options: [.regularExpression, .caseInsensitive]) != nil else {
-            return nil
-        }
+        guard let value, SharedClipQueue.isValidImageFileName(value) else { return nil }
         return value
     }
 
@@ -405,7 +404,7 @@ final class AppStore {
         }
         recentSearches.insert(clean, at: 0)
         recentSearches = Array(recentSearches.prefix(Self.recentSearchLimit))
-        recentSearchDefaults.set(recentSearches, forKey: Self.recentSearchesKey)
+        userDefaults.set(recentSearches, forKey: Self.recentSearchesKey)
     }
 
     // MARK: - 뮤테이션
@@ -608,11 +607,19 @@ final class AppStore {
         showToast("설정을 저장했습니다")
     }
 
+    func updateLinkOpenMode(_ mode: LinkOpenMode) {
+        linkOpenMode = mode
+        userDefaults.set(mode.rawValue, forKey: Self.linkOpenModeKey)
+        showToast("설정을 저장했습니다")
+    }
+
     func deleteAllData() {
         clips = []
         folders = DefaultData.folders
         preferences = .standard
+        linkOpenMode = .direct
         tagCatalog = DefaultData.suggestedTags
+        userDefaults.removeObject(forKey: Self.linkOpenModeKey)
         saveTagCatalog()
         if persist() { try? SharedClipQueue.removeAllImages() }
         showToast("로컬 데이터를 삭제했습니다")
@@ -650,6 +657,6 @@ final class AppStore {
     }
 
     private func saveTagCatalog() {
-        recentSearchDefaults.set(tagCatalog, forKey: Self.tagCatalogKey)
+        userDefaults.set(tagCatalog, forKey: Self.tagCatalogKey)
     }
 }

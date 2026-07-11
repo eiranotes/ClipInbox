@@ -4,6 +4,7 @@
 
 ### Added
 
+- Settings choice for opening links immediately or asking before opening the browser, with immediate opening as the default.
 - Adaptive light, dark, and system appearance with a warm near-black dark palette shared by the app and Share Extension configuration.
 - Settings tag management for adding, renaming, and deleting tags; rename/delete updates every clip tag and folder default-tag reference and persists the catalog separately from the version-2 backup schema.
 - Aspect-fit detail previews plus a tappable full-screen image viewer with pinch and double-tap zoom.
@@ -25,6 +26,8 @@
 
 ### Changed
 
+- Image shares now take priority over accompanying file/web URLs and retain the provider's original supported image bytes, format, and pixel dimensions instead of a 1600px JPEG conversion.
+- Share Extension configuration now uses an atomic App Group JSON file, with a direct legacy-plist migration path.
 - The bottom navigation now hides instead of moving above the keyboard. Every non-tag-selection input screen dismisses the keyboard when the user taps outside a text input.
 - Workflow sheets now use content-aware detents: 58% for short actions, 76% for medium selectors, and full height for destination/move/edit flows, all with explicit top and bottom insets.
 - Setting-detail screens no longer show the duplicated "설정 설명" block. Short option/action screens use deliberate top spacing, while the longer default-folder and tag lists begin near the header.
@@ -49,6 +52,8 @@
 
 ### Fixed
 
+- Photos/image shares no longer become URL-only link clips when the provider exposes both representations, and full-screen zoom now reads the original stored raster.
+- Removed the synthetic launch-time keyboard prewarm responsible for private text-input reporter disconnect messages; the keyboard remains tap-only.
 - Detail images no longer crop their source ratio, and folder-move plus other long modals no longer appear cut at the top or bottom.
 - Keyboard presentation no longer lifts and animates the five-item bottom menu above the keyboard.
 - Completed the iPad orientation declarations so generic iPhoneOS Xcode validation no longer warns about an unsupported interface orientation.
@@ -64,6 +69,9 @@
 
 ### Verified
 
+- Fourteen native XCTest regressions pass, including exact-byte/format/dimension preservation for a 2400×1800 PNG and link-opening preference persistence.
+- A live Photos share retained PNG, 2400×1800 pixels, 1,472,067 bytes, and SHA-256 `21ff962ce36c3187e03afd4d99f9d8a267b9f3a85c969797cbfb375cd9fb44fa` before and after App Group storage; the payload and imported clip were both image type with no URL.
+- Settings direct/confirm selection, the confirmation dialog, host-app return after sharing, first keyboard presentation, and full-screen image rendering were exercised on the iOS 26.5 iPhone 17 Pro simulator. Targeted logs contained none of the reported App Group or reporter-disconnect strings after the change.
 - Twelve native XCTest regressions pass, including tag-catalog rename/delete propagation, generic folder ordering, and dark-theme persistence.
 - Light inbox, dark settings/folders/tag management, aspect-fit/full-screen image, expanded card/move sheets, outside-tap keyboard dismissal, and hidden keyboard navigation were exercised on the iOS 26.5 iPhone 17 Pro simulator. Evidence is stored in `.superloopy/evidence/frontend/20260711-ux-theme-tags`.
 - Ten native XCTest regressions pass, including default lock/share behavior and Japanese/review preference persistence.

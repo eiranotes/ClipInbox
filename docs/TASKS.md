@@ -88,6 +88,10 @@
 - [x] Restyle the Share Extension quick-save feedback as a compact checkmark confirmation and pass the app theme through App Group configuration.
 - [x] Remove setting-detail explanation cards, add deliberate short-screen spacing, enable leading-edge swipe back, and implement a readable adaptive dark theme.
 - [x] Change fresh/reset folder defaults to `전체`, second-row `기본 폴더`, and `폴더 1` through `폴더 5`.
+- [x] Diagnose App Group, launch-metrics, and keyboard reporter logs; replace App Group CFPrefs configuration with an atomic JSON file and remove the synthetic keyboard prewarm cycle.
+- [x] Prioritize image providers over accompanying URLs and preserve original image bytes, format, and pixel dimensions through Share Extension storage and the full-screen viewer.
+- [x] Add a persisted `바로 열기` / `열기 전 확인` link preference with direct opening as the default and exercise both setting and confirmation UI.
+- [x] Verify the iOS platform limits for containing-app auto-launch and share-sheet ordering; keep host return as the supported default and document user-managed Favorites ordering.
 
 ## In Progress
 

@@ -9,6 +9,7 @@ enum SettingKey: String, Hashable, CaseIterable {
     case defaultFolder = "default-folder"
     case tags
     case shareMode = "share-mode"
+    case linkOpening = "link-opening"
     case backup
     case importData = "import"
     case about
@@ -22,6 +23,7 @@ enum SettingKey: String, Hashable, CaseIterable {
         case .defaultFolder: return "기본 폴더"
         case .tags: return "태그 관리"
         case .shareMode: return "공유 저장 방식"
+        case .linkOpening: return "링크 열기 방식"
         case .backup: return "백업 및 내보내기"
         case .importData: return "가져오기"
         case .about: return "앱 정보"
@@ -37,6 +39,7 @@ enum SettingKey: String, Hashable, CaseIterable {
         case .defaultFolder: return "folder"
         case .tags: return "tag"
         case .shareMode: return "square.and.arrow.down"
+        case .linkOpening: return "safari"
         case .backup: return "square.and.arrow.up"
         case .importData: return "square.and.arrow.down"
         case .about: return "info.circle"
@@ -60,7 +63,8 @@ struct SettingsView: View {
                 (.language, store.preferences.language),
                 (.defaultFolder, store.preferences.defaultFolder),
                 (.tags, "\(store.availableTags.count)"),
-                (.shareMode, shareModeLabel(store.preferences.sharedSaveMode))
+                (.shareMode, shareModeLabel(store.preferences.sharedSaveMode)),
+                (.linkOpening, linkOpenModeLabel(store.linkOpenMode))
             ])
 
             sectionHeading("데이터")
@@ -199,6 +203,7 @@ struct SettingDetailView: View {
         case .language: return AppLanguage.allCases.map(\.rawValue)
         case .defaultFolder: return store.destinationFolders.map(\.label)
         case .shareMode: return SharedSaveMode.allCases.map(\.rawValue)
+        case .linkOpening: return LinkOpenMode.allCases.map(\.rawValue)
         default: return []
         }
     }
@@ -210,6 +215,7 @@ struct SettingDetailView: View {
         case .language: return store.preferences.language
         case .defaultFolder: return store.preferences.defaultFolder
         case .shareMode: return store.preferences.shareMode
+        case .linkOpening: return store.linkOpenMode.rawValue
         default: return ""
         }
     }
@@ -217,7 +223,7 @@ struct SettingDetailView: View {
     @ViewBuilder
     private var controls: some View {
         switch key {
-        case .appLock, .theme, .language, .defaultFolder, .shareMode:
+        case .appLock, .theme, .language, .defaultFolder, .shareMode, .linkOpening:
             BoardSection(title: "옵션") {
                 VStack(spacing: Tokens.rowGap) {
                     ForEach(options, id: \.self) { option in
@@ -354,6 +360,8 @@ struct SettingDetailView: View {
         case .language: store.updatePreference(key: .language, value: pending)
         case .defaultFolder: store.updatePreference(key: .defaultFolder, value: pending)
         case .shareMode: store.updatePreference(key: .shareMode, value: pending)
+        case .linkOpening:
+            store.updateLinkOpenMode(LinkOpenMode(rawValue: pending) ?? .direct)
         default: break
         }
     }
@@ -361,7 +369,7 @@ struct SettingDetailView: View {
     private var detailTopInset: CGFloat {
         switch key {
         case .defaultFolder, .tags: return 0
-        case .appLock, .theme, .language, .shareMode: return Tokens.settingChoiceTop
+        case .appLock, .theme, .language, .shareMode, .linkOpening: return Tokens.settingChoiceTop
         default: return Tokens.settingActionTop
         }
     }
@@ -378,8 +386,11 @@ struct SettingDetailView: View {
     }
 
     private func optionLabel(_ option: String) -> String {
-        guard key == .shareMode else { return option }
-        return shareModeLabel(SharedSaveMode(rawValue: option) ?? .quick)
+        switch key {
+        case .shareMode: return shareModeLabel(SharedSaveMode(rawValue: option) ?? .quick)
+        case .linkOpening: return linkOpenModeLabel(LinkOpenMode(rawValue: option) ?? .direct)
+        default: return option
+        }
     }
 
     private func handleImport(_ result: Result<URL, Error>) {
@@ -451,5 +462,12 @@ private func shareModeLabel(_ mode: SharedSaveMode) -> String {
     switch mode {
     case .quick: return "바로 저장"
     case .review: return "폴더·메모 확인 후 저장"
+    }
+}
+
+private func linkOpenModeLabel(_ mode: LinkOpenMode) -> String {
+    switch mode {
+    case .direct: return "바로 열기"
+    case .confirm: return "열기 전 확인"
     }
 }
