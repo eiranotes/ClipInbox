@@ -55,6 +55,8 @@ Exit: existing build and tests pass with no product behavior change.
 
 ### Phase 1: Data-safe core
 
+Status: complete on 2026-07-11.
+
 - Add a repository boundary, typed bootstrap/commit errors, version gate, current/previous/quarantine recovery, and rollback-backed mutations.
 - Fresh install becomes an empty clip library rather than seeded production samples.
 

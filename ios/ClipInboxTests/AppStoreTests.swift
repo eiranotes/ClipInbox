@@ -3,6 +3,27 @@ import UIKit
 import UniformTypeIdentifiers
 @testable import ClipInbox
 
+private final class TestClipRepository: ClipRepository {
+    let bootstrapHandler: () throws -> ClipBootstrapResult
+    var commitError: Error?
+    private(set) var committedSnapshots: [DataSnapshot] = []
+
+    init(bootstrapHandler: @escaping () throws -> ClipBootstrapResult,
+         commitError: Error? = nil) {
+        self.bootstrapHandler = bootstrapHandler
+        self.commitError = commitError
+    }
+
+    func bootstrap() throws -> ClipBootstrapResult {
+        try bootstrapHandler()
+    }
+
+    func commit(_ snapshot: DataSnapshot) throws {
+        if let commitError { throw commitError }
+        committedSnapshots.append(snapshot)
+    }
+}
+
 final class AppStoreTests: XCTestCase {
     private var temporaryDirectory: URL!
     private var dataURL: URL!
@@ -74,7 +95,7 @@ final class AppStoreTests: XCTestCase {
         store.moveClip(id: 1, to: "업무")
         store.updateMemo(id: 1, memo: "다시 확인할 메모")
         _ = try store.createFolder(name: "읽을거리", defaultTag: "읽을거리")
-        let added = store.saveNewClip(destination: "업무", tags: ["읽을거리"], memo: "새 메모")
+        let added = try store.saveNewClip(destination: "업무", tags: ["읽을거리"], memo: "새 메모")
         store.deleteClip(id: 5)
 
         let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
@@ -153,6 +174,8 @@ final class AppStoreTests: XCTestCase {
     func testFreshFoldersUseGenericRenameFriendlyOrderAndDarkThemePersists() {
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
 
+        XCTAssertTrue(store.clips.isEmpty)
+        XCTAssertEqual(store.bootstrapState, .firstRun)
         XCTAssertEqual(store.folders.map(\.label), [
             "전체", "기본 폴더", "폴더 1", "폴더 2", "폴더 3", "폴더 4", "폴더 5"
         ])
@@ -238,5 +261,117 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(decoded.size, sourceSize)
         XCTAssertTrue(SharedClipQueue.isValidImageFileName("C8D6F4A3-3120-4A18-A105-43F4ED7B2EB1.png"))
         XCTAssertFalse(SharedClipQueue.isValidImageFileName("../image.png"))
+    }
+
+    func testCorruptCurrentSnapshotRecoversPreviousAndQuarantinesOriginal() throws {
+        let repository = FileClipRepository(fileURL: dataURL)
+        let previous = DataSnapshot(
+            version: 2,
+            clips: [DefaultData.clips[0]],
+            folders: DefaultData.folders,
+            preferences: .standard
+        )
+        let current = DataSnapshot(
+            version: 2,
+            clips: [DefaultData.clips[1]],
+            folders: DefaultData.folders,
+            preferences: .standard
+        )
+        try repository.commit(previous)
+        try repository.commit(current)
+        try Data("not-json".utf8).write(to: dataURL, options: .atomic)
+
+        let recovered = AppStore(fileURL: dataURL, userDefaults: defaults)
+
+        XCTAssertEqual(recovered.bootstrapState, .recovered)
+        XCTAssertEqual(recovered.clips.map(\.id), [1])
+        let recoveryFiles = try FileManager.default.contentsOfDirectory(
+            at: repository.recoveryDirectoryURL,
+            includingPropertiesForKeys: nil
+        )
+        XCTAssertEqual(recoveryFiles.count, 1)
+        XCTAssertEqual(try Data(contentsOf: recoveryFiles[0]), Data("not-json".utf8))
+    }
+
+    func testCorruptSnapshotWithoutPreviousBlocksInsteadOfLoadingSamples() throws {
+        try Data("not-json".utf8).write(to: dataURL, options: .atomic)
+
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+
+        XCTAssertEqual(store.bootstrapState, .recoveryRequired)
+        XCTAssertTrue(store.clips.isEmpty)
+        XCTAssertTrue(store.bootstrapState.blocksLibrary)
+    }
+
+    func testFutureSnapshotVersionRequiresUpdateWithoutLoadingData() throws {
+        let future = DataSnapshot(
+            version: 99,
+            clips: DefaultData.clips,
+            folders: DefaultData.folders,
+            preferences: .standard
+        )
+        try JSONEncoder().encode(future).write(to: dataURL, options: .atomic)
+
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+
+        XCTAssertEqual(store.bootstrapState, .updateRequired(version: 99))
+        XCTAssertTrue(store.clips.isEmpty)
+        XCTAssertTrue(store.bootstrapState.blocksLibrary)
+    }
+
+    func testMutationRollsBackWhenRepositoryCommitFails() {
+        let initial = DataSnapshot(
+            version: 2,
+            clips: [DefaultData.clips[0]],
+            folders: DefaultData.folders,
+            preferences: .standard
+        )
+        let repository = TestClipRepository(
+            bootstrapHandler: { .loaded(initial) },
+            commitError: ClipRepositoryError.writeFailed
+        )
+        let store = AppStore(userDefaults: defaults, repository: repository)
+
+        XCTAssertFalse(store.toggleBookmark(id: 1))
+        XCTAssertEqual(store.clip(id: 1)?.bookmarked, false)
+        XCTAssertNotNil(store.storageErrorMessage)
+        XCTAssertNotNil(store.toast)
+    }
+
+    func testImportRollsBackWhenRepositoryCommitFails() throws {
+        let initial = DataSnapshot(
+            version: 2,
+            clips: [DefaultData.clips[0]],
+            folders: DefaultData.folders,
+            preferences: .standard
+        )
+        let incoming = DataSnapshot(
+            version: 2,
+            clips: [DefaultData.clips[1]],
+            folders: DefaultData.folders,
+            preferences: .standard
+        )
+        let repository = TestClipRepository(
+            bootstrapHandler: { .loaded(initial) },
+            commitError: ClipRepositoryError.writeFailed
+        )
+        let store = AppStore(userDefaults: defaults, repository: repository)
+
+        XCTAssertThrowsError(try store.importJSON(JSONEncoder().encode(incoming)))
+        XCTAssertEqual(store.clips.map(\.id), [1])
+    }
+
+    func testImportRejectsUnsupportedVersionBeforeMutation() throws {
+        try seedDefaultLibrary()
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+        let future = DataSnapshot(
+            version: 3,
+            clips: [DefaultData.clips[1]],
+            folders: DefaultData.folders,
+            preferences: .standard
+        )
+
+        XCTAssertThrowsError(try store.importJSON(JSONEncoder().encode(future)))
+        XCTAssertEqual(store.clips.map(\.id), DefaultData.clips.map(\.id))
     }
 }

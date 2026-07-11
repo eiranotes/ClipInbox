@@ -35,17 +35,21 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            switch selectedTab {
-            case .inbox: InboxTab()
-            case .folders: FoldersTab()
-            case .add: AddClipView()
-            case .search: SearchView()
-            case .settings: SettingsTab()
+            if store.bootstrapState.blocksLibrary {
+                LibraryBootstrapGate(state: store.bootstrapState)
+            } else {
+                switch selectedTab {
+                case .inbox: InboxTab()
+                case .folders: FoldersTab()
+                case .add: AddClipView()
+                case .search: SearchView()
+                case .settings: SettingsTab()
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !keyboardVisible {
+            if !keyboardVisible && !store.bootstrapState.blocksLibrary {
                 BottomNavBar(selected: $selectedTab)
                     .transition(.identity)
             }
@@ -71,6 +75,58 @@ struct RootView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             keyboardVisible = false
+        }
+    }
+}
+
+private struct LibraryBootstrapGate: View {
+    @Environment(AppStore.self) private var store
+    let state: LibraryBootstrapState
+    @State private var confirmFreshLibrary = false
+
+    private var content: (icon: String, title: String, message: String) {
+        switch state {
+        case .updateRequired(let version):
+            return (
+                "arrow.down.app",
+                "앱 업데이트가 필요합니다",
+                L10n.format("format.library_version_requires_update", version)
+            )
+        default:
+            return (
+                "externaldrive.badge.exclamationmark",
+                "보관함을 열 수 없습니다",
+                "손상된 원본은 복구 폴더에 보존했습니다. 새 보관함을 시작하면 기존 파일을 덮어쓰지 않고 빈 보관함을 만듭니다."
+            )
+        }
+    }
+
+    var body: some View {
+        ScreenScaffold {
+            ScreenHeader("Clip Inbox")
+            StatePanel(
+                systemImage: content.icon,
+                title: content.title,
+                message: content.message,
+                isDanger: true
+            )
+
+            if state == .recoveryRequired {
+                Button("새 보관함 시작") {
+                    confirmFreshLibrary = true
+                }
+                .buttonStyle(PrimaryBoxButtonStyle())
+            }
+
+            Spacer(minLength: Tokens.sectionGap)
+        }
+        .alert("새 보관함을 시작할까요?", isPresented: $confirmFreshLibrary) {
+            Button("취소", role: .cancel) {}
+            Button("새 보관함 시작", role: .destructive) {
+                store.startFreshLibraryAfterRecoveryFailure()
+            }
+        } message: {
+            Text("복구하지 못한 원본은 별도 파일로 보존되며, 앱에는 빈 보관함이 열립니다.")
         }
     }
 }

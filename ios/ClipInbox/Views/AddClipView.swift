@@ -8,6 +8,7 @@ struct AddClipView: View {
     @State private var tags = ["인테리어", "거실"]
     @State private var memo = ""
     @State private var saved = false
+    @State private var saveError: String?
     @State private var showDestination = false
     @State private var showTagEditor = false
 
@@ -89,8 +90,13 @@ struct AddClipView: View {
 
             Button {
                 guard !saved else { return }
-                store.saveNewClip(destination: destination, tags: tags, memo: memo)
-                saved = true
+                do {
+                    _ = try store.saveNewClip(destination: destination, tags: tags, memo: memo)
+                    saveError = nil
+                    saved = true
+                } catch {
+                    saveError = error.localizedDescription
+                }
             } label: {
                 Text(saved
                      ? L10n.format("format.saved_in_folder", L10n.text(destination))
@@ -99,6 +105,11 @@ struct AddClipView: View {
             .buttonStyle(PrimaryBoxButtonStyle())
             .disabled(saved)
             .opacity(saved ? 0.5 : 1)
+
+            if let saveError {
+                StatePanel(systemImage: "externaldrive.badge.exclamationmark",
+                           title: "저장할 수 없습니다", message: saveError, isDanger: true)
+            }
 
             if saved {
                 Button {
@@ -127,6 +138,7 @@ struct AddClipView: View {
         destination = store.preferences.defaultFolder
         tags = ["인테리어", "거실"]
         memo = ""
+        saveError = nil
     }
 }
 

@@ -41,6 +41,7 @@
 		D6C11377635BCEB4A35A44F3 /* InboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6942E141A5785EB4AD63558A /* InboxView.swift */; };
 		DF0D0C56D34173243E1AD672 /* SharedClipQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7ACBBD5067ECBFBDBD131BC /* SharedClipQueue.swift */; };
 		EFBB43CD7AFCD1155CE5E90F /* AppStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED7F7D6963BF3DB266F080B2 /* AppStoreTests.swift */; };
+		F6EF55AAF512CB847E3E04F9 /* ClipRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08C2F7CAC2F4AF56C15D058D /* ClipRepository.swift */; };
 		FC3FF47CE25B7B4EC679A2AF /* ShareOptionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3476ED4506EDBA96579BAB55 /* ShareOptionsSheet.swift */; };
 /* End PBXBuildFile section */
 
@@ -76,6 +77,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		08C2F7CAC2F4AF56C15D058D /* ClipRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipRepository.swift; sourceTree = "<group>"; };
 		0EBE2703CDE9A9D45B3F0EE1 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		179DCA4CAD478D4C0509FA05 /* DetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailView.swift; sourceTree = "<group>"; };
 		198ADE59C65E39BEF7A471E0 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
@@ -225,6 +227,7 @@
 			isa = PBXGroup;
 			children = (
 				2DD62BBCE7405EFCDE20DADB /* AppStore.swift */,
+				08C2F7CAC2F4AF56C15D058D /* ClipRepository.swift */,
 			);
 			path = Store;
 			sourceTree = "<group>";
@@ -396,6 +399,7 @@
 				7BEDA507E61BF64C4CF30AB6 /* AppStore.swift in Sources */,
 				D1005BCCE4557CF743994410 /* ClipCardView.swift in Sources */,
 				901E6DAE3F46B1874D6B8584 /* ClipInboxApp.swift in Sources */,
+				F6EF55AAF512CB847E3E04F9 /* ClipRepository.swift in Sources */,
 				105AFCD79EB0DFE6745C044F /* Components.swift in Sources */,
 				3D7441BF9B5AA637CB475C3A /* DetailView.swift in Sources */,
 				9C6D537E7C4A46324579BED8 /* FoldersView.swift in Sources */,

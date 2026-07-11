@@ -18,6 +18,7 @@ Implemented screens:
 
 ## Completed Work
 
+- Completed audit Phase 1 with a small file-repository boundary, typed bootstrap/commit errors, version-2 gating, atomic current/previous snapshots, corrupt-file quarantine, previous-snapshot recovery, and rollback-backed mutations. Fresh installs now start with an empty clip library; unrecoverable and future-version libraries show a blocking recovery/update state instead of sample data.
 - Locked the A-to-Z audit adoption boundary in `docs/AUDIT_ADOPTION_PLAN.md` and moved data-dependent XCTest setup to explicit version-2 fixtures without changing production behavior.
 - Initialized Git repository and renamed the branch to `main`.
 - Read the v1.5 spec and local reference image set.
@@ -72,7 +73,7 @@ Implemented screens:
 
 ## Next Steps
 
-- Execute `docs/AUDIT_ADOPTION_PLAN.md` sequentially, beginning with explicit test fixtures and the data-safe repository/recovery contract.
+- Execute audit Phase 2: harden Share provider/queue limits and idempotency, make App Lock fail closed with an app-switcher privacy cover, and replace the hardcoded Add payload with real URL/text/photo/memo capture.
 - Replace the static `time` strings with `Date`-based values and a relative formatter once real capture exists.
 - Run the app on a Face ID-enrolled device/simulator session to exercise the interactive unlock path end to end.
 - Verify the same App Group capability with the distribution team's signing profile on a physical device before release.
@@ -88,5 +89,5 @@ Implemented screens:
 - iOS does not let a `com.apple.share-services` extension open its containing app through supported APIs, and the app cannot force itself to the first share-sheet position. The current default returns to the host app; users can place Clip Inbox first through the share sheet's More → Edit → Favorites order.
 - The headless simulator cannot complete the Face ID prompt, so the interactive unlock path is verified only up to the lock screen and automatic fallback; the settings-driven lock/unlock logic itself is exercised.
 - Store submission is blocked until an owned support email and HTTPS support/privacy URLs are supplied; placeholders are documented but intentionally not invented.
-- The A-to-Z audit confirms current false-success, corrupt-snapshot fallback, demo Add, Share image memory, and fail-open lock risks. The accepted scope and explicit product exclusions are tracked in `docs/AUDIT_ADOPTION_PLAN.md`.
+- Audit Phase 1 removed the false-success and corrupt-snapshot sample-fallback paths. Demo Add, Share image/provider memory limits, queue hardening, and fail-open App Lock remain Phase 2 risks; accepted scope and explicit exclusions stay tracked in `docs/AUDIT_ADOPTION_PLAN.md`.
 - Lighthouse was rerun three times per form factor after import hardening: mobile median 99/100/100/100 and desktop median 100/100/100/100. The remaining mobile performance point is limited by source minification, cache headers, and alternate image encoding in the dependency-free static serving path.

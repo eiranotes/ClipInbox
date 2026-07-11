@@ -5,6 +5,7 @@
 ### Internal
 
 - Added the product-bounded A-to-Z audit adoption plan and moved native regression setup toward explicit version-2 fixtures so production sample removal can proceed safely.
+- Added a `ClipRepository` boundary with typed bootstrap/commit failures, current/previous snapshot rotation, corrupt-file quarantine, version gating, and transaction rollback tests.
 
 ### Added
 
@@ -30,6 +31,7 @@
 
 ### Changed
 
+- Fresh installs now open an empty clip library. Unrecoverable and future-version snapshots show a blocking recovery/update state instead of silently loading sample clips.
 - Image shares now take priority over accompanying file/web URLs and retain the provider's original supported image bytes, format, and pixel dimensions instead of a 1600px JPEG conversion.
 - Share Extension configuration now uses an atomic App Group JSON file, with a direct legacy-plist migration path.
 - The bottom navigation now hides instead of moving above the keyboard. Every non-tag-selection input screen dismisses the keyboard when the user taps outside a text input.
@@ -56,6 +58,8 @@
 
 ### Fixed
 
+- Main-data mutations no longer report success after a failed disk write; in-memory clips, folders, preferences, and tag state roll back together.
+- JSON import now rejects unsupported snapshot versions before mutation and rolls back if the durable commit fails.
 - Photos/image shares no longer become URL-only link clips when the provider exposes both representations, and full-screen zoom now reads the original stored raster.
 - Removed the synthetic launch-time keyboard prewarm responsible for private text-input reporter disconnect messages; the keyboard remains tap-only.
 - Detail images no longer crop their source ratio, and folder-move plus other long modals no longer appear cut at the top or bottom.
@@ -73,6 +77,7 @@
 
 ### Verified
 
+- Twenty native XCTest regressions pass, including corrupt-current recovery from the previous snapshot, quarantine preservation, unsupported-version blocking, empty first run, and mutation/import rollback on forced write failures. The same simulator build validates the embedded `ClipInboxShare.appex`.
 - Fourteen native XCTest regressions pass, including exact-byte/format/dimension preservation for a 2400×1800 PNG and link-opening preference persistence.
 - A live Photos share retained PNG, 2400×1800 pixels, 1,472,067 bytes, and SHA-256 `21ff962ce36c3187e03afd4d99f9d8a267b9f3a85c969797cbfb375cd9fb44fa` before and after App Group storage; the payload and imported clip were both image type with no URL.
 - Settings direct/confirm selection, the confirmation dialog, host-app return after sharing, first keyboard presentation, and full-screen image rendering were exercised on the iOS 26.5 iPhone 17 Pro simulator. Targeted logs contained none of the reported App Group or reporter-disconnect strings after the change.

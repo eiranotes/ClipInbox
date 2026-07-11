@@ -8,6 +8,14 @@ Why: The audit correctly identifies corruption, false-success, demo Add, Share i
 
 Impact: Repository/recovery/transaction work precedes Capture and Lock work; trust UX and accessibility follow; release automation and external signing close the sequence. Large architectural migrations and power-user features require later measurement or product evidence.
 
+## 2026-07-11: Version-2 Snapshots Use Current, Previous, and Quarantine Files
+
+Decision: Keep the version-2 JSON format, but place file access behind `ClipRepository`. A successful write atomically replaces the current snapshot after retaining one validated previous snapshot. An unreadable current file is copied to `ClipInboxRecovery`; the app opens only a validated previous snapshot or a blocking recovery state. Future snapshot versions are never normalized or overwritten automatically.
+
+Why: The existing direct `try?` load could silently replace user data with samples, while mutation callers often showed success after a failed write. A small repository boundary solves the trust problem without introducing a database migration or duplicate model layer.
+
+Impact: Fresh installs begin empty. Main-data mutations commit transactionally and roll memory state back on failure. Users may explicitly start a new empty library after an unrecoverable file is preserved, while unsupported future versions require an app update.
+
 ## 2026-07-10: Native SwiftUI Is the Product Source of Truth
 
 Decision: All future Clip Inbox product logic and UI implementation will be made in the native iOS code under `ios/`. The root `src/` web application remains a historical design prototype and is changed only when web work is explicitly requested.

@@ -54,20 +54,23 @@ final class AppStore {
     private(set) var recentSearches: [String]
     private(set) var tagCatalog: [String]
     private(set) var linkOpenMode: LinkOpenMode
+    private(set) var bootstrapState: LibraryBootstrapState
+    private(set) var storageErrorMessage: String?
 
     var toast: String?
     private var toastTask: Task<Void, Never>?
 
-    private let fileURL: URL
+    private let repository: any ClipRepository
     private let userDefaults: UserDefaults
     private static let recentSearchesKey = "clip-inbox-recent-searches-v1"
     private static let recentSearchLimit = 5
     private static let tagCatalogKey = "clip-inbox-tag-catalog-v1"
     private static let linkOpenModeKey = "clip-inbox-link-open-mode-v1"
 
-    init(fileURL: URL? = nil, userDefaults: UserDefaults = .standard) {
+    init(fileURL: URL? = nil, userDefaults: UserDefaults = .standard,
+         repository: (any ClipRepository)? = nil) {
         let base = fileURL ?? Self.defaultFileURL()
-        self.fileURL = base
+        self.repository = repository ?? FileClipRepository(fileURL: base)
         self.userDefaults = userDefaults
         recentSearches = Self.normalizeRecentSearches(
             userDefaults.stringArray(forKey: Self.recentSearchesKey) ?? []
@@ -78,16 +81,40 @@ final class AppStore {
             tagCatalog = DefaultData.suggestedTags
         }
         linkOpenMode = LinkOpenMode(rawValue: userDefaults.string(forKey: Self.linkOpenModeKey) ?? "") ?? .direct
-        if let data = try? Data(contentsOf: base),
-           let snapshot = try? JSONDecoder().decode(DataSnapshot.self, from: data) {
-            let normalized = Self.normalize(snapshot)
-            clips = normalized.clips
-            folders = normalized.folders
-            preferences = normalized.preferences
-        } else {
-            clips = DefaultData.clips
+
+        do {
+            switch try self.repository.bootstrap() {
+            case .firstRun:
+                clips = []
+                folders = DefaultData.folders
+                preferences = .standard
+                bootstrapState = .firstRun
+            case .loaded(let snapshot):
+                let normalized = Self.normalize(snapshot)
+                clips = normalized.clips
+                folders = normalized.folders
+                preferences = normalized.preferences
+                bootstrapState = .ready
+            case .recovered(let snapshot, _):
+                let normalized = Self.normalize(snapshot)
+                clips = normalized.clips
+                folders = normalized.folders
+                preferences = normalized.preferences
+                bootstrapState = .recovered
+            }
+            storageErrorMessage = nil
+        } catch ClipRepositoryError.unsupportedVersion(let version) {
+            clips = []
             folders = DefaultData.folders
             preferences = .standard
+            bootstrapState = .updateRequired(version: version)
+            storageErrorMessage = ClipRepositoryError.unsupportedVersion(version).localizedDescription
+        } catch {
+            clips = []
+            folders = DefaultData.folders
+            preferences = .standard
+            bootstrapState = .recoveryRequired
+            storageErrorMessage = error.localizedDescription
         }
         syncSharedConfiguration()
     }
@@ -106,14 +133,19 @@ final class AppStore {
 
     @discardableResult
     func persist() -> Bool {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         do {
-            let data = try encoder.encode(snapshot())
-            try data.write(to: fileURL, options: .atomic)
+            try repository.commit(snapshot())
+            storageErrorMessage = nil
+            switch bootstrapState {
+            case .firstRun, .recovered, .recoveryRequired:
+                bootstrapState = .ready
+            case .ready, .updateRequired:
+                break
+            }
             syncSharedConfiguration()
             return true
         } catch {
+            storageErrorMessage = error.localizedDescription
             return false
         }
     }
@@ -211,12 +243,23 @@ final class AppStore {
         guard let decoded = try? JSONDecoder().decode(DataSnapshot.self, from: data) else {
             throw StoreError.message("지원하지 않는 백업 형식입니다.")
         }
+        guard decoded.version == FileClipRepository.supportedVersion else {
+            throw StoreError.message(
+                L10n.format("format.unsupported_library_version", decoded.version)
+            )
+        }
         let normalized = Self.normalize(decoded)
-        clips = normalized.clips
-        folders = normalized.folders
-        preferences = normalized.preferences
-        mergeTagsIntoCatalog(clips.flatMap(\.tags) + folders.compactMap(\.defaultTag))
-        persist()
+        guard commitMutation({
+            clips = normalized.clips
+            folders = normalized.folders
+            preferences = normalized.preferences
+            tagCatalog = Self.normalizeTags(
+                tagCatalog + clips.flatMap(\.tags) + folders.compactMap(\.defaultTag)
+            )
+        }) else {
+            throw StoreError.message(storageFailureMessage)
+        }
+        saveTagCatalog()
     }
 
     // MARK: - 정규화 (웹 프로토타입 normalizeData와 동일 규칙)
@@ -409,67 +452,128 @@ final class AppStore {
 
     // MARK: - 뮤테이션
 
-    private func mutate(id: Int, _ update: (inout Clip) -> Void) {
-        guard let index = clips.firstIndex(where: { $0.id == id }) else { return }
-        update(&clips[index])
-        persist()
+    private struct RuntimeState {
+        let clips: [Clip]
+        let folders: [Folder]
+        let preferences: Preferences
+        let tagCatalog: [String]
+        let linkOpenMode: LinkOpenMode
     }
 
-    func toggleBookmark(id: Int) {
+    private var storageFailureMessage: String {
+        storageErrorMessage
+            ?? L10n.text("변경 내용을 기기에 저장하지 못했습니다. 저장 공간을 확인한 뒤 다시 시도하세요.")
+    }
+
+    @discardableResult
+    private func commitMutation(_ changes: () -> Void) -> Bool {
+        let previous = RuntimeState(
+            clips: clips,
+            folders: folders,
+            preferences: preferences,
+            tagCatalog: tagCatalog,
+            linkOpenMode: linkOpenMode
+        )
+        changes()
+        guard persist() else {
+            clips = previous.clips
+            folders = previous.folders
+            preferences = previous.preferences
+            tagCatalog = previous.tagCatalog
+            linkOpenMode = previous.linkOpenMode
+            showToast(storageFailureMessage)
+            return false
+        }
+        return true
+    }
+
+    @discardableResult
+    private func mutate(id: Int, _ update: (inout Clip) -> Void) -> Bool {
+        guard let index = clips.firstIndex(where: { $0.id == id }) else { return false }
+        return commitMutation { update(&clips[index]) }
+    }
+
+    @discardableResult
+    func toggleBookmark(id: Int) -> Bool {
         mutate(id: id) { $0.bookmarked.toggle() }
     }
 
-    func moveClip(id: Int, to folder: String) {
-        mutate(id: id) { $0.folder = folder }
+    @discardableResult
+    func moveClip(id: Int, to folder: String) -> Bool {
+        guard mutate(id: id, { $0.folder = folder }) else { return false }
         showToast(L10n.format("format.moved_to_folder", L10n.text(folder)))
+        return true
     }
 
     func updateClip(id: Int, title: String, memo: String, tags: [String]) throws {
         let cleanTitle = Self.cleanText(title, maxLength: 200)
         guard !cleanTitle.isEmpty else { throw StoreError.message("클립 제목을 입력하세요.") }
-        mutate(id: id) {
-            $0.title = cleanTitle
-            $0.memo = Self.cleanText(memo, maxLength: 1000)
-            $0.tags = tags
+        guard clips.contains(where: { $0.id == id }) else { throw StoreError.message("클립을 찾을 수 없습니다") }
+        let cleanTags = Self.normalizeTags(tags)
+        guard commitMutation({
+            guard let index = clips.firstIndex(where: { $0.id == id }) else { return }
+            clips[index].title = cleanTitle
+            clips[index].memo = Self.cleanText(memo, maxLength: 1000)
+            clips[index].tags = cleanTags
+            tagCatalog = Self.normalizeTags(tagCatalog + cleanTags)
+        }) else {
+            throw StoreError.message(storageFailureMessage)
         }
-        mergeTagsIntoCatalog(tags)
+        saveTagCatalog()
         showToast("변경 내용을 저장했습니다")
     }
 
     /// 상세 화면의 태그 행에서 태그만 바로 저장한다. 값이 같으면 저장·토스트를 생략한다.
-    func updateTags(id: Int, tags: [String]) {
+    @discardableResult
+    func updateTags(id: Int, tags: [String]) -> Bool {
         let clean = Array(tags.map { Self.cleanText($0, maxLength: 50) }.filter { !$0.isEmpty }.prefix(12))
-        guard let current = clip(id: id), current.tags != clean else { return }
-        mutate(id: id) { $0.tags = clean }
-        mergeTagsIntoCatalog(clean)
+        guard let current = clip(id: id) else { return false }
+        guard current.tags != clean else { return true }
+        guard commitMutation({
+            guard let index = clips.firstIndex(where: { $0.id == id }) else { return }
+            clips[index].tags = clean
+            tagCatalog = Self.normalizeTags(tagCatalog + clean)
+        }) else { return false }
+        saveTagCatalog()
         showToast("태그를 저장했습니다")
-    }
-
-    func updateMemo(id: Int, memo: String) {
-        mutate(id: id) { $0.memo = Self.cleanText(memo, maxLength: 1_000) }
-        showToast("노트를 저장했습니다")
-    }
-
-    func deleteClip(id: Int) {
-        let sharedImageName = clips.first(where: { $0.id == id })?.sharedImageName
-        clips.removeAll { $0.id == id }
-        if persist(), let sharedImageName { try? SharedClipQueue.removeImage(named: sharedImageName) }
-        showToast("클립을 삭제했습니다")
+        return true
     }
 
     @discardableResult
-    func saveNewClip(destination: String, tags: [String], memo: String) -> Clip {
+    func updateMemo(id: Int, memo: String) -> Bool {
+        guard mutate(id: id, { $0.memo = Self.cleanText(memo, maxLength: 1_000) }) else { return false }
+        showToast("노트를 저장했습니다")
+        return true
+    }
+
+    @discardableResult
+    func deleteClip(id: Int) -> Bool {
+        let sharedImageName = clips.first(where: { $0.id == id })?.sharedImageName
+        guard clips.contains(where: { $0.id == id }) else { return false }
+        guard commitMutation({ clips.removeAll { $0.id == id } }) else { return false }
+        if let sharedImageName { try? SharedClipQueue.removeImage(named: sharedImageName) }
+        showToast("클립을 삭제했습니다")
+        return true
+    }
+
+    @discardableResult
+    func saveNewClip(destination: String, tags: [String], memo: String) throws -> Clip {
         let id = clips.map(\.id).max().map { $0 + 1 } ?? 1
+        let cleanTags = Self.normalizeTags(tags)
         let clip = Clip(id: id, type: .link, state: .new,
                         title: "미니멀 인테리어 아이디어 모음 50", source: "brunch.co.kr",
                         url: "https://brunch.co.kr", time: "방금 전", folder: destination,
-                        tags: tags, folderSuggestions: [destination, "디자인", "나중에"],
+                        tags: cleanTags, folderSuggestions: [destination, "디자인", "나중에"],
                         image: "/public/images/clip-living-room.png",
                         description: "공유 화면에서 방금 저장한 클립입니다.",
                         memo: Self.cleanText(memo, maxLength: 1000))
-        clips.insert(clip, at: 0)
-        persist()
-        mergeTagsIntoCatalog(tags)
+        guard commitMutation({
+            clips.insert(clip, at: 0)
+            tagCatalog = Self.normalizeTags(tagCatalog + cleanTags)
+        }) else {
+            throw StoreError.message(storageFailureMessage)
+        }
+        saveTagCatalog()
         showToast(L10n.format("format.saved_to_folder", L10n.text(destination)))
         return clip
     }
@@ -480,9 +584,15 @@ final class AppStore {
         guard !folders.contains(where: { $0.label.lowercased() == clean.lowercased() }) else {
             throw StoreError.message("같은 이름의 폴더가 이미 있습니다.")
         }
-        folders.append(Folder(icon: "folder", label: clean, defaultTag: defaultTag))
-        persist()
-        mergeTagsIntoCatalog([defaultTag])
+        let cleanDefaultTag = Self.cleanText(defaultTag, maxLength: 50)
+        guard commitMutation({
+            folders.append(Folder(icon: "folder", label: clean,
+                                  defaultTag: cleanDefaultTag.isEmpty ? nil : cleanDefaultTag))
+            tagCatalog = Self.normalizeTags(tagCatalog + [cleanDefaultTag])
+        }) else {
+            throw StoreError.message(storageFailureMessage)
+        }
+        saveTagCatalog()
         showToast(L10n.format("format.created_folder", clean))
         return clean
     }
@@ -510,38 +620,34 @@ final class AppStore {
             throw StoreError.message("같은 이름의 태그가 이미 있습니다.")
         }
 
-        let originalClips = clips
-        let originalFolders = folders
-        let originalCatalog = tagCatalog
-        tagCatalog = tagCatalog.map { $0 == original ? clean : $0 }
-        if !tagCatalog.contains(clean) { tagCatalog.append(clean) }
-        for index in clips.indices {
-            clips[index].tags = Self.normalizeTags(clips[index].tags.map { $0 == original ? clean : $0 })
-        }
-        for index in folders.indices where folders[index].defaultTag == original {
-            folders[index].defaultTag = clean
-        }
-        guard persist() else {
-            clips = originalClips
-            folders = originalFolders
-            tagCatalog = originalCatalog
-            throw StoreError.message("태그 이름을 저장하지 못했습니다.")
-        }
+        guard commitMutation({
+            tagCatalog = tagCatalog.map { $0 == original ? clean : $0 }
+            if !tagCatalog.contains(clean) { tagCatalog.append(clean) }
+            for index in clips.indices {
+                clips[index].tags = Self.normalizeTags(clips[index].tags.map { $0 == original ? clean : $0 })
+            }
+            for index in folders.indices where folders[index].defaultTag == original {
+                folders[index].defaultTag = clean
+            }
+        }) else { throw StoreError.message(storageFailureMessage) }
         saveTagCatalog()
         showToast("태그 이름을 변경했습니다")
     }
 
-    func deleteTag(_ tag: String) {
-        tagCatalog.removeAll { $0 == tag }
-        for index in clips.indices {
-            clips[index].tags.removeAll { $0 == tag }
-        }
-        for index in folders.indices where folders[index].defaultTag == tag {
-            folders[index].defaultTag = nil
-        }
-        persist()
+    @discardableResult
+    func deleteTag(_ tag: String) -> Bool {
+        guard commitMutation({
+            tagCatalog.removeAll { $0 == tag }
+            for index in clips.indices {
+                clips[index].tags.removeAll { $0 == tag }
+            }
+            for index in folders.indices where folders[index].defaultTag == tag {
+                folders[index].defaultTag = nil
+            }
+        }) else { return false }
         saveTagCatalog()
         showToast("태그를 삭제했습니다")
+        return true
     }
 
     func renameFolder(from originalLabel: String, to name: String) throws -> String {
@@ -557,54 +663,50 @@ final class AppStore {
         }
         guard clean != originalLabel else { return originalLabel }
 
-        let originalFolders = folders
-        let originalClips = clips
-        let originalPreferences = preferences
-
-        folders[folderIndex].label = clean
-        for index in clips.indices {
-            if clips[index].folder == originalLabel {
-                clips[index].folder = clean
+        guard commitMutation({
+            folders[folderIndex].label = clean
+            for index in clips.indices {
+                if clips[index].folder == originalLabel {
+                    clips[index].folder = clean
+                }
+                clips[index].folderSuggestions = clips[index].folderSuggestions.map {
+                    $0 == originalLabel ? clean : $0
+                }
             }
-            clips[index].folderSuggestions = clips[index].folderSuggestions.map {
-                $0 == originalLabel ? clean : $0
+            if preferences.defaultFolder == originalLabel {
+                preferences.defaultFolder = clean
             }
-        }
-        if preferences.defaultFolder == originalLabel {
-            preferences.defaultFolder = clean
-        }
-
-        guard persist() else {
-            folders = originalFolders
-            clips = originalClips
-            preferences = originalPreferences
-            throw StoreError.message("폴더 이름을 저장하지 못했습니다.")
-        }
+        }) else { throw StoreError.message(storageFailureMessage) }
         showToast("폴더 이름을 변경했습니다")
         return clean
     }
 
     /// 분류하기: 첫 미정리 클립을 지정 폴더로 옮기고 state를 해제한다.
-    func applySort(to destination: String) {
-        guard let index = clips.firstIndex(where: { $0.state == .unsorted }) else { return }
-        clips[index].folder = destination
-        clips[index].state = nil
-        if !folders.contains(where: { $0.label == destination }) {
-            folders.append(Folder(icon: "folder", label: destination))
+    @discardableResult
+    func applySort(to destination: String) -> Bool {
+        guard let index = clips.firstIndex(where: { $0.state == .unsorted }) else { return false }
+        return commitMutation {
+            clips[index].folder = destination
+            clips[index].state = nil
+            if !folders.contains(where: { $0.label == destination }) {
+                folders.append(Folder(icon: "folder", label: destination))
+            }
         }
-        persist()
     }
 
-    func updatePreference(key: Preferences.CodingKeys, value: String) {
-        switch key {
-        case .appLock: preferences.appLock = value
-        case .theme: preferences.theme = value
-        case .language: preferences.language = value
-        case .defaultFolder: preferences.defaultFolder = value
-        case .shareMode: preferences.shareMode = value
-        }
-        persist()
+    @discardableResult
+    func updatePreference(key: Preferences.CodingKeys, value: String) -> Bool {
+        guard commitMutation({
+            switch key {
+            case .appLock: preferences.appLock = value
+            case .theme: preferences.theme = value
+            case .language: preferences.language = value
+            case .defaultFolder: preferences.defaultFolder = value
+            case .shareMode: preferences.shareMode = value
+            }
+        }) else { return false }
         showToast("설정을 저장했습니다")
+        return true
     }
 
     func updateLinkOpenMode(_ mode: LinkOpenMode) {
@@ -613,16 +715,37 @@ final class AppStore {
         showToast("설정을 저장했습니다")
     }
 
-    func deleteAllData() {
-        clips = []
-        folders = DefaultData.folders
-        preferences = .standard
-        linkOpenMode = .direct
-        tagCatalog = DefaultData.suggestedTags
+    @discardableResult
+    func deleteAllData() -> Bool {
+        guard commitMutation({
+            clips = []
+            folders = DefaultData.folders
+            preferences = .standard
+            linkOpenMode = .direct
+            tagCatalog = DefaultData.suggestedTags
+        }) else { return false }
         userDefaults.removeObject(forKey: Self.linkOpenModeKey)
         saveTagCatalog()
-        if persist() { try? SharedClipQueue.removeAllImages() }
+        try? SharedClipQueue.removeAllImages()
         showToast("로컬 데이터를 삭제했습니다")
+        return true
+    }
+
+    /// 손상 원본이 복구 폴더에 격리된 뒤 사용자가 명시적으로 새 보관함을 선택할 때만 호출한다.
+    @discardableResult
+    func startFreshLibraryAfterRecoveryFailure() -> Bool {
+        guard bootstrapState == .recoveryRequired else { return false }
+        guard commitMutation({
+            clips = []
+            folders = DefaultData.folders
+            preferences = .standard
+            tagCatalog = DefaultData.suggestedTags
+            linkOpenMode = .direct
+        }) else { return false }
+        userDefaults.removeObject(forKey: Self.linkOpenModeKey)
+        saveTagCatalog()
+        showToast("새 보관함을 시작했습니다")
+        return true
     }
 
     // MARK: - 토스트
