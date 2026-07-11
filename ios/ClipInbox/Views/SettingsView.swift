@@ -140,6 +140,7 @@ struct JSONBackupDocument: FileDocument {
 
 struct SettingDetailView: View {
     @Environment(AppStore.self) private var store
+    @Environment(AppLockController.self) private var lock
     @Environment(\.dismiss) private var dismiss
     let key: SettingKey
 
@@ -235,8 +236,7 @@ struct SettingDetailView: View {
                 }
             }
             Button {
-                savePreference()
-                dismiss()
+                if savePreference() { dismiss() }
             } label: {
                 Label("설정 저장", systemImage: "checkmark")
             }
@@ -353,17 +353,26 @@ struct SettingDetailView: View {
         }
     }
 
-    private func savePreference() {
+    @discardableResult
+    private func savePreference() -> Bool {
+        if key == .appLock, pending == "켬", !lock.canEnableLock() {
+            errorMessage = L10n.text("이 기기에서 앱 잠금을 사용할 수 없습니다. 기기 암호를 먼저 설정하세요.")
+            return false
+        }
+        let saved: Bool
         switch key {
-        case .appLock: store.updatePreference(key: .appLock, value: pending)
-        case .theme: store.updatePreference(key: .theme, value: pending)
-        case .language: store.updatePreference(key: .language, value: pending)
-        case .defaultFolder: store.updatePreference(key: .defaultFolder, value: pending)
-        case .shareMode: store.updatePreference(key: .shareMode, value: pending)
+        case .appLock: saved = store.updatePreference(key: .appLock, value: pending)
+        case .theme: saved = store.updatePreference(key: .theme, value: pending)
+        case .language: saved = store.updatePreference(key: .language, value: pending)
+        case .defaultFolder: saved = store.updatePreference(key: .defaultFolder, value: pending)
+        case .shareMode: saved = store.updatePreference(key: .shareMode, value: pending)
         case .linkOpening:
             store.updateLinkOpenMode(LinkOpenMode(rawValue: pending) ?? .direct)
-        default: break
+            saved = true
+        default: saved = false
         }
+        if !saved { errorMessage = store.storageErrorMessage }
+        return saved
     }
 
     private var detailTopInset: CGFloat {

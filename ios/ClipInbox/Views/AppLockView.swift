@@ -2,6 +2,33 @@ import SwiftUI
 import LocalAuthentication
 import Observation
 
+protocol AppLockAuthenticating: AnyObject {
+    func canAuthenticate() -> Bool
+    func authenticate(reason: String) async throws -> Bool
+    func cancel()
+}
+
+final class LocalDeviceOwnerAuthenticator: AppLockAuthenticating {
+    private var context: LAContext?
+
+    func canAuthenticate() -> Bool {
+        var error: NSError?
+        return LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
+    }
+
+    func authenticate(reason: String) async throws -> Bool {
+        let context = LAContext()
+        self.context = context
+        defer { self.context = nil }
+        return try await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)
+    }
+
+    func cancel() {
+        context?.invalidate()
+        context = nil
+    }
+}
+
 @Observable
 final class AppLockController {
     private(set) var isEnabled = false
@@ -9,15 +36,22 @@ final class AppLockController {
     var notice: String?
     private(set) var isAuthenticating = false
 
-    @ObservationIgnored private var authenticationContext: LAContext?
+    @ObservationIgnored private let authenticator: any AppLockAuthenticating
+
+    init(authenticator: any AppLockAuthenticating = LocalDeviceOwnerAuthenticator()) {
+        self.authenticator = authenticator
+    }
+
+    func canEnableLock() -> Bool {
+        authenticator.canAuthenticate()
+    }
 
     func configure(enabled: Bool, lockImmediately: Bool = false) {
         isEnabled = enabled
         if enabled, lockImmediately {
             isLocked = true
         } else if !enabled {
-            authenticationContext?.invalidate()
-            authenticationContext = nil
+            authenticator.cancel()
             isAuthenticating = false
             isLocked = false
             notice = nil
@@ -32,24 +66,19 @@ final class AppLockController {
     func authenticate() async {
         guard isEnabled, isLocked, !isAuthenticating else { return }
 
-        let context = LAContext()
-        authenticationContext = context
         isAuthenticating = true
         defer {
-            authenticationContext = nil
             isAuthenticating = false
         }
 
-        var error: NSError?
-        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
-            // 시뮬레이터 등 인증 수단이 없는 환경에서는 잠금을 해제하되 사유를 남긴다.
-            notice = L10n.text("이 기기에서 잠금 인증을 사용할 수 없어 잠금을 건너뜁니다.")
-            isLocked = false
+        guard authenticator.canAuthenticate() else {
+            notice = L10n.text("이 기기에서 잠금 인증을 사용할 수 없습니다. 기기 암호를 설정한 뒤 다시 시도하세요.")
             return
         }
         do {
-            let success = try await context.evaluatePolicy(.deviceOwnerAuthentication,
-                                                           localizedReason: L10n.text("저장된 클립을 보호하기 위해 인증이 필요합니다."))
+            let success = try await authenticator.authenticate(
+                reason: L10n.text("저장된 클립을 보호하기 위해 인증이 필요합니다.")
+            )
             if success {
                 notice = nil
                 isLocked = false
@@ -57,6 +86,22 @@ final class AppLockController {
         } catch {
             notice = L10n.text("인증에 실패했습니다. 다시 시도하세요.")
         }
+    }
+}
+
+struct PrivacyShieldView: View {
+    var body: some View {
+        VStack(spacing: Tokens.rowGap) {
+            Image(systemName: "lock.shield.fill")
+                .font(.system(size: 32, weight: .bold))
+            Text("Clip Inbox")
+                .font(Tokens.screenTitle)
+        }
+        .foregroundStyle(Tokens.textPrimary)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Tokens.bgApp.ignoresSafeArea())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Clip Inbox 개인정보 보호 화면")
     }
 }
 

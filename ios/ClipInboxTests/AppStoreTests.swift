@@ -1,6 +1,7 @@
 import XCTest
 import UIKit
 import UniformTypeIdentifiers
+import LocalAuthentication
 @testable import ClipInbox
 
 private final class TestClipRepository: ClipRepository {
@@ -22,6 +23,28 @@ private final class TestClipRepository: ClipRepository {
         if let commitError { throw commitError }
         committedSnapshots.append(snapshot)
     }
+}
+
+private final class TestLockAuthenticator: AppLockAuthenticating {
+    var available: Bool
+    var result: Bool
+    var error: Error?
+    private(set) var cancelCount = 0
+
+    init(available: Bool, result: Bool = false, error: Error? = nil) {
+        self.available = available
+        self.result = result
+        self.error = error
+    }
+
+    func canAuthenticate() -> Bool { available }
+
+    func authenticate(reason: String) async throws -> Bool {
+        if let error { throw error }
+        return result
+    }
+
+    func cancel() { cancelCount += 1 }
 }
 
 final class AppStoreTests: XCTestCase {
@@ -95,7 +118,15 @@ final class AppStoreTests: XCTestCase {
         store.moveClip(id: 1, to: "업무")
         store.updateMemo(id: 1, memo: "다시 확인할 메모")
         _ = try store.createFolder(name: "읽을거리", defaultTag: "읽을거리")
-        let added = try store.saveNewClip(destination: "업무", tags: ["읽을거리"], memo: "새 메모")
+        let added = try store.createManualClip(
+            type: .link,
+            title: "읽을 링크",
+            url: "example.com/read",
+            text: "",
+            destination: "업무",
+            tags: ["읽을거리"],
+            memo: "새 메모"
+        )
         store.deleteClip(id: 5)
 
         let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
@@ -205,6 +236,37 @@ final class AppStoreTests: XCTestCase {
 
         lock.configure(enabled: false)
         XCTAssertFalse(lock.isEnabled)
+        XCTAssertFalse(lock.isLocked)
+    }
+
+    @MainActor
+    func testUnavailableAuthenticationKeepsAppLocked() async {
+        let authenticator = TestLockAuthenticator(available: false)
+        let lock = AppLockController(authenticator: authenticator)
+        lock.configure(enabled: true, lockImmediately: true)
+
+        await lock.authenticate()
+
+        XCTAssertTrue(lock.isLocked)
+        XCTAssertNotNil(lock.notice)
+        XCTAssertFalse(lock.canEnableLock())
+    }
+
+    @MainActor
+    func testAuthenticationFailureStaysLockedAndSuccessUnlocks() async {
+        let authenticator = TestLockAuthenticator(
+            available: true,
+            error: NSError(domain: LAError.errorDomain, code: LAError.authenticationFailed.rawValue)
+        )
+        let lock = AppLockController(authenticator: authenticator)
+        lock.configure(enabled: true, lockImmediately: true)
+
+        await lock.authenticate()
+        XCTAssertTrue(lock.isLocked)
+
+        authenticator.error = nil
+        authenticator.result = true
+        await lock.authenticate()
         XCTAssertFalse(lock.isLocked)
     }
 
@@ -373,5 +435,153 @@ final class AppStoreTests: XCTestCase {
 
         XCTAssertThrowsError(try store.importJSON(JSONEncoder().encode(future)))
         XCTAssertEqual(store.clips.map(\.id), DefaultData.clips.map(\.id))
+    }
+
+    func testManualCaptureCreatesRealLinkTextAndMemoPayloads() throws {
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+
+        let link = try store.createManualClip(
+            type: .link, title: "", url: "Example.com/path#section", text: "",
+            destination: "기본 폴더", tags: ["읽을거리"], memo: "확인"
+        )
+        let text = try store.createManualClip(
+            type: .text, title: "", url: "", text: "첫 줄\n둘째 줄",
+            destination: "기본 폴더", tags: [], memo: ""
+        )
+        let memo = try store.createManualClip(
+            type: .memo, title: "", url: "", text: "기억할 내용",
+            destination: "기본 폴더", tags: [], memo: ""
+        )
+
+        XCTAssertEqual(link.url, "https://example.com/path")
+        XCTAssertEqual(link.title, "example.com")
+        XCTAssertEqual(text.title, "첫 줄")
+        XCTAssertEqual(text.description, "첫 줄\n둘째 줄")
+        XCTAssertEqual(memo.source, "나의 메모")
+        XCTAssertEqual(store.existingClip(forManualURL: "https://EXAMPLE.com/path#other")?.id, link.id)
+        XCTAssertThrowsError(try store.createManualClip(
+            type: .link, title: "", url: "javascript:alert(1)", text: "",
+            destination: "기본 폴더", tags: [], memo: ""
+        ))
+    }
+
+    func testShareQueueSortsQuarantinesExpiresAndIsIdempotent() throws {
+        let container = temporaryDirectory.appendingPathComponent("QueueContainer", isDirectory: true)
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        let now = Date()
+        let later = SharedClipPayload(
+            id: UUID(), type: .text, title: "later", source: "test", text: "later",
+            createdAt: now.addingTimeInterval(-10)
+        )
+        let earlier = SharedClipPayload(
+            id: UUID(), type: .text, title: "earlier", source: "test", text: "earlier",
+            createdAt: now.addingTimeInterval(-20)
+        )
+        let expired = SharedClipPayload(
+            id: UUID(), type: .text, title: "expired", source: "test", text: "expired",
+            createdAt: now.addingTimeInterval(-SharedClipQueue.maxPendingAge - 1)
+        )
+        try SharedClipQueue.enqueue(later, containerURL: container)
+        try SharedClipQueue.enqueue(earlier, containerURL: container)
+        try SharedClipQueue.enqueue(earlier, containerURL: container)
+        try SharedClipQueue.enqueue(expired, containerURL: container)
+        let pending = container.appendingPathComponent("PendingClips", isDirectory: true)
+        try Data("broken".utf8).write(to: pending.appendingPathComponent("broken.json"))
+
+        let items = try SharedClipQueue.pendingItems(containerURL: container, now: now)
+
+        XCTAssertEqual(items.map(\.payload.title), ["earlier", "later"])
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(
+            at: container.appendingPathComponent("FailedClips"),
+            includingPropertiesForKeys: nil
+        ).count, 1)
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(
+            at: container.appendingPathComponent("ExpiredClips"),
+            includingPropertiesForKeys: nil
+        ).count, 1)
+    }
+
+    func testShareQueueRejectsNewItemsAtCountLimit() throws {
+        let container = temporaryDirectory.appendingPathComponent("QueueLimit", isDirectory: true)
+        let pending = container.appendingPathComponent("PendingClips", isDirectory: true)
+        try FileManager.default.createDirectory(at: pending, withIntermediateDirectories: true)
+        let encoder = JSONEncoder()
+        for index in 0..<SharedClipQueue.maxPendingItemCount {
+            let payload = SharedClipPayload(
+                id: UUID(), type: .text, title: "\(index)", source: "test", text: "value"
+            )
+            try encoder.encode(payload).write(
+                to: pending.appendingPathComponent(payload.id.uuidString).appendingPathExtension("json")
+            )
+        }
+
+        XCTAssertThrowsError(try SharedClipQueue.enqueue(
+            SharedClipPayload(type: .text, title: "extra", source: "test", text: "extra"),
+            containerURL: container
+        )) { error in
+            XCTAssertEqual(error as? SharedClipQueue.QueueError,
+                           .itemLimitReached(SharedClipQueue.maxPendingItemCount))
+        }
+    }
+
+    func testProviderDeadlineTimesOutAndCancelsUnderlyingProgress() async {
+        let progress = Progress(totalUnitCount: 1)
+
+        do {
+            let _: String = try await ProviderDeadline.load(timeout: 0.01) { _ in progress }
+            XCTFail("Expected provider deadline to time out")
+        } catch {
+            XCTAssertEqual(error as? ProviderDeadlineError, .timedOut)
+            XCTAssertTrue(progress.isCancelled)
+        }
+    }
+
+    func testShareImportIdentityPreventsDuplicateAfterQueueRemovalFailureWindow() throws {
+        let container = temporaryDirectory.appendingPathComponent("ImportQueue", isDirectory: true)
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        let payload = SharedClipPayload(
+            id: UUID(), type: .link, title: "Example", source: "example.com",
+            url: "https://example.com", createdAt: Date()
+        )
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+
+        try SharedClipQueue.enqueue(payload, containerURL: container)
+        store.importSharedClips(containerURL: container)
+        try SharedClipQueue.enqueue(payload, containerURL: container)
+        store.importSharedClips(containerURL: container)
+
+        XCTAssertEqual(store.clips.count, 1)
+        XCTAssertEqual(store.clips.first?.sharePayloadID, payload.id)
+        XCTAssertTrue(try SharedClipQueue.pendingItems(containerURL: container).isEmpty)
+    }
+
+    func testFileBackedImageAssetEnforcesByteCapAndPreservesBytes() throws {
+        let sourceSize = CGSize(width: 32, height: 24)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let image = UIGraphicsImageRenderer(size: sourceSize, format: format).image { context in
+            UIColor.systemBlue.setFill()
+            context.fill(CGRect(origin: .zero, size: sourceSize))
+        }
+        let originalData = try XCTUnwrap(image.pngData())
+        let sourceURL = temporaryDirectory.appendingPathComponent("source.png")
+        try originalData.write(to: sourceURL)
+        let asset = try SharedImageAsset(validatingFileAt: sourceURL, typeIdentifier: UTType.png.identifier)
+        let container = temporaryDirectory.appendingPathComponent("ImageContainer", isDirectory: true)
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+
+        let name = try SharedClipQueue.storeImageAsset(asset, for: UUID(), containerURL: container)
+        let storedURL = try XCTUnwrap(SharedClipQueue.imageURL(named: name, containerURL: container))
+        XCTAssertEqual(try Data(contentsOf: storedURL), originalData)
+        XCTAssertEqual(asset.pixelCount, 32 * 24)
+
+        let oversizedURL = temporaryDirectory.appendingPathComponent("oversized.png")
+        FileManager.default.createFile(atPath: oversizedURL.path, contents: Data([0]))
+        let handle = try FileHandle(forWritingTo: oversizedURL)
+        try handle.truncate(atOffset: UInt64(SharedImageAsset.maxBytes + 1))
+        try handle.close()
+        XCTAssertThrowsError(try SharedImageAsset(validatingFileAt: oversizedURL)) { error in
+            XCTAssertEqual(error as? SharedImageAssetError, .tooLarge(maxMegabytes: 50))
+        }
     }
 }

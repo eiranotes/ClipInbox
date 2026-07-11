@@ -75,17 +75,150 @@ struct SharedClipPayload: Codable, Identifiable {
     }
 }
 
-/// Share Extension에서 받은 이미지의 압축 바이트와 파일 형식을 그대로 보존한다.
-/// 픽셀 리사이즈나 JPEG 재인코딩은 하지 않는다.
+enum SharedImageAssetError: LocalizedError, Equatable {
+    case unsupported
+    case tooLarge(maxMegabytes: Int)
+    case tooManyPixels(maxMegapixels: Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .unsupported:
+            return SharedL10n.text("지원하는 이미지 파일을 읽을 수 없습니다.")
+        case .tooLarge(let maxMegabytes):
+            return SharedL10n.format("format.image_too_large", maxMegabytes)
+        case .tooManyPixels(let maxMegapixels):
+            return SharedL10n.format("format.image_too_many_pixels", maxMegapixels)
+        }
+    }
+}
+
+/// Share Extension에서 받은 원본 표현을 보존한다. Provider 파일 표현은 메모리에
+/// 올리지 않고 검증·복사하며, Data 표현은 작은 fallback과 인앱 PhotosPicker에만 쓴다.
 struct SharedImageAsset: Equatable {
-    let data: Data
+    static let maxBytes: Int64 = 50 * 1_024 * 1_024
+    static let maxPixels: Int64 = 100_000_000
+
+    private enum Source {
+        case data(Data)
+        case file(URL, removeAfterUse: Bool)
+    }
+
+    private let source: Source
     let fileExtension: String
+    let byteCount: Int64
+    let pixelCount: Int64
+
+    var data: Data {
+        switch source {
+        case .data(let data): return data
+        case .file(let url, _): return (try? Data(contentsOf: url)) ?? Data()
+        }
+    }
 
     init?(data: Data, typeIdentifier: String? = nil, suggestedFileExtension: String? = nil) {
-        guard !data.isEmpty,
-              let source = CGImageSourceCreateWithData(data as CFData, nil),
-              CGImageSourceGetCount(source) > 0 else { return nil }
+        guard let value = try? SharedImageAsset(
+            validatingData: data,
+            typeIdentifier: typeIdentifier,
+            suggestedFileExtension: suggestedFileExtension
+        ) else { return nil }
+        self = value
+    }
 
+    init(validatingData data: Data, typeIdentifier: String? = nil,
+         suggestedFileExtension: String? = nil) throws {
+        guard Int64(data.count) <= Self.maxBytes else {
+            throw SharedImageAssetError.tooLarge(maxMegabytes: Int(Self.maxBytes / 1_024 / 1_024))
+        }
+        guard !data.isEmpty,
+              let imageSource = CGImageSourceCreateWithData(data as CFData, nil) else {
+            throw SharedImageAssetError.unsupported
+        }
+        let metadata = try Self.metadata(
+            source: imageSource,
+            typeIdentifier: typeIdentifier,
+            suggestedFileExtension: suggestedFileExtension
+        )
+        source = .data(data)
+        fileExtension = metadata.fileExtension
+        byteCount = Int64(data.count)
+        pixelCount = metadata.pixelCount
+    }
+
+    init(validatingFileAt url: URL, typeIdentifier: String? = nil,
+         suggestedFileExtension: String? = nil, removeAfterUse: Bool = false) throws {
+        let values = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
+        guard values.isRegularFile == true, let fileSize = values.fileSize, fileSize > 0 else {
+            throw SharedImageAssetError.unsupported
+        }
+        guard Int64(fileSize) <= Self.maxBytes else {
+            throw SharedImageAssetError.tooLarge(maxMegabytes: Int(Self.maxBytes / 1_024 / 1_024))
+        }
+        guard let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+            throw SharedImageAssetError.unsupported
+        }
+        let metadata = try Self.metadata(
+            source: imageSource,
+            typeIdentifier: typeIdentifier,
+            suggestedFileExtension: suggestedFileExtension ?? url.pathExtension
+        )
+        source = .file(url, removeAfterUse: removeAfterUse)
+        fileExtension = metadata.fileExtension
+        byteCount = Int64(fileSize)
+        pixelCount = metadata.pixelCount
+    }
+
+    func write(to destination: URL) throws {
+        switch source {
+        case .data(let data):
+            try data.write(to: destination, options: [.atomic, .completeFileProtectionUnlessOpen])
+        case .file(let sourceURL, _):
+            let temporary = destination.deletingLastPathComponent()
+                .appendingPathComponent(".\(UUID().uuidString).tmp")
+            try FileManager.default.copyItem(at: sourceURL, to: temporary)
+            do {
+                if FileManager.default.fileExists(atPath: destination.path) {
+                    _ = try FileManager.default.replaceItemAt(destination, withItemAt: temporary)
+                } else {
+                    try FileManager.default.moveItem(at: temporary, to: destination)
+                }
+                try FileManager.default.setAttributes(
+                    [.protectionKey: FileProtectionType.completeUnlessOpen],
+                    ofItemAtPath: destination.path
+                )
+            } catch {
+                try? FileManager.default.removeItem(at: temporary)
+                throw error
+            }
+        }
+    }
+
+    func cleanupSourceIfNeeded() {
+        if case .file(let url, let removeAfterUse) = source, removeAfterUse {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+
+    static func == (lhs: SharedImageAsset, rhs: SharedImageAsset) -> Bool {
+        lhs.fileExtension == rhs.fileExtension
+            && lhs.byteCount == rhs.byteCount
+            && lhs.pixelCount == rhs.pixelCount
+            && lhs.data == rhs.data
+    }
+
+    private static func metadata(source: CGImageSource, typeIdentifier: String?,
+                                 suggestedFileExtension: String?) throws
+    -> (fileExtension: String, pixelCount: Int64) {
+        guard CGImageSourceGetCount(source) > 0,
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.int64Value,
+              let height = (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.int64Value,
+              width > 0, height > 0 else {
+            throw SharedImageAssetError.unsupported
+        }
+        let (pixelCount, overflow) = width.multipliedReportingOverflow(by: height)
+        guard !overflow, pixelCount <= maxPixels else {
+            throw SharedImageAssetError.tooManyPixels(maxMegapixels: Int(maxPixels / 1_000_000))
+        }
         let detectedType = CGImageSourceGetType(source) as String?
         let candidates = [
             detectedType.flatMap { UTType($0)?.preferredFilenameExtension },
@@ -93,15 +226,17 @@ struct SharedImageAsset: Equatable {
             suggestedFileExtension
         ]
         guard let fileExtension = candidates.compactMap(SharedClipQueue.safeImageFileExtension).first else {
-            return nil
+            throw SharedImageAssetError.unsupported
         }
-        self.data = data
-        self.fileExtension = fileExtension
+        return (fileExtension, pixelCount)
     }
 }
 
 enum SharedClipQueue {
     static let appGroupIdentifier = "group.app.clipinbox.ClipInbox"
+    static let maxPendingItemCount = 200
+    static let maxPendingBytes: Int64 = 250 * 1_024 * 1_024
+    static let maxPendingAge: TimeInterval = 30 * 24 * 60 * 60
     private static let configurationFileName = "ShareConfiguration-v1.json"
     private static let legacyConfigurationKey = "clip-inbox-share-configuration-v1"
     private static let supportedImageFileExtensions = Set([
@@ -113,11 +248,20 @@ enum SharedClipQueue {
         let payload: SharedClipPayload
     }
 
-    enum QueueError: LocalizedError {
+    enum QueueError: LocalizedError, Equatable {
         case appGroupUnavailable
+        case itemLimitReached(Int)
+        case byteLimitReached(Int)
 
         var errorDescription: String? {
-            SharedL10n.text("Clip Inbox App Group 컨테이너를 열 수 없습니다. 서명과 App Group 권한을 확인하세요.")
+            switch self {
+            case .appGroupUnavailable:
+                return SharedL10n.text("Clip Inbox App Group 컨테이너를 열 수 없습니다. 서명과 App Group 권한을 확인하세요.")
+            case .itemLimitReached(let limit):
+                return SharedL10n.format("format.share_queue_item_limit", limit)
+            case .byteLimitReached(let megabytes):
+                return SharedL10n.format("format.share_queue_byte_limit", megabytes)
+            }
         }
     }
 
@@ -128,61 +272,95 @@ enum SharedClipQueue {
             return value
         }
         if let legacy = loadLegacyConfiguration() {
-            saveConfiguration(legacy)
+            try? saveConfiguration(legacy)
             return legacy
         }
         return .standard
     }
 
-    static func saveConfiguration(_ configuration: SharedClipConfiguration) {
-        guard let fileURL = try? configurationFileURL(),
-              let data = try? JSONEncoder().encode(configuration) else { return }
-        try? data.write(to: fileURL, options: [.atomic, .completeFileProtectionUnlessOpen])
+    static func saveConfiguration(_ configuration: SharedClipConfiguration) throws {
+        let fileURL = try configurationFileURL()
+        let data = try JSONEncoder().encode(configuration)
+        try data.write(to: fileURL, options: [.atomic, .completeFileProtectionUnlessOpen])
     }
 
-    static func enqueue(_ payload: SharedClipPayload) throws {
-        let directory = try pendingDirectoryURL()
+    static func enqueue(_ payload: SharedClipPayload, containerURL: URL? = nil) throws {
+        let directory = try pendingDirectoryURL(containerURL: containerURL)
         let fileURL = directory.appendingPathComponent(payload.id.uuidString).appendingPathExtension("json")
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         let data = try encoder.encode(payload)
+        let pending = try pendingItems(containerURL: containerURL)
+        if pending.contains(where: { $0.payload.id == payload.id }) { return }
+        guard pending.count < maxPendingItemCount else {
+            throw QueueError.itemLimitReached(maxPendingItemCount)
+        }
+        let existingBytes = try pending.reduce(Int64(0)) { partial, item in
+            partial + (try queuedBytes(for: item, containerURL: containerURL))
+        }
+        let imageBytes: Int64
+        if let imageName = payload.sharedImageName,
+           let imageURL = imageURL(named: imageName, containerURL: containerURL) {
+            imageBytes = Int64((try? imageURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+        } else {
+            imageBytes = 0
+        }
+        guard existingBytes + Int64(data.count) + imageBytes <= maxPendingBytes else {
+            throw QueueError.byteLimitReached(Int(maxPendingBytes / 1_024 / 1_024))
+        }
         try data.write(to: fileURL, options: [.atomic, .completeFileProtectionUnlessOpen])
     }
 
-    static func pendingItems() throws -> [Item] {
-        let directory = try pendingDirectoryURL()
+    static func pendingItems(containerURL: URL? = nil, now: Date = Date()) throws -> [Item] {
+        let directory = try pendingDirectoryURL(containerURL: containerURL)
         let urls = try FileManager.default.contentsOfDirectory(
             at: directory,
             includingPropertiesForKeys: nil,
             options: [.skipsHiddenFiles]
         )
         let decoder = JSONDecoder()
-        return urls
-            .filter { $0.pathExtension == "json" }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
-            .compactMap { url in
-                guard let data = try? Data(contentsOf: url),
-                      let payload = try? decoder.decode(SharedClipPayload.self, from: data) else { return nil }
-                return Item(fileURL: url, payload: payload)
+        var items: [Item] = []
+        for url in urls where url.pathExtension == "json" {
+            guard let data = try? Data(contentsOf: url),
+                  let payload = try? decoder.decode(SharedClipPayload.self, from: data) else {
+                try? quarantine(url, directoryName: "FailedClips", containerURL: containerURL)
+                continue
             }
+            guard now.timeIntervalSince(payload.createdAt) <= maxPendingAge else {
+                try? quarantine(url, directoryName: "ExpiredClips", containerURL: containerURL)
+                if let imageName = payload.sharedImageName,
+                   let source = imageURL(named: imageName, containerURL: containerURL) {
+                    try? quarantine(source, directoryName: "ExpiredImages", containerURL: containerURL)
+                }
+                continue
+            }
+            items.append(Item(fileURL: url, payload: payload))
+        }
+        return items.sorted {
+            if $0.payload.createdAt != $1.payload.createdAt {
+                return $0.payload.createdAt < $1.payload.createdAt
+            }
+            return $0.payload.id.uuidString < $1.payload.id.uuidString
+        }
     }
 
     static func remove(_ item: Item) throws {
         try FileManager.default.removeItem(at: item.fileURL)
     }
 
-    static func storeImageAsset(_ asset: SharedImageAsset, for id: UUID) throws -> String {
+    static func storeImageAsset(_ asset: SharedImageAsset, for id: UUID,
+                                containerURL: URL? = nil) throws -> String {
         let fileName = "\(id.uuidString).\(asset.fileExtension)"
-        let fileURL = try imagesDirectoryURL().appendingPathComponent(fileName)
-        try asset.data.write(to: fileURL, options: [.atomic, .completeFileProtectionUnlessOpen])
+        let fileURL = try imagesDirectoryURL(containerURL: containerURL).appendingPathComponent(fileName)
+        try asset.write(to: fileURL)
         return fileName
     }
 
-    static func imageURL(named fileName: String) -> URL? {
+    static func imageURL(named fileName: String, containerURL: URL? = nil) -> URL? {
         guard isValidImageFileName(fileName) else {
             return nil
         }
-        return try? imagesDirectoryURL().appendingPathComponent(fileName)
+        return try? imagesDirectoryURL(containerURL: containerURL).appendingPathComponent(fileName)
     }
 
     static func removeImage(named fileName: String) throws {
@@ -236,25 +414,47 @@ enum SharedClipQueue {
         return try? JSONDecoder().decode(SharedClipConfiguration.self, from: configurationData)
     }
 
-    private static func pendingDirectoryURL() throws -> URL {
-        guard let container = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: appGroupIdentifier
-        ) else {
-            throw QueueError.appGroupUnavailable
-        }
+    private static func pendingDirectoryURL(containerURL override: URL? = nil) throws -> URL {
+        let container = try resolvedContainerURL(override)
         let directory = container.appendingPathComponent("PendingClips", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory
     }
 
-    private static func imagesDirectoryURL() throws -> URL {
-        guard let container = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: appGroupIdentifier
-        ) else {
-            throw QueueError.appGroupUnavailable
-        }
+    private static func imagesDirectoryURL(containerURL override: URL? = nil) throws -> URL {
+        let container = try resolvedContainerURL(override)
         let directory = container.appendingPathComponent("SharedImages", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory
+    }
+
+    private static func resolvedContainerURL(_ override: URL?) throws -> URL {
+        if let override { return override }
+        guard let container = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: appGroupIdentifier
+        ) else { throw QueueError.appGroupUnavailable }
+        return container
+    }
+
+    private static func quarantine(_ source: URL, directoryName: String,
+                                   containerURL: URL?) throws {
+        let directory = try resolvedContainerURL(containerURL)
+            .appendingPathComponent(directoryName, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var destination = directory.appendingPathComponent(source.lastPathComponent)
+        if FileManager.default.fileExists(atPath: destination.path) {
+            destination = directory.appendingPathComponent("\(UUID().uuidString)-\(source.lastPathComponent)")
+        }
+        try FileManager.default.moveItem(at: source, to: destination)
+    }
+
+    private static func queuedBytes(for item: Item, containerURL: URL?) throws -> Int64 {
+        let payloadBytes = Int64(try item.fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0)
+        guard let imageName = item.payload.sharedImageName,
+              let imageURL = imageURL(named: imageName, containerURL: containerURL) else {
+            return payloadBytes
+        }
+        let imageBytes = Int64(try imageURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0)
+        return payloadBytes + imageBytes
     }
 }

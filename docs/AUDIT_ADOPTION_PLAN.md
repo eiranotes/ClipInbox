@@ -64,6 +64,8 @@ Exit: corrupt, future-version, and failing-write fixtures pass; false-success co
 
 ### Phase 2: Capture and privacy
 
+Status: complete on 2026-07-11.
+
 - Harden Share image/provider/queue behavior, make App Lock fail closed, add privacy cover, and replace demo Add with real capture.
 
 Exit: deterministic provider termination, no duplicate queue import, no auth-unavailable unlock, and no hardcoded Add payload.

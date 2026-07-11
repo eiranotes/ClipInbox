@@ -6,9 +6,12 @@
 
 - Added the product-bounded A-to-Z audit adoption plan and moved native regression setup toward explicit version-2 fixtures so production sample removal can proceed safely.
 - Added a `ClipRepository` boundary with typed bootstrap/commit failures, current/previous snapshot rotation, corrupt-file quarantine, version gating, and transaction rollback tests.
+- Added a deterministic provider deadline primitive plus queue, image-limit, manual-capture, idempotency, and fail-closed lock regressions.
 
 ### Added
 
+- Real manual Link, Text, Photo, and Memo capture in the Add tab, including PhotosPicker, canonical URL validation, exact-link duplicate disclosure, and durable folder/tag save.
+- App-switcher privacy cover and App Lock capability gating that keeps content locked when device authentication is unavailable or fails.
 - Settings choice for opening links immediately or asking before opening the browser, with immediate opening as the default.
 - Adaptive light, dark, and system appearance with a warm near-black dark palette shared by the app and Share Extension configuration.
 - Settings tag management for adding, renaming, and deleting tags; rename/delete updates every clip tag and folder default-tag reference and persists the catalog separately from the version-2 backup schema.
@@ -31,6 +34,9 @@
 
 ### Changed
 
+- Share image loading now prefers a temporary file representation, validates metadata without decoding full pixels, and enforces 50 MB/100 MP limits while preserving accepted original bytes.
+- Share provider requests now time out and cancel after 10 seconds; quick-save confirmation returns after 650 ms instead of a fixed 2 seconds.
+- Pending Share items now sort by capture time, quarantine corrupt/expired files, enforce 200-item/250-MB/30-day limits, and persist their UUID into imported clips for idempotency.
 - Fresh installs now open an empty clip library. Unrecoverable and future-version snapshots show a blocking recovery/update state instead of silently loading sample clips.
 - Image shares now take priority over accompanying file/web URLs and retain the provider's original supported image bytes, format, and pixel dimensions instead of a 1600px JPEG conversion.
 - Share Extension configuration now uses an atomic App Group JSON file, with a direct legacy-plist migration path.
@@ -58,6 +64,9 @@
 
 ### Fixed
 
+- App Lock no longer unlocks content when LocalAuthentication cannot evaluate the device-owner policy.
+- Retried queue removal can no longer import the same shared payload twice.
+- The Add tab no longer creates a hardcoded brunch sample.
 - Main-data mutations no longer report success after a failed disk write; in-memory clips, folders, preferences, and tag state roll back together.
 - JSON import now rejects unsupported snapshot versions before mutation and rolls back if the durable commit fails.
 - Photos/image shares no longer become URL-only link clips when the provider exposes both representations, and full-screen zoom now reads the original stored raster.
@@ -77,6 +86,8 @@
 
 ### Verified
 
+- Twenty-eight native XCTest regressions pass, including provider timeout/cancellation, queue order/quarantine/quota/idempotency, file-backed image byte preservation and size rejection, real manual capture, and fail-closed authentication. The embedded Share Extension validates in the same build.
+- Simulator interaction verified labelled Add type/field/actions, a durable manual URL save, Photo capture policy state, and an opaque Clip Inbox app-switcher card. Evidence is stored in `.superloopy/evidence/frontend/20260711-audit-phase2`.
 - Twenty native XCTest regressions pass, including corrupt-current recovery from the previous snapshot, quarantine preservation, unsupported-version blocking, empty first run, and mutation/import rollback on forced write failures. The same simulator build validates the embedded `ClipInboxShare.appex`.
 - Fourteen native XCTest regressions pass, including exact-byte/format/dimension preservation for a 2400×1800 PNG and link-opening preference persistence.
 - A live Photos share retained PNG, 2400×1800 pixels, 1,472,067 bytes, and SHA-256 `21ff962ce36c3187e03afd4d99f9d8a267b9f3a85c969797cbfb375cd9fb44fa` before and after App Group storage; the payload and imported clip were both image type with no URL.

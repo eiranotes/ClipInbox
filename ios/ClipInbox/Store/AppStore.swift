@@ -46,6 +46,24 @@ enum StoreError: LocalizedError {
     }
 }
 
+enum ManualCaptureType: String, CaseIterable, Identifiable {
+    case link
+    case text
+    case photo
+    case memo
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .link: return "링크"
+        case .text: return "텍스트"
+        case .photo: return "사진"
+        case .memo: return "메모"
+        }
+    }
+}
+
 @Observable
 final class AppStore {
     var clips: [Clip]
@@ -116,7 +134,7 @@ final class AppStore {
             bootstrapState = .recoveryRequired
             storageErrorMessage = error.localizedDescription
         }
-        syncSharedConfiguration()
+        try? syncSharedConfiguration()
     }
 
     private static func defaultFileURL() -> URL {
@@ -135,6 +153,7 @@ final class AppStore {
     func persist() -> Bool {
         do {
             try repository.commit(snapshot())
+            try syncSharedConfiguration()
             storageErrorMessage = nil
             switch bootstrapState {
             case .firstRun, .recovered, .recoveryRequired:
@@ -142,7 +161,6 @@ final class AppStore {
             case .ready, .updateRequired:
                 break
             }
-            syncSharedConfiguration()
             return true
         } catch {
             storageErrorMessage = error.localizedDescription
@@ -152,10 +170,10 @@ final class AppStore {
 
     /// Share Extension이 App Group 큐에 남긴 항목을 앱의 기존 version-2 저장소로 옮긴다.
     /// 파일 단위 큐라서 앱과 확장이 동시에 실행되어도 완료된 payload만 읽는다.
-    func importSharedClips() {
+    func importSharedClips(containerURL: URL? = nil) {
         let pending: [SharedClipQueue.Item]
         do {
-            pending = try SharedClipQueue.pendingItems()
+            pending = try SharedClipQueue.pendingItems(containerURL: containerURL)
         } catch {
             #if DEBUG
             print("Share queue unavailable: \(error.localizedDescription)")
@@ -163,73 +181,79 @@ final class AppStore {
             return
         }
         guard !pending.isEmpty else { return }
+        let alreadyImported = pending.filter { item in
+            clips.contains(where: { $0.sharePayloadID == item.payload.id })
+        }
+        for item in alreadyImported { try? SharedClipQueue.remove(item) }
+        let candidates = pending.filter { item in
+            !clips.contains(where: { $0.sharePayloadID == item.payload.id })
+        }
+        guard !candidates.isEmpty else { return }
 
-        let originalClips = clips
-        let originalFolders = folders
         var nextID = clips.map(\.id).max().map { $0 + 1 } ?? 1
 
-        for item in pending {
-            let payload = item.payload
-            var destination = Self.cleanText(payload.folder, fallback: preferences.defaultFolder, maxLength: 40)
-            if ["인박스", "기본 폴더"].contains(destination),
-               !folders.contains(where: { $0.label == destination }),
-               let renamedInbox = folders.first(where: { $0.icon == "inbox" }) {
-                destination = renamedInbox.label
+        guard commitMutation({
+            for item in candidates {
+                let payload = item.payload
+                var destination = Self.cleanText(payload.folder, fallback: preferences.defaultFolder, maxLength: 40)
+                if ["인박스", "기본 폴더"].contains(destination),
+                   !folders.contains(where: { $0.label == destination }),
+                   let renamedInbox = folders.first(where: { $0.icon == "inbox" }) {
+                    destination = renamedInbox.label
+                }
+                if !folders.contains(where: { $0.label == destination }) {
+                    folders.append(Folder(icon: "folder", label: destination))
+                }
+
+                let safeURL = Self.safeExternalURL(payload.url)
+                let source = Self.cleanText(
+                    payload.source,
+                    fallback: URL(string: safeURL)?.host ?? "공유 시트",
+                    maxLength: 120
+                )
+                let titleFallback: String
+                switch payload.type {
+                case .image: titleFallback = "공유한 이미지"
+                case .text: titleFallback = "공유한 텍스트"
+                case .link: titleFallback = URL(string: safeURL)?.host ?? "공유한 링크"
+                }
+
+                let cleanTags = Array(payload.tags.map {
+                    Self.cleanText($0, maxLength: 50)
+                }.filter { !$0.isEmpty }.prefix(12))
+                let clip = Clip(
+                    id: nextID,
+                    type: {
+                        switch payload.type {
+                        case .link: return .link
+                        case .text: return .memo
+                        case .image: return .image
+                        }
+                    }(),
+                    state: .new,
+                    title: Self.cleanText(payload.title, fallback: titleFallback),
+                    source: source,
+                    url: safeURL,
+                    time: "방금 전",
+                    folder: destination,
+                    tags: cleanTags,
+                    folderSuggestions: [destination, "나중에"],
+                    sharedImageName: Self.safeSharedImageName(payload.sharedImageName),
+                    sharePayloadID: payload.id,
+                    description: Self.cleanText(payload.text, maxLength: 500),
+                    memo: Self.cleanText(payload.memo, maxLength: 1000)
+                )
+                clips.insert(clip, at: 0)
+                tagCatalog = Self.normalizeTags(tagCatalog + cleanTags)
+                nextID += 1
             }
-            if !folders.contains(where: { $0.label == destination }) {
-                folders.append(Folder(icon: "folder", label: destination))
-            }
+        }) else { return }
 
-            let safeURL = Self.safeExternalURL(payload.url)
-            let source = Self.cleanText(
-                payload.source,
-                fallback: URL(string: safeURL)?.host ?? "공유 시트",
-                maxLength: 120
-            )
-            let titleFallback: String
-            switch payload.type {
-            case .image: titleFallback = "공유한 이미지"
-            case .text: titleFallback = "공유한 텍스트"
-            case .link: titleFallback = URL(string: safeURL)?.host ?? "공유한 링크"
-            }
-
-            let clip = Clip(
-                id: nextID,
-                type: {
-                    switch payload.type {
-                    case .link: return .link
-                    case .text: return .memo
-                    case .image: return .image
-                    }
-                }(),
-                state: .new,
-                title: Self.cleanText(payload.title, fallback: titleFallback),
-                source: source,
-                url: safeURL,
-                time: "방금 전",
-                folder: destination,
-                tags: Array(payload.tags.map { Self.cleanText($0, maxLength: 50) }.filter { !$0.isEmpty }.prefix(12)),
-                folderSuggestions: [destination, "나중에"],
-                sharedImageName: Self.safeSharedImageName(payload.sharedImageName),
-                description: Self.cleanText(payload.text, maxLength: 500),
-                memo: Self.cleanText(payload.memo, maxLength: 1000)
-            )
-            clips.insert(clip, at: 0)
-            nextID += 1
-        }
-
-        guard persist() else {
-            clips = originalClips
-            folders = originalFolders
-            showToast("공유한 클립을 가져오지 못했습니다")
-            return
-        }
-
-        for item in pending {
+        saveTagCatalog()
+        for item in candidates {
             try? SharedClipQueue.remove(item)
         }
-        mergeTagsIntoCatalog(pending.flatMap(\.payload.tags))
-        showToast(L10n.format("format.imported_shared_clips", pending.count))
+        showToast(L10n.format("format.imported_shared_clips", candidates.count))
     }
 
     func exportJSON() throws -> Data {
@@ -481,6 +505,8 @@ final class AppStore {
             preferences = previous.preferences
             tagCatalog = previous.tagCatalog
             linkOpenMode = previous.linkOpenMode
+            try? repository.commit(snapshot())
+            try? syncSharedConfiguration()
             showToast(storageFailureMessage)
             return false
         }
@@ -556,25 +582,110 @@ final class AppStore {
         return true
     }
 
+    func canonicalManualURL(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let candidate = trimmed.contains("://") ? trimmed : "https://\(trimmed)"
+        guard var components = URLComponents(string: candidate),
+              let scheme = components.scheme?.lowercased(),
+              ["http", "https"].contains(scheme),
+              let host = components.host?.lowercased(), !host.isEmpty else { return nil }
+        components.scheme = scheme
+        components.host = host
+        components.fragment = nil
+        if components.path == "/" { components.path = "" }
+        if (scheme == "https" && components.port == 443) || (scheme == "http" && components.port == 80) {
+            components.port = nil
+        }
+        return components.url?.absoluteString
+    }
+
+    func existingClip(forManualURL value: String) -> Clip? {
+        guard let canonical = canonicalManualURL(value) else { return nil }
+        return clips.first { canonicalManualURL($0.url) == canonical }
+    }
+
     @discardableResult
-    func saveNewClip(destination: String, tags: [String], memo: String) throws -> Clip {
+    func createManualClip(type: ManualCaptureType, title: String, url: String, text: String,
+                          destination: String, tags: [String], memo: String,
+                          imageAsset: SharedImageAsset? = nil) throws -> Clip {
         let id = clips.map(\.id).max().map { $0 + 1 } ?? 1
         let cleanTags = Self.normalizeTags(tags)
-        let clip = Clip(id: id, type: .link, state: .new,
-                        title: "미니멀 인테리어 아이디어 모음 50", source: "brunch.co.kr",
-                        url: "https://brunch.co.kr", time: "방금 전", folder: destination,
-                        tags: cleanTags, folderSuggestions: [destination, "디자인", "나중에"],
-                        image: "/public/images/clip-living-room.png",
-                        description: "공유 화면에서 방금 저장한 클립입니다.",
-                        memo: Self.cleanText(memo, maxLength: 1000))
+        let cleanDestination = Self.cleanText(destination, fallback: preferences.defaultFolder, maxLength: 40)
+        let cleanText = Self.cleanText(text, maxLength: 5_000)
+        let cleanMemo = Self.cleanText(memo, maxLength: 1_000)
+        let cleanTitle = Self.cleanText(title, maxLength: 200)
+
+        let clipType: ClipType
+        let finalTitle: String
+        let source: String
+        let safeURL: String
+        let description: String
+        var sharedImageName: String?
+        var newlyStoredImageName: String?
+
+        switch type {
+        case .link:
+            guard let normalizedURL = canonicalManualURL(url) else {
+                throw StoreError.message("올바른 http 또는 https URL을 입력하세요.")
+            }
+            clipType = .link
+            safeURL = normalizedURL
+            source = URL(string: normalizedURL)?.host ?? "직접 추가"
+            finalTitle = cleanTitle.isEmpty ? source : cleanTitle
+            description = cleanText
+        case .text:
+            guard !cleanText.isEmpty else { throw StoreError.message("저장할 텍스트를 입력하세요.") }
+            clipType = .memo
+            safeURL = ""
+            source = "직접 추가"
+            let firstLine = cleanText.split(separator: "\n", maxSplits: 1).first.map(String.init) ?? "저장한 텍스트"
+            finalTitle = cleanTitle.isEmpty ? Self.cleanText(firstLine, maxLength: 200) : cleanTitle
+            description = cleanText
+        case .memo:
+            guard !cleanText.isEmpty else { throw StoreError.message("메모 내용을 입력하세요.") }
+            clipType = .memo
+            safeURL = ""
+            source = "나의 메모"
+            let firstLine = cleanText.split(separator: "\n", maxSplits: 1).first.map(String.init) ?? "새 메모"
+            finalTitle = cleanTitle.isEmpty ? Self.cleanText(firstLine, maxLength: 200) : cleanTitle
+            description = cleanText
+        case .photo:
+            guard let imageAsset else { throw StoreError.message("저장할 사진을 선택하세요.") }
+            clipType = .image
+            safeURL = ""
+            source = "사진"
+            finalTitle = cleanTitle.isEmpty ? "저장한 사진" : cleanTitle
+            description = cleanText
+            let imageID = UUID()
+            do {
+                sharedImageName = try SharedClipQueue.storeImageAsset(imageAsset, for: imageID)
+                newlyStoredImageName = sharedImageName
+            } catch {
+                imageAsset.cleanupSourceIfNeeded()
+                throw error
+            }
+            imageAsset.cleanupSourceIfNeeded()
+        }
+
+        let clip = Clip(id: id, type: clipType, state: .new,
+                        title: finalTitle, source: source, url: safeURL,
+                        time: "방금 전", folder: cleanDestination,
+                        tags: cleanTags, folderSuggestions: [cleanDestination],
+                        sharedImageName: sharedImageName,
+                        description: description, memo: cleanMemo)
         guard commitMutation({
             clips.insert(clip, at: 0)
+            if !folders.contains(where: { $0.label == cleanDestination }) {
+                folders.append(Folder(icon: "folder", label: cleanDestination))
+            }
             tagCatalog = Self.normalizeTags(tagCatalog + cleanTags)
         }) else {
+            if let newlyStoredImageName { try? SharedClipQueue.removeImage(named: newlyStoredImageName) }
             throw StoreError.message(storageFailureMessage)
         }
         saveTagCatalog()
-        showToast(L10n.format("format.saved_to_folder", L10n.text(destination)))
+        showToast(L10n.format("format.saved_to_folder", L10n.text(cleanDestination)))
         return clip
     }
 
@@ -759,9 +870,9 @@ final class AppStore {
         }
     }
 
-    private func syncSharedConfiguration() {
+    private func syncSharedConfiguration() throws {
         let destinations = destinationFolders.map(\.label)
-        SharedClipQueue.saveConfiguration(
+        try SharedClipQueue.saveConfiguration(
             SharedClipConfiguration(
                 saveMode: preferences.sharedSaveMode,
                 language: preferences.appLanguage.sharedValue,

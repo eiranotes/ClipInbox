@@ -14,6 +14,11 @@ struct ClipInboxApp: App {
                 .environment(\.locale, Locale(identifier: store.preferences.appLanguage.localeIdentifier))
                 .font(Tokens.body)
                 .preferredColorScheme(preferredColorScheme)
+                .overlay {
+                    if scenePhase != .active {
+                        PrivacyShieldView()
+                    }
+                }
                 .onAppear {
                     lock.configure(enabled: store.preferences.appLock == "켬", lockImmediately: true)
                     store.importSharedClips()

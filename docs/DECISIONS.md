@@ -16,6 +16,30 @@ Why: The existing direct `try?` load could silently replace user data with sampl
 
 Impact: Fresh installs begin empty. Main-data mutations commit transactionally and roll memory state back on failure. Users may explicitly start a new empty library after an unrecoverable file is preserved, while unsupported future versions require an app update.
 
+## 2026-07-11: Share Capture Is File-First, Bounded, and Idempotent
+
+Decision: Preserve supported source image bytes, but prefer `NSItemProvider` file representations and reject captures above 50 MB or 100 megapixels. Every provider request has a 10-second deadline with cancellation. Pending payloads sort by `createdAt`, quarantine corrupt/expired entries, cap at 200 items and 250 MB for 30 days, and store the payload UUID on the imported clip.
+
+Why: Original-byte preservation is part of the product contract, but loading an unbounded source into extension memory or allowing an unbounded queue makes capture unreliable. Persisting the payload identity inside the main snapshot closes the crash/removal window without replacing the version-2 model or introducing a shared database.
+
+Impact: Quick Share only confirms after image and payload files are durable, returns after 650 ms, and cannot duplicate an already committed payload. Items outside limits remain explicit failures rather than silent recompression or data loss; quarantine/storage visibility follows in Phase 3.
+
+## 2026-07-11: App Lock Is a Fail-Closed Screen Barrier
+
+Decision: App Lock can be enabled only when device-owner authentication is available. Capability errors, cancellation, and authentication failure keep the app locked. The app overlays an opaque token-based privacy view whenever the scene is inactive and expires the authenticated session on background.
+
+Why: A user who enables a privacy barrier must never see content merely because biometrics or the device passcode is unavailable. The app-switcher snapshot is a separate disclosure surface and needs protection even when App Lock is off.
+
+Impact: Lock copy describes screen access protection rather than storage encryption. Automated tests cover unavailable, failure, and success states; enrolled-device Face ID/passcode behavior remains a release-matrix gate.
+
+## 2026-07-11: Add Is a Real Manual Capture Surface
+
+Decision: Keep the center Add tab, but replace its demo card with Link, Text, Photo, and Memo capture. Link input normalizes http/https URLs and shows exact canonical duplicates; Photo uses PhotosPicker and the same original-file limits; all types use existing folder/tag controls and the repository transaction.
+
+Why: A primary navigation action that creates a hardcoded brunch sample breaks product trust and App Review minimum functionality. Manual capture complements, rather than replaces, the Share Extension.
+
+Impact: No production action creates sample clips. Exact URL duplicates are disclosed and may be saved separately; fuzzy or perceptual duplicate merging remains intentionally deferred.
+
 ## 2026-07-10: Native SwiftUI Is the Product Source of Truth
 
 Decision: All future Clip Inbox product logic and UI implementation will be made in the native iOS code under `ios/`. The root `src/` web application remains a historical design prototype and is changed only when web work is explicitly requested.

@@ -50,6 +50,7 @@ struct Clip: Identifiable, Codable, Equatable {
     var folderSuggestions: [String]
     var image: String?
     var sharedImageName: String?
+    var sharePayloadID: UUID?
     var description: String
     var memo: String?
     var bookmarked: Bool
@@ -57,6 +58,7 @@ struct Clip: Identifiable, Codable, Equatable {
     init(id: Int, type: ClipType, state: ClipState? = nil, title: String, source: String,
          url: String, time: String, folder: String, tags: [String] = [],
          folderSuggestions: [String] = [], image: String? = nil, sharedImageName: String? = nil,
+         sharePayloadID: UUID? = nil,
          description: String = "",
          memo: String? = nil, bookmarked: Bool = false) {
         self.id = id
@@ -71,6 +73,7 @@ struct Clip: Identifiable, Codable, Equatable {
         self.folderSuggestions = folderSuggestions
         self.image = image
         self.sharedImageName = sharedImageName
+        self.sharePayloadID = sharePayloadID
         self.description = description
         self.memo = memo
         self.bookmarked = bookmarked
@@ -90,6 +93,7 @@ struct Clip: Identifiable, Codable, Equatable {
         folderSuggestions = (try? container.decodeIfPresent([String].self, forKey: .folderSuggestions)) ?? []
         image = try? container.decodeIfPresent(String.self, forKey: .image)
         sharedImageName = try? container.decodeIfPresent(String.self, forKey: .sharedImageName)
+        sharePayloadID = try? container.decodeIfPresent(UUID.self, forKey: .sharePayloadID)
         description = (try? container.decodeIfPresent(String.self, forKey: .description)) ?? ""
         memo = try? container.decodeIfPresent(String.self, forKey: .memo)
         bookmarked = (try? container.decodeIfPresent(Bool.self, forKey: .bookmarked)) ?? false
