@@ -72,6 +72,8 @@ Exit: deterministic provider termination, no duplicate queue import, no auth-una
 
 ### Phase 3: Trust UX and accessibility
 
+Status: complete on 2026-07-11.
+
 - Add first-run/empty/recovery states, delete Undo, storage/export disclosure, semantic typography, VoiceOver, and accessibility layout variants.
 
 Exit: core flows pass in Korean, English, and Japanese across light/dark and accessibility text sizes without weakening the standard layout.

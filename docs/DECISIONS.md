@@ -40,6 +40,30 @@ Why: A primary navigation action that creates a hardcoded brunch sample breaks p
 
 Impact: No production action creates sample clips. Exact URL duplicates are disclosed and may be saved separately; fuzzy or perceptual duplicate merging remains intentionally deferred.
 
+## 2026-07-11: Delete Uses a Five-Second Durable Undo Window
+
+Decision: A clip removal is committed immediately, but its original record and image asset remain available for five seconds. Undo re-inserts and commits the clip at its prior index; the image file is deleted only when the window closes. A second deletion finalizes the previous window first.
+
+Why: The app needs immediate list feedback and durable state without introducing a full Trash schema before the repository layer is proven. Delaying only asset cleanup provides a bounded recovery path while keeping version-2 backup compatibility.
+
+Impact: Delete confirmations describe the Undo window, the root presents an actionable yellow banner, and automated tests prove the restored clip survives reload. A retained orphan after process death remains visible through storage diagnostics and can be addressed by later cleanup tooling.
+
+## 2026-07-11: Accessibility Sizes Use Structural Variants
+
+Decision: Keep the 5x2 selector and one-viewport detail density at standard Dynamic Type sizes. At accessibility sizes, render selector choices as full-width rows, allow clip rows and titles to grow, enlarge detail media/editor space, and stack secondary detail actions vertically. Screen and section titles expose header traits.
+
+Why: Shrinking large text to preserve a fixed matrix or viewport would make the app technically scalable but practically unreadable. The product layout contract applies to normal sizes, not at the expense of accessibility.
+
+Impact: Standard screenshots remain unchanged. Accessibility Extra Large becomes intentionally longer and scrollable, with direct choices and 44pt minimum actions preserved.
+
+## 2026-07-11: Storage and Backup Scope Are Explicit
+
+Decision: Settings reports snapshot bytes, original-image bytes/count, pending-share bytes/count, and quarantined count without automatically compressing or deleting data. JSON export is labelled unencrypted and explicitly excludes original images, recent searches, tag catalog, and link-opening preference.
+
+Why: A local-only product still needs users to understand where private copies exist and why storage grows. A misleading “backup” label is riskier than a narrow, accurate export contract.
+
+Impact: Users can inspect storage and queue degradation before cleanup. Automatic retention, image optimization, encrypted archives, and complete asset backups remain separate future decisions.
+
 ## 2026-07-10: Native SwiftUI Is the Product Source of Truth
 
 Decision: All future Clip Inbox product logic and UI implementation will be made in the native iOS code under `ios/`. The root `src/` web application remains a historical design prototype and is changed only when web work is explicitly requested.

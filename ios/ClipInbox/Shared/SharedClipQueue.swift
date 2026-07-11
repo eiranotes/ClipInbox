@@ -248,6 +248,14 @@ enum SharedClipQueue {
         let payload: SharedClipPayload
     }
 
+    struct StorageSummary: Equatable {
+        let originalImageCount: Int
+        let originalImageBytes: Int64
+        let pendingCount: Int
+        let pendingPayloadBytes: Int64
+        let quarantinedCount: Int
+    }
+
     enum QueueError: LocalizedError, Equatable {
         case appGroupUnavailable
         case itemLimitReached(Int)
@@ -374,6 +382,38 @@ enum SharedClipQueue {
         for url in urls where isValidImageFileName(url.lastPathComponent) {
             try FileManager.default.removeItem(at: url)
         }
+    }
+
+    static func storageSummary(containerURL: URL? = nil) throws -> StorageSummary {
+        let images = try FileManager.default.contentsOfDirectory(
+            at: imagesDirectoryURL(containerURL: containerURL),
+            includingPropertiesForKeys: [.fileSizeKey],
+            options: [.skipsHiddenFiles]
+        ).filter { isValidImageFileName($0.lastPathComponent) }
+        let imageBytes = try images.reduce(Int64(0)) { partial, url in
+            partial + Int64(try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0)
+        }
+        let pending = try pendingItems(containerURL: containerURL)
+        let payloadBytes = try pending.reduce(Int64(0)) { partial, item in
+            partial + Int64(try item.fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0)
+        }
+        let container = try resolvedContainerURL(containerURL)
+        let quarantinedCount = ["FailedClips", "ExpiredClips"].reduce(0) { partial, name in
+            let directory = container.appendingPathComponent(name, isDirectory: true)
+            let count = (try? FileManager.default.contentsOfDirectory(
+                at: directory,
+                includingPropertiesForKeys: nil,
+                options: [.skipsHiddenFiles]
+            ).count) ?? 0
+            return partial + count
+        }
+        return StorageSummary(
+            originalImageCount: images.count,
+            originalImageBytes: imageBytes,
+            pendingCount: pending.count,
+            pendingPayloadBytes: payloadBytes,
+            quarantinedCount: quarantinedCount
+        )
     }
 
     static func isValidImageFileName(_ fileName: String) -> Bool {

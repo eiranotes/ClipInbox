@@ -2,6 +2,8 @@ import SwiftUI
 
 struct InboxView: View {
     @Environment(AppStore.self) private var store
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Binding var selectedTab: AppTab
     @State private var filter: InboxFilter = .all
     @State private var showSortFlow = false
     @State private var actionClipID: Int?
@@ -17,11 +19,21 @@ struct InboxView: View {
             })
 
             VStack(spacing: Tokens.rowGap) {
+                if store.clips.isEmpty, filter == .all, dynamicTypeSize.isAccessibilitySize {
+                    FirstCaptureGuide {
+                        selectedTab = .add
+                    }
+                }
+
                 TwoRowHorizontalSelection(items: InboxFilter.allCases.map { item in
                     (store.filterLabel(item), filter == item, { filter = item })
                 })
 
-                if list.isEmpty {
+                if store.clips.isEmpty, filter == .all, !dynamicTypeSize.isAccessibilitySize {
+                    FirstCaptureGuide {
+                        selectedTab = .add
+                    }
+                } else if list.isEmpty {
                     EmptyStateView(title: "표시할 클립이 없습니다",
                                    message: "다른 항목을 선택하거나 새 클립을 추가해 보세요.")
                 } else {
@@ -47,6 +59,46 @@ struct InboxView: View {
             CardActionsSheet(clipID: clip.id)
                 .workflowSheet(.expanded)
         }
+    }
+}
+
+private struct FirstCaptureGuide: View {
+    let openAdd: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Tokens.sectionGap) {
+            StatePanel(
+                systemImage: "square.and.arrow.down",
+                title: "첫 클립을 저장해 보세요",
+                message: "Safari, Photos 또는 다른 앱의 공유 버튼에서 Clip Inbox를 선택하면 바로 인박스에 모입니다."
+            )
+
+            VStack(alignment: .leading, spacing: Tokens.cardGap) {
+                guideStep(1, title: "공유해서 저장", message: "공유 시트에서 Clip Inbox 선택")
+                guideStep(2, title: "바로 저장하거나 검토", message: "설정한 Quick 또는 Review 방식 사용")
+                guideStep(3, title: "나중에 정리", message: "폴더, 태그, 검색으로 다시 찾기")
+            }
+
+            Button(action: openAdd) {
+                Label("직접 추가", systemImage: "plus")
+            }
+            .buttonStyle(PrimaryBoxButtonStyle())
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private func guideStep(_ number: Int, title: String, message: String) -> some View {
+        HStack(alignment: .top, spacing: Tokens.cardGap) {
+            Text("\(number)")
+                .font(Tokens.bodyBold)
+                .frame(width: Tokens.destinationIcon, height: Tokens.destinationIcon)
+                .tokenSurface(fill: Tokens.accentYellow, radius: Tokens.radiusChip)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L10n.text(title)).font(Tokens.bodyBold)
+                Text(L10n.text(message)).font(Tokens.meta).foregroundStyle(Tokens.textSecondary)
+            }
+        }
+        .foregroundStyle(Tokens.textPrimary)
     }
 }
 
@@ -117,7 +169,7 @@ struct CardActionsSheet: View {
                 }
                 Button("취소", role: .cancel) {}
             } message: {
-                Text("이 클립은 인박스와 폴더에서 즉시 제거됩니다.")
+                Text("이 클립은 인박스와 폴더에서 제거되며 5초 동안 되돌릴 수 있습니다.")
             }
         }
     }

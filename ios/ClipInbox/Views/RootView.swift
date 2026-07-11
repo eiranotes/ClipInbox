@@ -39,7 +39,7 @@ struct RootView: View {
                 LibraryBootstrapGate(state: store.bootstrapState)
             } else {
                 switch selectedTab {
-                case .inbox: InboxTab()
+                case .inbox: InboxTab(selectedTab: $selectedTab)
                 case .folders: FoldersTab()
                 case .add: AddClipView()
                 case .search: SearchView()
@@ -54,15 +54,49 @@ struct RootView: View {
                     .transition(.identity)
             }
         }
-        .background(Tokens.bgApp.ignoresSafeArea())
-        .overlay(alignment: .bottom) {
-            if let toast = store.toast {
-                ToastView(message: toast)
-                    .padding(.bottom, 72)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if !store.bootstrapState.blocksLibrary {
+                VStack(spacing: 0) {
+                    if store.recoveredLibraryNotice {
+                        PersistentTrustBanner(
+                            systemImage: "checkmark.shield",
+                            title: "이전 보관함으로 복구했습니다",
+                            message: "손상된 원본은 복구 폴더에 보존되어 있습니다."
+                        ) {
+                            store.dismissRecoveredLibraryNotice()
+                        }
+                    }
+                    if let sharedQueueNotice = store.sharedQueueNotice {
+                        PersistentTrustBanner(
+                            systemImage: "tray.and.arrow.down",
+                            title: "공유 항목 확인이 필요합니다",
+                            message: sharedQueueNotice,
+                            isDanger: true
+                        ) {
+                            store.dismissSharedQueueNotice()
+                        }
+                    }
+                }
             }
         }
+        .background(Tokens.bgApp.ignoresSafeArea())
+        .overlay(alignment: .bottom) {
+            VStack(spacing: Tokens.rowGap) {
+                if let pendingDeletion = store.pendingDeletion {
+                    UndoDeletionBanner(title: pendingDeletion.clip.title) {
+                        store.undoDelete()
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                if let toast = store.toast {
+                    ToastView(message: toast)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .padding(.bottom, 72)
+        }
         .animation(.easeOut(duration: Tokens.motionBase), value: store.toast)
+        .animation(.easeOut(duration: Tokens.motionBase), value: store.pendingDeletion?.id)
         .overlay {
             if lock.isLocked {
                 AppLockView()
@@ -76,6 +110,62 @@ struct RootView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             keyboardVisible = false
         }
+    }
+}
+
+private struct PersistentTrustBanner: View {
+    let systemImage: String
+    let title: String
+    let message: String
+    var isDanger = false
+    let dismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: Tokens.rowGap) {
+            Image(systemName: systemImage)
+                .font(.system(size: 17, weight: .bold))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L10n.text(title))
+                    .font(Tokens.bodyBold)
+                Text(L10n.text(message))
+                    .font(Tokens.meta)
+            }
+            Spacer(minLength: Tokens.rowGap)
+            Button(action: dismiss) {
+                Image(systemName: "xmark")
+                    .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("복구 알림 닫기")
+        }
+        .foregroundStyle(Tokens.textPrimary)
+        .padding(.horizontal, Tokens.screenX)
+        .background(isDanger ? Tokens.accentYellow : Tokens.accentGreen)
+    }
+}
+
+private struct UndoDeletionBanner: View {
+    let title: String
+    let undo: () -> Void
+
+    var body: some View {
+        HStack(spacing: Tokens.cardGap) {
+            Image(systemName: "trash")
+                .font(.system(size: 16, weight: .bold))
+            Text(L10n.format("format.deleted_clip_title", title))
+                .font(Tokens.bodyBold)
+                .lineLimit(2)
+            Spacer(minLength: Tokens.rowGap)
+            Button("되돌리기", action: undo)
+                .font(Tokens.bodyBold)
+                .frame(minWidth: Tokens.touchTarget, minHeight: Tokens.touchTarget)
+        }
+        .foregroundStyle(Tokens.textPrimary)
+        .padding(.leading, Tokens.panelPad)
+        .padding(.trailing, Tokens.rowGap)
+        .tokenSurface(fill: Tokens.accentYellow, radius: Tokens.radiusButton,
+                      border: Tokens.borderSoft, borderWidth: Tokens.borderChipWidth)
+        .padding(.horizontal, Tokens.screenX)
     }
 }
 
@@ -206,6 +296,7 @@ struct ScreenHeader<Trailing: View>: View {
                 .foregroundStyle(Tokens.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+                .accessibilityAddTraits(.isHeader)
             Spacer(minLength: Tokens.rowGap)
             trailing
         }
@@ -216,9 +307,11 @@ struct ScreenHeader<Trailing: View>: View {
 // MARK: - 탭 루트 (탭별 NavigationStack)
 
 struct InboxTab: View {
+    @Binding var selectedTab: AppTab
+
     var body: some View {
         NavigationStack {
-            InboxView()
+            InboxView(selectedTab: $selectedTab)
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: Route.self) { route in
                     route.destination

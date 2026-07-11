@@ -44,6 +44,7 @@ struct TokenBadge: View {
 /// 열 개가 넘는 항목은 같은 5x2 리듬을 유지한 채 가로로 이어진다.
 struct TwoRowHorizontalSelection: View {
     @Environment(\.locale) private var locale
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     typealias SelectionItem = (label: String, active: Bool, action: () -> Void)
 
     private struct SelectionSlot: Identifiable {
@@ -76,6 +77,16 @@ struct TwoRowHorizontalSelection: View {
     }
 
     var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                accessibilitySelection
+            } else {
+                standardSelection
+            }
+        }
+    }
+
+    private var standardSelection: some View {
         GeometryReader { geometry in
             let gaps = Tokens.chipGap * CGFloat(Tokens.selectionColumnCount - 1)
             let columnWidth = max(
@@ -105,6 +116,33 @@ struct TwoRowHorizontalSelection: View {
         }
         .frame(height: Tokens.touchTarget * CGFloat(Tokens.selectionRowCount)
             + Tokens.chipGap * CGFloat(Tokens.selectionRowCount - 1))
+    }
+
+    private var accessibilitySelection: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                Button(action: item.action) {
+                    HStack(spacing: Tokens.cardGap) {
+                        Text(L10n.text(item.label, locale: locale))
+                            .font(Tokens.bodySemibold)
+                            .foregroundStyle(Tokens.textPrimary)
+                            .multilineTextAlignment(.leading)
+                        Spacer(minLength: Tokens.rowGap)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 14, weight: .bold))
+                            .opacity(item.active ? 1 : 0)
+                    }
+                    .padding(.vertical, Tokens.rowGap)
+                    .frame(maxWidth: .infinity, minHeight: Tokens.actionTarget, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .overlay(alignment: .bottom) {
+                        Tokens.borderSoft.frame(height: Tokens.borderChipWidth)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(item.active ? .isSelected : [])
+            }
+        }
     }
 
     private func selectionButton(_ item: SelectionItem) -> some View {
@@ -272,7 +310,10 @@ struct BoardSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.rowGap + 2) {
             HStack(spacing: Tokens.rowGap) {
-                Text(L10n.text(title, locale: locale)).font(Tokens.sectionTitle).foregroundStyle(Tokens.textPrimary)
+                Text(L10n.text(title, locale: locale))
+                    .font(Tokens.sectionTitle)
+                    .foregroundStyle(Tokens.textPrimary)
+                    .accessibilityAddTraits(.isHeader)
                 if let count {
                     Text("\(count)").font(Tokens.chip).foregroundStyle(Tokens.textSecondary)
                 }

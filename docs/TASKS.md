@@ -97,7 +97,7 @@
 
 - [x] Phase 1: implement the data-safe repository, recovery, version, and rollback contract.
 - [x] Phase 2: harden Share capture and App Lock, then replace the demo Add flow.
-- [ ] Phase 3: add trust states, Undo, storage/export disclosure, and accessibility variants.
+- [x] Phase 3: add trust states, Undo, storage/export disclosure, and accessibility variants.
 - [ ] Phase 4: complete CI, signed archive, policy, and physical-device release gates.
 
 ## Deferred

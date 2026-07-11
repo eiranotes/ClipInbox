@@ -18,6 +18,7 @@ Implemented screens:
 
 ## Completed Work
 
+- Completed audit Phase 3 with an honest empty-Inbox Share guide, a real Add handoff, durable five-second delete Undo, persistent recovered-library and quarantined-queue banners, on-device storage accounting, and explicit unencrypted JSON backup exclusions. Screen/section headings expose VoiceOver header traits; accessibility Dynamic Type switches the 5x2 selector to readable full-width rows and lets clip/detail content grow while normal sizes preserve the existing compact contracts.
 - Completed audit Phase 2: Share image providers now prefer file representations, enforce 50 MB/100 MP limits, time out and cancel after 10 seconds, and return after a 650 ms durable-save confirmation. The pending queue is ordered by capture time, bounded to 200 items/250 MB/30 days, quarantines corrupt or expired entries, and persists a payload identity into imported clips to prevent duplicate import after removal failures.
 - Replaced the hardcoded Add payload with a localized Link/Text/Photo/Memo form using canonical URL validation, exact-URL duplicate notice, PhotosPicker, the existing folder/tag controls, and the same repository transaction as other mutations. App Lock now refuses unsupported enablement, remains locked on capability/authentication failure, and covers inactive app-switcher snapshots with an opaque privacy view.
 - Completed audit Phase 1 with a small file-repository boundary, typed bootstrap/commit errors, version-2 gating, atomic current/previous snapshots, corrupt-file quarantine, previous-snapshot recovery, and rollback-backed mutations. Fresh installs now start with an empty clip library; unrecoverable and future-version libraries show a blocking recovery/update state instead of sample data.
@@ -75,7 +76,7 @@ Implemented screens:
 
 ## Next Steps
 
-- Execute audit Phase 3: add first-run guidance, delete Undo, storage/export disclosures, persistent degraded-state messaging, and Dynamic Type/VoiceOver variants without changing the normal-size 5x2 and one-viewport contracts.
+- Execute audit Phase 4: add repeatable CI/release validation, run unsigned and signed-where-available archive checks, verify manifests/entitlements/embedded extension, complete operational runbooks, and separate local proof from external policy/signing/device gates.
 - Replace the static `time` strings with `Date`-based values and a relative formatter once real capture exists.
 - Run the app on a Face ID-enrolled device/simulator session to exercise the interactive unlock path end to end.
 - Verify the same App Group capability with the distribution team's signing profile on a physical device before release.
@@ -91,5 +92,5 @@ Implemented screens:
 - iOS does not let a `com.apple.share-services` extension open its containing app through supported APIs, and the app cannot force itself to the first share-sheet position. The current default returns to the host app; users can place Clip Inbox first through the share sheet's More → Edit → Favorites order.
 - The headless simulator cannot complete a real Face ID prompt. Injected authenticator tests prove unavailable/failure states remain locked and success unlocks, while enrolled-device authentication still requires the physical-device release matrix.
 - Store submission is blocked until an owned support email and HTTPS support/privacy URLs are supplied; placeholders are documented but intentionally not invented.
-- Audit Phases 1–2 removed the false-success, corrupt-snapshot fallback, demo Add, unbounded Share provider/queue, and fail-open lock paths. Delete Undo, storage/recovery visibility, accessibility variants, and release gates remain in Phases 3–4.
+- Audit Phases 1–3 removed the false-success, corrupt-snapshot fallback, demo Add, unbounded Share provider/queue, fail-open lock, irreversible immediate delete, hidden storage scope, and fixed accessibility selector paths. CI/archive, owned policy URLs, signing, and physical-device gates remain in Phase 4.
 - Lighthouse was rerun three times per form factor after import hardening: mobile median 99/100/100/100 and desktop median 100/100/100/100. The remaining mobile performance point is limited by source minification, cache headers, and alternate image encoding in the dependency-free static serving path.

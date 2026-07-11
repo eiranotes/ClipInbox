@@ -64,8 +64,23 @@ enum ManualCaptureType: String, CaseIterable, Identifiable {
     }
 }
 
+struct AppStorageSummary: Equatable {
+    let snapshotBytes: Int64
+    let originalImageCount: Int
+    let originalImageBytes: Int64
+    let pendingCount: Int
+    let pendingPayloadBytes: Int64
+    let quarantinedCount: Int
+}
+
 @Observable
 final class AppStore {
+    struct PendingDeletion: Identifiable {
+        let id: UUID
+        let clip: Clip
+        let originalIndex: Int
+    }
+
     var clips: [Clip]
     var folders: [Folder]
     var preferences: Preferences
@@ -74,9 +89,13 @@ final class AppStore {
     private(set) var linkOpenMode: LinkOpenMode
     private(set) var bootstrapState: LibraryBootstrapState
     private(set) var storageErrorMessage: String?
+    private(set) var pendingDeletion: PendingDeletion? = nil
+    private(set) var recoveredLibraryNotice = false
+    private(set) var sharedQueueNotice: String? = nil
 
     var toast: String?
     private var toastTask: Task<Void, Never>?
+    @ObservationIgnored private var deletionTask: Task<Void, Never>?
 
     private let repository: any ClipRepository
     private let userDefaults: UserDefaults
@@ -119,6 +138,7 @@ final class AppStore {
                 folders = normalized.folders
                 preferences = normalized.preferences
                 bootstrapState = .recovered
+                recoveredLibraryNotice = true
             }
             storageErrorMessage = nil
         } catch ClipRepositoryError.unsupportedVersion(let version) {
@@ -134,6 +154,8 @@ final class AppStore {
             bootstrapState = .recoveryRequired
             storageErrorMessage = error.localizedDescription
         }
+        pendingDeletion = nil
+        sharedQueueNotice = nil
         try? syncSharedConfiguration()
     }
 
@@ -174,7 +196,15 @@ final class AppStore {
         let pending: [SharedClipQueue.Item]
         do {
             pending = try SharedClipQueue.pendingItems(containerURL: containerURL)
+            let summary = try SharedClipQueue.storageSummary(containerURL: containerURL)
+            if summary.quarantinedCount > 0 {
+                sharedQueueNotice = L10n.format(
+                    "format.quarantined_share_items",
+                    summary.quarantinedCount
+                )
+            }
         } catch {
+            sharedQueueNotice = error.localizedDescription
             #if DEBUG
             print("Share queue unavailable: \(error.localizedDescription)")
             #endif
@@ -260,6 +290,19 @@ final class AppStore {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         return try encoder.encode(snapshot())
+    }
+
+    func storageSummary(containerURL: URL? = nil) throws -> AppStorageSummary {
+        let snapshotBytes = Int64(try JSONEncoder().encode(snapshot()).count)
+        let shared = try SharedClipQueue.storageSummary(containerURL: containerURL)
+        return AppStorageSummary(
+            snapshotBytes: snapshotBytes,
+            originalImageCount: shared.originalImageCount,
+            originalImageBytes: shared.originalImageBytes,
+            pendingCount: shared.pendingCount,
+            pendingPayloadBytes: shared.pendingPayloadBytes,
+            quarantinedCount: shared.quarantinedCount
+        )
     }
 
     func importJSON(_ data: Data) throws {
@@ -574,12 +617,41 @@ final class AppStore {
 
     @discardableResult
     func deleteClip(id: Int) -> Bool {
-        let sharedImageName = clips.first(where: { $0.id == id })?.sharedImageName
-        guard clips.contains(where: { $0.id == id }) else { return false }
+        guard let index = clips.firstIndex(where: { $0.id == id }) else { return false }
+        finalizePendingDeletion()
+        let clip = clips[index]
         guard commitMutation({ clips.removeAll { $0.id == id } }) else { return false }
-        if let sharedImageName { try? SharedClipQueue.removeImage(named: sharedImageName) }
-        showToast("클립을 삭제했습니다")
+        let deletion = PendingDeletion(id: UUID(), clip: clip, originalIndex: index)
+        pendingDeletion = deletion
+        deletionTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled else { return }
+            self?.finalizePendingDeletion(id: deletion.id)
+        }
         return true
+    }
+
+    @discardableResult
+    func undoDelete() -> Bool {
+        guard let deletion = pendingDeletion else { return false }
+        deletionTask?.cancel()
+        let insertionIndex = min(deletion.originalIndex, clips.count)
+        guard commitMutation({ clips.insert(deletion.clip, at: insertionIndex) }) else {
+            scheduleDeletionFinalization(deletion)
+            return false
+        }
+        pendingDeletion = nil
+        deletionTask = nil
+        showToast("삭제를 취소했습니다")
+        return true
+    }
+
+    func dismissRecoveredLibraryNotice() {
+        recoveredLibraryNotice = false
+    }
+
+    func dismissSharedQueueNotice() {
+        sharedQueueNotice = nil
     }
 
     func canonicalManualURL(_ value: String) -> String? {
@@ -828,6 +900,8 @@ final class AppStore {
 
     @discardableResult
     func deleteAllData() -> Bool {
+        deletionTask?.cancel()
+        pendingDeletion = nil
         guard commitMutation({
             clips = []
             folders = DefaultData.folders
@@ -892,5 +966,24 @@ final class AppStore {
 
     private func saveTagCatalog() {
         userDefaults.set(tagCatalog, forKey: Self.tagCatalogKey)
+    }
+
+    private func scheduleDeletionFinalization(_ deletion: PendingDeletion) {
+        deletionTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled else { return }
+            self?.finalizePendingDeletion(id: deletion.id)
+        }
+    }
+
+    private func finalizePendingDeletion(id: UUID? = nil) {
+        guard let deletion = pendingDeletion,
+              id == nil || deletion.id == id else { return }
+        deletionTask?.cancel()
+        if let imageName = deletion.clip.sharedImageName {
+            try? SharedClipQueue.removeImage(named: imageName)
+        }
+        pendingDeletion = nil
+        deletionTask = nil
     }
 }

@@ -3,6 +3,7 @@ import SwiftUI
 /// 인박스 클립 카드: 전체가 상세 진입 히트 타깃이고, 메뉴 버튼만 독립 컨트롤이다.
 struct ClipCardView: View {
     @Environment(\.locale) private var locale
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let clip: Clip
     var onMenu: () -> Void
 
@@ -37,7 +38,7 @@ struct ClipCardView: View {
                 Text(L10n.text(clip.title, locale: locale))
                     .font(Tokens.cardTitle)
                     .foregroundStyle(Tokens.textPrimary)
-                    .lineLimit(2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
                     .multilineTextAlignment(.leading)
                 Text(L10n.text(clip.source, locale: locale))
                     .font(Tokens.meta)
@@ -54,7 +55,9 @@ struct ClipCardView: View {
         }
         .padding(.leading, Tokens.space1)
         .padding(.trailing, Tokens.space1)
-        .frame(height: Tokens.clipRowContentHeight)
+        .frame(minHeight: Tokens.clipRowContentHeight)
+        .frame(height: dynamicTypeSize.isAccessibilitySize ? nil : Tokens.clipRowContentHeight)
+        .fixedSize(horizontal: false, vertical: dynamicTypeSize.isAccessibilitySize)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
     }
@@ -63,6 +66,7 @@ struct ClipCardView: View {
 /// 검색 결과·폴더 상세에서 쓰는 컴팩트 행.
 struct CompactResultRow: View {
     @Environment(\.locale) private var locale
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let clip: Clip
     var onOpen: () -> Void = {}
 
@@ -73,7 +77,7 @@ struct CompactResultRow: View {
                     Text(L10n.text(clip.title, locale: locale))
                         .font(Tokens.bodySemibold)
                         .foregroundStyle(Tokens.textPrimary)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
                     Text(L10n.text(clip.source, locale: locale))
                         .font(Tokens.meta)
                         .foregroundStyle(Tokens.textSecondary)
@@ -85,7 +89,9 @@ struct CompactResultRow: View {
                         .frame(width: Tokens.resultThumbnailWidth, height: Tokens.resultThumbnailHeight)
                 }
             }
-            .frame(height: Tokens.resultRowContentHeight)
+            .frame(minHeight: Tokens.resultRowContentHeight)
+            .frame(height: dynamicTypeSize.isAccessibilitySize ? nil : Tokens.resultRowContentHeight)
+            .fixedSize(horizontal: false, vertical: dynamicTypeSize.isAccessibilitySize)
             .padding(.vertical, Tokens.cardPad)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())

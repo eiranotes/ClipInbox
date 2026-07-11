@@ -5,6 +5,7 @@ struct DetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @Environment(\.locale) private var locale
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let clipID: Int
 
     @State private var showShare = false
@@ -45,6 +46,7 @@ struct DetailView: View {
                         .font(Tokens.sectionTitle)
                         .foregroundStyle(Tokens.textPrimary)
                         .lineSpacing(Tokens.titleLineSpacing)
+                        .accessibilityAddTraits(.isHeader)
                     HStack(spacing: Tokens.rowGap) {
                         HStack(spacing: 5) {
                             Image(systemName: "globe").font(.system(size: 12, weight: .bold))
@@ -62,7 +64,9 @@ struct DetailView: View {
                         } label: {
                             ClipThumbnail(clip: clip, contentMode: .fit)
                                 .frame(maxWidth: .infinity)
-                                .frame(height: Tokens.detailImageHeight)
+                                .frame(height: dynamicTypeSize.isAccessibilitySize
+                                       ? Tokens.detailImageHeight * 1.6
+                                       : Tokens.detailImageHeight)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -83,6 +87,7 @@ struct DetailView: View {
                         Text("노트")
                             .font(Tokens.sectionTitle)
                             .foregroundStyle(Tokens.textPrimary)
+                            .accessibilityAddTraits(.isHeader)
                         Spacer(minLength: Tokens.rowGap)
                         Button("저장", action: saveNote)
                             .font(Tokens.bodySemibold)
@@ -96,7 +101,9 @@ struct DetailView: View {
                             .lineSpacing(Tokens.bodyLineSpacing)
                             .scrollContentBackground(.hidden)
                             .padding(Tokens.rowGap)
-                            .frame(minHeight: Tokens.noteEditorMinHeight)
+                            .frame(minHeight: dynamicTypeSize.isAccessibilitySize
+                                   ? Tokens.noteEditorMinHeight * 2
+                                   : Tokens.noteEditorMinHeight)
                             .background(Tokens.bgCard)
                             .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusInput, style: .continuous))
                             .overlay(
@@ -118,6 +125,7 @@ struct DetailView: View {
                     Text("정리")
                         .font(Tokens.sectionTitle)
                         .foregroundStyle(Tokens.textPrimary)
+                        .accessibilityAddTraits(.isHeader)
                     organizeRow(label: "폴더", value: clip.folder, systemImage: "folder") {
                         showMove = true
                     }
@@ -142,13 +150,23 @@ struct DetailView: View {
                     .disabled(clip.url.isEmpty)
                     .opacity(clip.url.isEmpty ? 0.5 : 1)
 
-                    HStack(spacing: 0) {
-                        quietAction(label: "이동", systemImage: "folder") { showMove = true }
-                        Tokens.borderSoft.frame(width: Tokens.borderChipWidth, height: Tokens.touchTarget)
-                        quietAction(label: "편집", systemImage: "pencil") { showEdit = true }
-                        Tokens.borderSoft.frame(width: Tokens.borderChipWidth, height: Tokens.touchTarget)
-                        quietAction(label: "삭제", systemImage: "trash", isDanger: true) {
-                            showDeleteConfirm = true
+                    if dynamicTypeSize.isAccessibilitySize {
+                        VStack(spacing: Tokens.rowGap) {
+                            quietAction(label: "이동", systemImage: "folder") { showMove = true }
+                            quietAction(label: "편집", systemImage: "pencil") { showEdit = true }
+                            quietAction(label: "삭제", systemImage: "trash", isDanger: true) {
+                                showDeleteConfirm = true
+                            }
+                        }
+                    } else {
+                        HStack(spacing: 0) {
+                            quietAction(label: "이동", systemImage: "folder") { showMove = true }
+                            Tokens.borderSoft.frame(width: Tokens.borderChipWidth, height: Tokens.touchTarget)
+                            quietAction(label: "편집", systemImage: "pencil") { showEdit = true }
+                            Tokens.borderSoft.frame(width: Tokens.borderChipWidth, height: Tokens.touchTarget)
+                            quietAction(label: "삭제", systemImage: "trash", isDanger: true) {
+                                showDeleteConfirm = true
+                            }
                         }
                     }
                 }
@@ -180,7 +198,7 @@ struct DetailView: View {
                 }
                 Button("취소", role: .cancel) {}
             } message: {
-                Text("이 클립은 인박스와 폴더에서 즉시 제거됩니다.")
+                Text("이 클립은 인박스와 폴더에서 제거되며 5초 동안 되돌릴 수 있습니다.")
             }
             .onAppear {
                 noteDraft = clip.memo ?? ""

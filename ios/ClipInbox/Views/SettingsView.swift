@@ -10,6 +10,7 @@ enum SettingKey: String, Hashable, CaseIterable {
     case tags
     case shareMode = "share-mode"
     case linkOpening = "link-opening"
+    case storage
     case backup
     case importData = "import"
     case about
@@ -24,6 +25,7 @@ enum SettingKey: String, Hashable, CaseIterable {
         case .tags: return "태그 관리"
         case .shareMode: return "공유 저장 방식"
         case .linkOpening: return "링크 열기 방식"
+        case .storage: return "저장 공간"
         case .backup: return "백업 및 내보내기"
         case .importData: return "가져오기"
         case .about: return "앱 정보"
@@ -40,6 +42,7 @@ enum SettingKey: String, Hashable, CaseIterable {
         case .tags: return "tag"
         case .shareMode: return "square.and.arrow.down"
         case .linkOpening: return "safari"
+        case .storage: return "internaldrive"
         case .backup: return "square.and.arrow.up"
         case .importData: return "square.and.arrow.down"
         case .about: return "info.circle"
@@ -69,6 +72,7 @@ struct SettingsView: View {
 
             sectionHeading("데이터")
             settingsGroup([
+                (.storage, ""),
                 (.backup, "JSON"),
                 (.importData, "JSON")
             ])
@@ -94,7 +98,7 @@ struct SettingsView: View {
             }
             Button("취소", role: .cancel) {}
         } message: {
-            Text("로컬에 저장된 클립, 폴더, 설정을 기본값으로 되돌립니다.")
+            Text("클립, 폴더, 설정과 원본 이미지를 삭제합니다. 필요한 경우 먼저 JSON과 원본 이미지를 별도로 내보내세요.")
         }
     }
 
@@ -152,6 +156,7 @@ struct SettingDetailView: View {
     @State private var newTag = ""
     @State private var editingTag: TagEditTarget?
     @State private var deletingTag: String?
+    @State private var storageSummary: AppStorageSummary?
 
     var body: some View {
         ScreenScaffold {
@@ -167,7 +172,10 @@ struct SettingDetailView: View {
                     .foregroundStyle(Tokens.danger)
             }
         }
-        .onAppear { pending = currentValue }
+        .onAppear {
+            pending = currentValue
+            if key == .storage { loadStorageSummary() }
+        }
         .fileExporter(isPresented: $showExporter,
                       document: exportDocument,
                       contentType: .json,
@@ -306,6 +314,11 @@ struct SettingDetailView: View {
                     .foregroundStyle(Tokens.textPrimary)
                     .lineSpacing(Tokens.bodyLineSpacing)
             }
+            StatePanel(
+                systemImage: "exclamationmark.shield",
+                title: "평문 JSON 백업",
+                message: "클립, 폴더와 현재 설정만 포함합니다. 원본 이미지, 최근 검색, 태그 카탈로그와 링크 열기 설정은 포함하지 않으며 선택한 파일 위치에 암호화되지 않은 사본이 남습니다."
+            )
             Button {
                 do {
                     exportDocument = JSONBackupDocument(data: try store.exportJSON())
@@ -317,6 +330,34 @@ struct SettingDetailView: View {
                 Label("JSON 내보내기", systemImage: "square.and.arrow.up")
             }
             .buttonStyle(PrimaryBoxButtonStyle())
+
+        case .storage:
+            if let storageSummary {
+                BoardSection(title: "기기 저장 공간") {
+                    VStack(spacing: 0) {
+                        storageRow("클립 데이터", value: byteText(storageSummary.snapshotBytes))
+                        storageRow("원본 이미지", value: L10n.format(
+                            "format.storage_images",
+                            storageSummary.originalImageCount,
+                            byteText(storageSummary.originalImageBytes)
+                        ))
+                        storageRow("가져오기 대기", value: L10n.format(
+                            "format.storage_pending",
+                            storageSummary.pendingCount,
+                            byteText(storageSummary.pendingPayloadBytes)
+                        ))
+                        storageRow("격리된 항목", value: "\(storageSummary.quarantinedCount)")
+                    }
+                }
+                StatePanel(
+                    systemImage: "info.circle",
+                    title: "원본 보존 정책",
+                    message: "이미지는 원본 형식과 바이트를 유지합니다. 자동 압축이나 자동 삭제는 하지 않으며, 클립 삭제 후 5초 안에는 되돌릴 수 있습니다."
+                )
+            } else if let errorMessage {
+                StatePanel(systemImage: "externaldrive.badge.exclamationmark",
+                           title: "저장 공간을 확인할 수 없습니다", message: errorMessage, isDanger: true)
+            }
 
         case .importData:
             BoardSection(title: "백업 파일") {
@@ -379,6 +420,7 @@ struct SettingDetailView: View {
         switch key {
         case .defaultFolder, .tags: return 0
         case .appLock, .theme, .language, .shareMode, .linkOpening: return Tokens.settingChoiceTop
+        case .storage: return 0
         default: return Tokens.settingActionTop
         }
     }
@@ -391,6 +433,35 @@ struct SettingDetailView: View {
             Keyboard.dismiss()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func loadStorageSummary() {
+        do {
+            storageSummary = try store.storageSummary()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func byteText(_ bytes: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+    }
+
+    private func storageRow(_ label: String, value: String) -> some View {
+        HStack(spacing: Tokens.cardGap) {
+            Text(L10n.text(label))
+                .font(Tokens.bodySemibold)
+            Spacer(minLength: Tokens.rowGap)
+            Text(value)
+                .font(Tokens.meta)
+                .foregroundStyle(Tokens.textSecondary)
+        }
+        .foregroundStyle(Tokens.textPrimary)
+        .frame(minHeight: Tokens.actionTarget)
+        .overlay(alignment: .bottom) {
+            Tokens.borderSoft.frame(height: Tokens.borderChipWidth)
         }
     }
 

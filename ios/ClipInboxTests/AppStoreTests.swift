@@ -138,6 +138,21 @@ final class AppStoreTests: XCTestCase {
         XCTAssertNil(reloaded.clip(id: 5))
     }
 
+    func testDeleteCanBeUndoneAndPersistsRestoredClip() throws {
+        try seedDefaultLibrary()
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+
+        XCTAssertTrue(store.deleteClip(id: 1))
+        XCTAssertNil(store.clip(id: 1))
+        XCTAssertEqual(store.pendingDeletion?.clip.id, 1)
+        XCTAssertTrue(store.undoDelete())
+        XCTAssertEqual(store.clip(id: 1)?.title, DefaultData.clips[0].title)
+        XCTAssertNil(store.pendingDeletion)
+
+        let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
+        XCTAssertNotNil(reloaded.clip(id: 1))
+    }
+
     func testUpdateTagsCleansValuesPersistsAndSkipsNoOp() throws {
         try seedDefaultLibrary()
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
@@ -583,5 +598,32 @@ final class AppStoreTests: XCTestCase {
         XCTAssertThrowsError(try SharedImageAsset(validatingFileAt: oversizedURL)) { error in
             XCTAssertEqual(error as? SharedImageAssetError, .tooLarge(maxMegabytes: 50))
         }
+    }
+
+    func testStorageSummarySeparatesSnapshotImagesPendingAndQuarantine() throws {
+        let container = temporaryDirectory.appendingPathComponent("StorageSummary", isDirectory: true)
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8)).image { context in
+            UIColor.systemGreen.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+        }
+        let asset = try XCTUnwrap(SharedImageAsset(data: try XCTUnwrap(image.pngData())))
+        _ = try SharedClipQueue.storeImageAsset(asset, for: UUID(), containerURL: container)
+        let payload = SharedClipPayload(type: .text, title: "pending", source: "test", text: "pending")
+        try SharedClipQueue.enqueue(payload, containerURL: container)
+        let pendingDirectory = container.appendingPathComponent("PendingClips", isDirectory: true)
+        try Data("broken".utf8).write(to: pendingDirectory.appendingPathComponent("broken.json"))
+
+        let shared = try SharedClipQueue.storageSummary(containerURL: container)
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+        let app = try store.storageSummary(containerURL: container)
+
+        XCTAssertEqual(shared.originalImageCount, 1)
+        XCTAssertGreaterThan(shared.originalImageBytes, 0)
+        XCTAssertEqual(shared.pendingCount, 1)
+        XCTAssertGreaterThan(shared.pendingPayloadBytes, 0)
+        XCTAssertEqual(shared.quarantinedCount, 1)
+        XCTAssertGreaterThan(app.snapshotBytes, 0)
+        XCTAssertEqual(app.originalImageCount, shared.originalImageCount)
     }
 }
