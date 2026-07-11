@@ -11,6 +11,7 @@ struct ClipInboxApp: App {
             RootView()
                 .environment(store)
                 .environment(lock)
+                .environment(\.locale, Locale(identifier: store.preferences.appLanguage.localeIdentifier))
                 .font(Tokens.body)
                 .preferredColorScheme(.light)
                 .onAppear {

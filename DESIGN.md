@@ -91,6 +91,8 @@ Responsive and control-size tokens:
 | size.resultRowContentHeight | native only | 48px | Fixed compact-result content height with or without media |
 | size.detailImageHeight | native only | 140px | Detail/sort/save preview image height, sized so detail fits one screen |
 | size.noteEditorMinHeight | native only | 72px | Detail note editor minimum height |
+| size.shareQuickHeight | native only | 132px | Compact Share Extension saving/saved card host height |
+| size.shareReviewHeight | native only | 390px | Share Extension folder and memo review form height |
 | layout.appMax | `--layout-app-max` | 960px | Wide application-shell maximum |
 | layout.contentMax | `--layout-content-max` | 720px | Readable secondary-workflow measure |
 | layout.gridBreakpoint | `--layout-grid-breakpoint` | 760px | Two-column workbench threshold |
@@ -108,7 +110,9 @@ Detail screen: the whole read flow — badges, title, source, preview, descripti
 
 Row hit areas: every selectable row (action rows, destination rows, selection rows) accepts taps across its full width and height, not only on the label or icon.
 
-Share Extension feedback: saving is zero-confirm, then a compact green confirmation card ("Clip Inbox에 저장됨", checkmark, 10px radius, soft border) appears for about 0.85s before returning to the host app. Korean particles in dynamic labels and toasts follow the final consonant ("디자인으로", "인박스로").
+Share Extension feedback: saving is zero-confirm, then a compact green confirmation card ("Clip Inbox에 저장됨", checkmark, 10px radius, soft border) appears for about 1.2s before returning to the host app. Korean particles in dynamic labels and toasts follow the final consonant ("디자인으로", "인박스로").
+
+Share Extension modes: quick save uses only one centered compact status card on a transparent host, constrained to `size.shareQuickHeight`; it never paints a full-screen app canvas. Review-before-save uses `size.shareReviewHeight` and shows one folder menu, one memo editor, and one primary save action. Both modes reuse the same radius, border, color, type, spacing, and motion tokens as the app.
 
 Clip row: full-width navigation target with 12px vertical padding and a soft bottom divider. The inbox hierarchy is title first, source second, then an optional 80x64 thumbnail. Type, state, time, and tags are detail-only metadata. The menu remains an independent 44px trailing target. There is no outer row card or shadow.
 

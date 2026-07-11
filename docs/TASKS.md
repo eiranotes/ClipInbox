@@ -75,6 +75,12 @@
 - [x] Show a compact saved-confirmation card in the Share Extension after zero-confirm capture.
 - [x] Fix Korean 로/으로 particles in dynamic folder labels and make selectable action rows fully tappable.
 - [x] Cache shared-image thumbnail decoding and re-verify the eight-test XCTest suite plus live simulator flows.
+- [x] Implement Korean, English, and Japanese localization across the native app, shared UI, default sample content, toasts, Face ID purpose text, and Share Extension.
+- [x] Add an App Group-backed Share save preference with immediate-save and folder-plus-memo review modes.
+- [x] Change fresh-install defaults to App Lock off and immediate Share save on, with persistence regressions.
+- [x] Replace the Share Extension's internal full-canvas feedback with a compact saved card and opt out of full-screen extension presentation.
+- [x] Exercise both Share modes through Safari, confirm review-mode import in the inbox, and record localized visual evidence.
+- [x] Add app and extension privacy manifests plus Korean, English, and Japanese App Store copy, privacy-policy draft, screenshot plan, and release checklist.
 
 ## In Progress
 
@@ -85,5 +91,7 @@
 - [ ] Date-based clip timestamps with a relative formatter.
 - [ ] Interactive Face ID unlock verification on an enrolled device.
 - [ ] Physical-device App Group/signing verification with the release Apple Developer team.
+- [ ] Replace the placeholder support email and publish owned HTTPS support/privacy URLs before App Store submission.
+- [ ] Complete App Store Connect metadata, screenshots, privacy answers, signed archive validation, and physical-device release checks.
 - [ ] Production bundling/minification, cache headers, and alternate responsive image encoding if the static prototype becomes a deployed web app.
 - [ ] Re-run Open Design agent refinement when model usage credits are available.

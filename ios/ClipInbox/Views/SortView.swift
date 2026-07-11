@@ -4,6 +4,7 @@ import SwiftUI
 struct SortView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
 
     @State private var total = 0
     @State private var completed = 0
@@ -56,11 +57,11 @@ struct SortView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: Tokens.detailImageHeight)
             }
-            Text(clip.title)
+            Text(L10n.text(clip.title, locale: locale))
                 .font(Tokens.sectionTitle)
                 .foregroundStyle(Tokens.textPrimary)
                 .lineSpacing(Tokens.titleLineSpacing)
-            Text(clip.source)
+            Text(L10n.text(clip.source, locale: locale))
                 .font(Tokens.meta)
                 .foregroundStyle(Tokens.textSecondary)
         }
@@ -82,7 +83,7 @@ struct SortView: View {
             completed += 1
             syncChoice()
         } label: {
-            Text("\(selected.withRoParticle) 분류하고 다음")
+            Text(L10n.format("format.sort_to_folder", L10n.text(selected)))
         }
         .buttonStyle(PrimaryBoxButtonStyle())
     }

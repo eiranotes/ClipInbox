@@ -7,12 +7,12 @@ Clip Inbox's production source of truth is now the native SwiftUI iOS app under 
 Implemented screens:
 
 - Inbox with a two-row, five-column equal-width filter grid, full-row clip navigation, optional thumbnails, and text-only rows that keep the same height as media rows.
-- Share Extension that saves immediately after the user taps Clip Inbox in the system share sheet — no second Save/OK step — then shows a compact green "Clip Inbox에 저장됨" confirmation card for about 0.85s before returning to the host app.
+- Share Extension with two user-selectable behaviors: immediate save shows one compact localized success card for about 1.2 seconds before returning, while review mode exposes only folder, memo, save, and cancel controls.
 - Detail view with a 16pt content rhythm that fits one viewport through the 링크 열기 action (140pt preview, 72pt note editor), directly editable note and tags (the tag row opens the tag editor directly), flat organization rows, and actions kept above the bottom navigation.
 - Folder list with flat rows and counts, sharing the settings screen's row anatomy and inset divider rule so both screens' icons sit on one axis.
 - Search with the shared 5x2 category selector, persisted real recent searches, results, and empty state. The keyboard opens only from a direct field tap, is prewarmed at launch for instant presentation, and dismisses on outside taps or tab switches.
 - Sort Later classification flow without scores or percentages.
-- Settings with app lock, theme, language, default folder, JSON export/import, app info, contact, and delete; the decorative app-icon preview was removed.
+- Settings with app lock, theme, working Korean/English/Japanese language selection, default folder, Share save behavior, JSON export/import, app info, contact, and delete; fresh installs default to App Lock off and immediate Share save.
 - CTA destination screens for card menu, share, more actions, external link confirmation, folder move, clip edit, delete confirmation, save destination, tag editor, new folder, folder detail, and setting detail. Inbox filtering is direct and bookmark is an immediate toggle.
 - Native iOS Share Extension exposed in Safari and Photos, with App Group delivery into the app for links, text, and images.
 
@@ -61,12 +61,16 @@ Implemented screens:
 - Added `ClipInboxTests` and passed three XCTest regressions covering tag filtering/search, recent-search persistence, and core mutation reload behavior. Runtime screenshots and CTA smoke evidence are in `.superloopy/evidence/frontend/20260710-ios-tag-search-audit`.
 - Reworked the keyboard policy (tap-only focus, launch prewarm, outside-tap and tab-switch dismissal), which also removed the `containerToPush is nil` warning; added direct tag editing from detail with an `updateTags` mutation; unified folder/settings destination rows behind `DestinationRow` + `RowDivider` with pixel-matched icon axes; and added line-spacing tokens for multi-line text.
 - Compressed detail to a one-viewport read flow (140pt preview, 72pt note editor), fixed fill-mode thumbnail overflow via overlay-and-clip composition, cached shared-image decoding in `NSCache`, added the Share Extension saved-confirmation card, made action rows fully tappable, and corrected Korean 로/으로 particles with a tested helper. Eight XCTest regressions pass; evidence in `.superloopy/evidence/frontend/20260711-keyboard-lock-folder`.
+- Added bundle-backed Korean, English, and Japanese localization across the production app and Share Extension; language changes take effect immediately and include default samples, accessibility labels, errors, toasts, and Face ID purpose text.
+- Added App Group-backed immediate/review Share modes. Safari review-save imported `Example Domain` and raised the live inbox count from 5 to 6; quick-save displayed only the compact English success card and auto-returned. Evidence in `.superloopy/evidence/frontend/20260711-localization-share-release`.
+- Added privacy manifests for both executables and prepared localized ASO copy, screenshot storyboard, release checklist, and a trilingual privacy-policy draft under `docs/app-store/`.
 
 ## Next Steps
 
 - Replace the static `time` strings with `Date`-based values and a relative formatter once real capture exists.
 - Run the app on a Face ID-enrolled device/simulator session to exercise the interactive unlock path end to end.
 - Verify the same App Group capability with the distribution team's signing profile on a physical device before release.
+- Replace `support@clipinbox.local`, publish owned HTTPS support/privacy pages, and complete App Store Connect metadata, privacy answers, screenshots, archive validation, and upload.
 
 ## Known Risks
 
@@ -75,4 +79,5 @@ Implemented screens:
 - Simulator registration and data transfer are proven. A physical-device build still requires the same Apple Developer team and App Group capability on both the app and extension provisioning profiles.
 - On the external volume, `xcodebuild` fails with index-store rename errors unless DerivedData lives on the local disk and `COMPILER_INDEX_STORE_ENABLE=NO` is set (see DECISIONS).
 - The headless simulator cannot complete the Face ID prompt, so the interactive unlock path is verified only up to the lock screen and automatic fallback; the settings-driven lock/unlock logic itself is exercised.
+- Store submission is blocked until an owned support email and HTTPS support/privacy URLs are supplied; placeholders are documented but intentionally not invented.
 - Lighthouse was rerun three times per form factor after import hardening: mobile median 99/100/100/100 and desktop median 100/100/100/100. The remaining mobile performance point is limited by source minification, cache headers, and alternate image encoding in the dependency-free static serving path.

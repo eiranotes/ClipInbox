@@ -92,7 +92,9 @@ struct AddClipView: View {
                 store.saveNewClip(destination: destination, tags: tags, memo: memo)
                 saved = true
             } label: {
-                Text(saved ? "\(destination)에 저장됨" : "\(destination)에 저장")
+                Text(saved
+                     ? L10n.format("format.saved_in_folder", L10n.text(destination))
+                     : L10n.format("format.save_to_folder", L10n.text(destination)))
             }
             .buttonStyle(PrimaryBoxButtonStyle())
             .disabled(saved)
@@ -143,7 +145,7 @@ struct DestinationSheet: View {
                 VStack(spacing: 0) {
                     ForEach(store.destinationFolders) { folder in
                         ActionRow(systemImage: folder.systemImage, label: folder.label,
-                                  value: "\(store.folderCount(folder.label))개 클립",
+                                  value: L10n.format("format.folder_clip_count", store.folderCount(folder.label)),
                                   isSelected: destination == folder.label) {
                             destination = folder.label
                         }

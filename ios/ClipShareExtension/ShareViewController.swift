@@ -2,105 +2,262 @@ import UIKit
 import UniformTypeIdentifiers
 
 final class ShareViewController: UIViewController {
+    private var configuration = SharedClipConfiguration.standard
     private var pendingImageData: Data?
-    private var hasStartedSaving = false
+    private var pendingPayload: SharedClipPayload?
+    private var selectedFolder = ""
+    private var hasStarted = false
+
     private let activityIndicator = UIActivityIndicatorView(style: .medium)
     private let statusLabel = UILabel()
+    private let statusCard = UIView()
+    private let memoTextView = UITextView()
+    private let folderButton = UIButton(type: .system)
+    private let saveButton = UIButton(type: .system)
 
-    private enum AutoSaveError: LocalizedError {
+    private enum ShareError: LocalizedError {
         case missingPayload
 
         var errorDescription: String? {
-            "공유한 링크, 텍스트 또는 이미지를 읽을 수 없습니다."
+            SharedL10n.text("공유한 링크, 텍스트 또는 이미지를 읽을 수 없습니다.")
         }
+    }
+
+    // DESIGN.md: bg.app/card, accent.yellow/green, border.soft, text.primary/secondary.
+    private enum Palette {
+        static let bgApp = UIColor(red: 0xF3 / 255, green: 0xEF / 255, blue: 0xE7 / 255, alpha: 1)
+        static let bgCard = UIColor.white
+        static let accentYellow = UIColor(red: 0xFF / 255, green: 0xD9 / 255, blue: 0, alpha: 1)
+        static let accentGreen = UIColor(red: 0x9B / 255, green: 0xE7 / 255, blue: 0xB0 / 255, alpha: 1)
+        static let borderSoft = UIColor(red: 0xD8 / 255, green: 0xD1 / 255, blue: 0xC4 / 255, alpha: 1)
+        static let textPrimary = UIColor(red: 0x17 / 255, green: 0x17 / 255, blue: 0x14 / 255, alpha: 1)
+        static let textSecondary = UIColor(red: 0x5F / 255, green: 0x63 / 255, blue: 0x68 / 255, alpha: 1)
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        configureSavingView()
+        configuration = SharedClipQueue.loadConfiguration()
+        selectedFolder = configuration.defaultFolder
+        modalPresentationStyle = .formSheet
+        view.backgroundColor = .clear
+
+        switch configuration.saveMode {
+        case .quick:
+            preferredContentSize = CGSize(width: 320, height: 132)
+            configureCompactStatus()
+        case .review:
+            preferredContentSize = CGSize(width: 0, height: 390)
+            configureReviewLoadingState()
+        }
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        guard !hasStartedSaving else { return }
-        hasStartedSaving = true
-        Task { @MainActor in await saveAndComplete() }
+        guard !hasStarted else { return }
+        hasStarted = true
+        Task { @MainActor in
+            do {
+                guard let payload = await loadPayload() else { throw ShareError.missingPayload }
+                pendingPayload = payload
+                switch configuration.saveMode {
+                case .quick:
+                    await saveAndComplete(payload)
+                case .review:
+                    configureReviewForm(payload)
+                }
+            } catch {
+                showFailure(error)
+            }
+        }
     }
 
-    // DESIGN.md 토큰: bg.app, accent.green, border.soft, text.primary
-    private enum Palette {
-        static let bgApp = UIColor(red: 0xF3 / 255, green: 0xEF / 255, blue: 0xE7 / 255, alpha: 1)
-        static let accentGreen = UIColor(red: 0x9B / 255, green: 0xE7 / 255, blue: 0xB0 / 255, alpha: 1)
-        static let borderSoft = UIColor(red: 0xD8 / 255, green: 0xD1 / 255, blue: 0xC4 / 255, alpha: 1)
-        static let textPrimary = UIColor(red: 0x17 / 255, green: 0x17 / 255, blue: 0x14 / 255, alpha: 1)
+    private func localized(_ key: String) -> String {
+        SharedL10n.text(key, language: configuration.language)
     }
 
-    private func configureSavingView() {
-        view.backgroundColor = Palette.bgApp
+    private func font(size: CGFloat, semibold: Bool = false) -> UIFont {
+        let name = semibold ? "Pretendard-SemiBold" : "Pretendard-Regular"
+        return UIFont(name: name, size: size) ?? .systemFont(ofSize: size, weight: semibold ? .semibold : .regular)
+    }
+
+    /// Quick mode paints only one compact card. The extension host remains transparent.
+    private func configureCompactStatus() {
+        statusCard.subviews.forEach { $0.removeFromSuperview() }
+        activityIndicator.isHidden = false
         activityIndicator.startAnimating()
-        statusLabel.text = "Clip Inbox에 저장하는 중…"
-        statusLabel.font = UIFont(name: "Pretendard-Regular", size: 15) ?? .preferredFont(forTextStyle: .body)
+        activityIndicator.color = Palette.textPrimary
+        statusLabel.text = localized("Clip Inbox에 저장하는 중…")
+        statusLabel.font = font(size: 15)
         statusLabel.textColor = Palette.textPrimary
 
-        let stack = UIStackView(arrangedSubviews: [activityIndicator, statusLabel])
-        stack.axis = .vertical
-        stack.alignment = .center
-        stack.spacing = 12
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            stack.centerYAnchor.constraint(equalTo: view.centerYAnchor)
-        ])
-    }
-
-    /// 저장 직후 앱 토스트와 같은 언어의 확인 카드를 잠깐 보여 준다.
-    @MainActor
-    private func showSavedConfirmation() {
-        activityIndicator.stopAnimating()
-        statusLabel.isHidden = true
-
-        let icon = UIImageView(image: UIImage(systemName: "checkmark.circle"))
-        icon.tintColor = Palette.textPrimary
-        icon.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 16, weight: .bold)
-
-        let label = UILabel()
-        label.text = "Clip Inbox에 저장됨"
-        label.font = UIFont(name: "Pretendard-Regular", size: 15) ?? .preferredFont(forTextStyle: .body)
-        label.textColor = Palette.textPrimary
-
-        let content = UIStackView(arrangedSubviews: [icon, label])
+        let content = UIStackView(arrangedSubviews: [activityIndicator, statusLabel])
         content.axis = .horizontal
         content.alignment = .center
         content.spacing = 8
-
-        let card = UIView()
-        card.backgroundColor = Palette.accentGreen
-        card.layer.cornerRadius = 10
-        card.layer.cornerCurve = .continuous
-        card.layer.borderWidth = 1
-        card.layer.borderColor = Palette.borderSoft.cgColor
-        card.translatesAutoresizingMaskIntoConstraints = false
         content.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(content)
-        card.alpha = 0
-        view.addSubview(card)
+
+        statusCard.backgroundColor = Palette.bgCard
+        statusCard.layer.cornerRadius = 10
+        statusCard.layer.cornerCurve = .continuous
+        statusCard.layer.borderWidth = 1
+        statusCard.layer.borderColor = Palette.borderSoft.cgColor
+        statusCard.translatesAutoresizingMaskIntoConstraints = false
+        statusCard.addSubview(content)
+        view.addSubview(statusCard)
+
         NSLayoutConstraint.activate([
-            content.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
-            content.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
-            content.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
-            content.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
-            card.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            card.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            content.topAnchor.constraint(equalTo: statusCard.topAnchor, constant: 12),
+            content.bottomAnchor.constraint(equalTo: statusCard.bottomAnchor, constant: -12),
+            content.leadingAnchor.constraint(equalTo: statusCard.leadingAnchor, constant: 16),
+            content.trailingAnchor.constraint(equalTo: statusCard.trailingAnchor, constant: -16),
+            statusCard.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            statusCard.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            statusCard.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 20),
+            statusCard.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -20)
         ])
-        UIView.animate(withDuration: 0.18) { card.alpha = 1 }
+    }
+
+    private func configureReviewLoadingState() {
+        configureCompactStatus()
+        statusLabel.text = localized("공유할 클립")
     }
 
     @MainActor
-    private func saveAndComplete() async {
+    private func configureReviewForm(_ payload: SharedClipPayload) {
+        statusCard.removeFromSuperview()
+        activityIndicator.stopAnimating()
+
+        let container = UIView()
+        container.backgroundColor = Palette.bgApp
+        container.layer.cornerRadius = 12
+        container.layer.cornerCurve = .continuous
+        container.layer.borderWidth = 1
+        container.layer.borderColor = Palette.borderSoft.cgColor
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        let heading = UILabel()
+        heading.text = localized("폴더와 메모 확인")
+        heading.font = font(size: 18, semibold: true)
+        heading.textColor = Palette.textPrimary
+
+        let clipTitle = UILabel()
+        clipTitle.text = payload.title
+        clipTitle.font = font(size: 13)
+        clipTitle.textColor = Palette.textSecondary
+        clipTitle.numberOfLines = 1
+        clipTitle.lineBreakMode = .byTruncatingTail
+
+        let folderLabel = fieldLabel(localized("저장할 폴더"))
+        configureFolderButton()
+
+        let memoLabel = fieldLabel(localized("메모 (선택)"))
+        memoTextView.font = font(size: 15)
+        memoTextView.textColor = Palette.textPrimary
+        memoTextView.backgroundColor = Palette.bgCard
+        memoTextView.layer.cornerRadius = 8
+        memoTextView.layer.cornerCurve = .continuous
+        memoTextView.layer.borderWidth = 1
+        memoTextView.layer.borderColor = Palette.borderSoft.cgColor
+        memoTextView.textContainerInset = UIEdgeInsets(top: 10, left: 8, bottom: 10, right: 8)
+        memoTextView.heightAnchor.constraint(equalToConstant: 82).isActive = true
+
+        var saveConfiguration = UIButton.Configuration.filled()
+        saveConfiguration.title = localized("클립 저장")
+        saveConfiguration.image = UIImage(systemName: "checkmark")
+        saveConfiguration.imagePadding = 8
+        saveConfiguration.baseBackgroundColor = Palette.accentYellow
+        saveConfiguration.baseForegroundColor = Palette.textPrimary
+        saveConfiguration.cornerStyle = .fixed
+        saveConfiguration.background.cornerRadius = 10
+        saveButton.configuration = saveConfiguration
+        saveButton.titleLabel?.font = font(size: 16, semibold: true)
+        saveButton.heightAnchor.constraint(equalToConstant: 52).isActive = true
+        saveButton.addTarget(self, action: #selector(saveReviewedClip), for: .touchUpInside)
+
+        let cancelButton = UIButton(type: .system)
+        cancelButton.setTitle(localized("취소"), for: .normal)
+        cancelButton.setTitleColor(Palette.textSecondary, for: .normal)
+        cancelButton.titleLabel?.font = font(size: 15)
+        cancelButton.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        cancelButton.addTarget(self, action: #selector(cancelShare), for: .touchUpInside)
+
+        let stack = UIStackView(arrangedSubviews: [heading, clipTitle, folderLabel, folderButton,
+                                                   memoLabel, memoTextView, saveButton, cancelButton])
+        stack.axis = .vertical
+        stack.spacing = 8
+        stack.setCustomSpacing(16, after: clipTitle)
+        stack.setCustomSpacing(12, after: folderButton)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        container.addSubview(stack)
+        view.addSubview(container)
+        NSLayoutConstraint.activate([
+            container.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            container.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            container.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            container.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8),
+            stack.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
+            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -12)
+        ])
+    }
+
+    private func fieldLabel(_ text: String) -> UILabel {
+        let label = UILabel()
+        label.text = text
+        label.font = font(size: 13, semibold: true)
+        label.textColor = Palette.textPrimary
+        return label
+    }
+
+    private func configureFolderButton() {
+        let folders = configuration.folders.isEmpty ? [configuration.defaultFolder] : configuration.folders
+        if !folders.contains(selectedFolder) { selectedFolder = folders.first ?? configuration.defaultFolder }
+
+        var buttonConfiguration = UIButton.Configuration.plain()
+        buttonConfiguration.title = localized(selectedFolder)
+        buttonConfiguration.image = UIImage(systemName: "folder")
+        buttonConfiguration.imagePadding = 8
+        buttonConfiguration.baseForegroundColor = Palette.textPrimary
+        buttonConfiguration.background.backgroundColor = Palette.bgCard
+        buttonConfiguration.background.strokeColor = Palette.borderSoft
+        buttonConfiguration.background.strokeWidth = 1
+        buttonConfiguration.background.cornerRadius = 8
+        buttonConfiguration.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 12)
+        folderButton.configuration = buttonConfiguration
+        folderButton.contentHorizontalAlignment = .leading
+        if folderButton.constraints.first(where: { $0.firstAttribute == .height }) == nil {
+            folderButton.heightAnchor.constraint(equalToConstant: 52).isActive = true
+        }
+        folderButton.showsMenuAsPrimaryAction = true
+        folderButton.menu = UIMenu(children: folders.map { folder in
+            UIAction(title: localized(folder), state: folder == selectedFolder ? .on : .off) { [weak self] _ in
+                guard let self else { return }
+                selectedFolder = folder
+                configureFolderButton()
+            }
+        })
+    }
+
+    @objc private func saveReviewedClip() {
+        guard let payload = pendingPayload else { return }
+        saveButton.isEnabled = false
+        memoTextView.resignFirstResponder()
+        var reviewed = payload
+        reviewed.folder = selectedFolder
+        reviewed.memo = memoTextView.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        Task { @MainActor in await saveAndComplete(reviewed) }
+    }
+
+    @objc private func cancelShare() {
+        extensionContext?.cancelRequest(withError: NSError(domain: NSCocoaErrorDomain, code: NSUserCancelledError))
+    }
+
+    @MainActor
+    private func saveAndComplete(_ item: SharedClipPayload) async {
         var newlyStoredImageName: String?
         do {
-            guard let item = await loadPayload() else { throw AutoSaveError.missingPayload }
             let sharedImageName: String?
             if let pendingImageData {
                 sharedImageName = try SharedClipQueue.storeImageData(pendingImageData, for: item.id)
@@ -108,23 +265,12 @@ final class ShareViewController: UIViewController {
             } else {
                 sharedImageName = item.sharedImageName
             }
-            let finalPayload = SharedClipPayload(
-                id: item.id,
-                type: item.type,
-                title: item.title,
-                source: item.source,
-                url: item.url,
-                text: item.text,
-                sharedImageName: sharedImageName,
-                folder: item.folder,
-                tags: item.tags,
-                memo: item.memo,
-                createdAt: item.createdAt
-            )
+            var finalPayload = item
+            finalPayload.sharedImageName = sharedImageName
+            if finalPayload.folder.isEmpty { finalPayload.folder = configuration.defaultFolder }
             try SharedClipQueue.enqueue(finalPayload)
             showSavedConfirmation()
-            // 확인 카드를 읽을 수 있을 만큼만 머문 뒤 호스트 앱으로 돌아간다.
-            try? await Task.sleep(for: .milliseconds(850))
+            try? await Task.sleep(for: .milliseconds(1_200))
             extensionContext?.completeRequest(returningItems: nil)
         } catch {
             if let newlyStoredImageName { try? SharedClipQueue.removeImage(named: newlyStoredImageName) }
@@ -133,13 +279,26 @@ final class ShareViewController: UIViewController {
     }
 
     @MainActor
+    private func showSavedConfirmation() {
+        view.subviews.forEach { $0.removeFromSuperview() }
+        configureCompactStatus()
+        activityIndicator.stopAnimating()
+        activityIndicator.isHidden = true
+        statusLabel.text = localized("Clip Inbox에 저장됨")
+        statusLabel.font = font(size: 15, semibold: true)
+        statusCard.backgroundColor = Palette.accentGreen
+        statusCard.alpha = 0
+        UIView.animate(withDuration: 0.18) { self.statusCard.alpha = 1 }
+    }
+
+    @MainActor
     private func showFailure(_ error: Error) {
         activityIndicator.stopAnimating()
-        statusLabel.text = "저장할 수 없습니다"
-        let alert = UIAlertController(title: "저장할 수 없습니다",
+        statusLabel.text = localized("저장할 수 없습니다")
+        let alert = UIAlertController(title: localized("저장할 수 없습니다"),
                                       message: error.localizedDescription,
                                       preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "닫기", style: .default) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: localized("닫기"), style: .default) { [weak self] _ in
             self?.extensionContext?.cancelRequest(withError: error)
         })
         present(alert, animated: true)
@@ -171,32 +330,28 @@ final class ShareViewController: UIViewController {
         }
 
         if let url = sharedURL {
-            let host = url.host ?? "공유한 링크"
-            return SharedClipPayload(
-                type: .link,
-                title: clean(attributedTitle, fallback: clean(sharedText, fallback: host, limit: 200), limit: 200),
-                source: host,
-                url: url.absoluteString,
-                text: clean(sharedText, limit: 500)
-            )
+            let host = url.host ?? localized("공유한 링크")
+            return SharedClipPayload(type: .link,
+                                     title: clean(attributedTitle, fallback: clean(sharedText, fallback: host, limit: 200), limit: 200),
+                                     source: host, url: url.absoluteString,
+                                     text: clean(sharedText, limit: 500),
+                                     folder: configuration.defaultFolder)
         }
         if imageData != nil {
             pendingImageData = imageData
-            return SharedClipPayload(
-                type: .image,
-                title: clean(attributedTitle, fallback: "공유한 이미지", limit: 200),
-                source: "사진",
-                text: clean(sharedText, limit: 500)
-            )
+            return SharedClipPayload(type: .image,
+                                     title: clean(attributedTitle, fallback: localized("공유한 이미지"), limit: 200),
+                                     source: localized("사진"), text: clean(sharedText, limit: 500),
+                                     folder: configuration.defaultFolder)
         }
         if let sharedText, !sharedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let firstLine = sharedText.split(separator: "\n", maxSplits: 1).first.map(String.init)
-            return SharedClipPayload(
-                type: .text,
-                title: clean(attributedTitle, fallback: clean(firstLine, fallback: "공유한 텍스트", limit: 200), limit: 200),
-                source: "공유 시트",
-                text: clean(sharedText, limit: 500)
-            )
+            return SharedClipPayload(type: .text,
+                                     title: clean(attributedTitle,
+                                                  fallback: clean(firstLine, fallback: localized("공유한 텍스트"), limit: 200),
+                                                  limit: 200),
+                                     source: localized("공유 시트"), text: clean(sharedText, limit: 500),
+                                     folder: configuration.defaultFolder)
         }
         return nil
     }
@@ -204,11 +359,8 @@ final class ShareViewController: UIViewController {
     private func loadItem(from provider: NSItemProvider, typeIdentifier: String) async throws -> NSSecureCoding? {
         try await withCheckedThrowingContinuation { continuation in
             provider.loadItem(forTypeIdentifier: typeIdentifier, options: nil) { item, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume(returning: item)
-                }
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume(returning: item) }
             }
         }
     }
@@ -220,17 +372,11 @@ final class ShareViewController: UIViewController {
 
     private func normalizedJPEGData(from item: NSSecureCoding) -> Data? {
         let image: UIImage?
-        if let uiImage = item as? UIImage {
-            image = uiImage
-        } else if let url = item as? URL {
-            image = (try? Data(contentsOf: url)).flatMap(UIImage.init(data:))
-        } else if let url = item as? NSURL {
-            image = (try? Data(contentsOf: url as URL)).flatMap(UIImage.init(data:))
-        } else if let data = item as? Data {
-            image = UIImage(data: data)
-        } else {
-            image = nil
-        }
+        if let uiImage = item as? UIImage { image = uiImage }
+        else if let url = item as? URL { image = (try? Data(contentsOf: url)).flatMap(UIImage.init(data:)) }
+        else if let url = item as? NSURL { image = (try? Data(contentsOf: url as URL)).flatMap(UIImage.init(data:)) }
+        else if let data = item as? Data { image = UIImage(data: data) }
+        else { image = nil }
         guard let image else { return nil }
 
         let maxDimension: CGFloat = 1_600

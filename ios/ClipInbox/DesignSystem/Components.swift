@@ -24,12 +24,13 @@ enum BadgeTone {
 }
 
 struct TokenBadge: View {
+    @Environment(\.locale) private var locale
     let tone: BadgeTone
 
     var body: some View {
         HStack(spacing: 5) {
             Circle().fill(tone.dotColor).frame(width: 7, height: 7)
-            Text(tone.label)
+            Text(L10n.text(tone.label, locale: locale))
         }
         .font(Tokens.chip)
         .foregroundStyle(Tokens.textPrimary)
@@ -42,6 +43,7 @@ struct TokenBadge: View {
 /// 한 줄에 동일 너비 다섯 칸, 두 줄을 보여 주는 공통 텍스트 선택기.
 /// 열 개가 넘는 항목은 같은 5x2 리듬을 유지한 채 가로로 이어진다.
 struct TwoRowHorizontalSelection: View {
+    @Environment(\.locale) private var locale
     typealias SelectionItem = (label: String, active: Bool, action: () -> Void)
 
     private struct SelectionSlot: Identifiable {
@@ -107,7 +109,7 @@ struct TwoRowHorizontalSelection: View {
 
     private func selectionButton(_ item: SelectionItem) -> some View {
         Button(action: item.action) {
-            Text(item.label)
+            Text(L10n.text(item.label, locale: locale))
                 .font(Tokens.chip)
                 .foregroundStyle(item.active ? Tokens.textPrimary : Tokens.textSecondary)
                 .lineLimit(1)
@@ -129,6 +131,7 @@ struct TwoRowHorizontalSelection: View {
 
 /// 태그와 단일 선택값을 위한 평면 행. 선택은 박스 채움 대신 체크 표시로만 구분한다.
 struct PlainSelectionRow: View {
+    @Environment(\.locale) private var locale
     let label: String
     var isSelected = false
     let action: () -> Void
@@ -136,7 +139,7 @@ struct PlainSelectionRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: Tokens.cardGap) {
-                Text(label)
+                Text(L10n.text(label, locale: locale))
                     .font(Tokens.bodySemibold)
                     .foregroundStyle(Tokens.textPrimary)
                 Spacer(minLength: Tokens.rowGap)
@@ -166,6 +169,7 @@ struct RowDivider: View {
 
 /// 폴더와 설정처럼 목적지로 이동하는 목록 행의 공통 아이콘 기준선.
 struct DestinationRow: View {
+    @Environment(\.locale) private var locale
     let systemImage: String
     let title: String
     var value = ""
@@ -176,12 +180,12 @@ struct DestinationRow: View {
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Tokens.textPrimary)
                 .frame(width: Tokens.iconColumn, height: Tokens.destinationIcon)
-            Text(title)
+            Text(L10n.text(title, locale: locale))
                 .font(Tokens.bodySemibold)
                 .foregroundStyle(Tokens.textPrimary)
             Spacer(minLength: Tokens.rowGap)
             if !value.isEmpty {
-                Text(value)
+                Text(L10n.text(value, locale: locale))
                     .font(Tokens.meta)
                     .foregroundStyle(Tokens.textSecondary)
                     .lineLimit(1)
@@ -234,6 +238,7 @@ struct SecondaryBoxButtonStyle: ButtonStyle {
 
 /// 상단 유틸리티 44px 아이콘 버튼.
 struct UtilityIconButton: View {
+    @Environment(\.locale) private var locale
     let label: String
     let systemImage: String
     var isOn = false
@@ -252,13 +257,14 @@ struct UtilityIconButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(label)
+        .accessibilityLabel(L10n.text(label, locale: locale))
     }
 }
 
 // MARK: - 보드 섹션
 
 struct BoardSection<Content: View>: View {
+    @Environment(\.locale) private var locale
     let title: String
     var count: Int?
     @ViewBuilder var content: Content
@@ -266,7 +272,7 @@ struct BoardSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.rowGap + 2) {
             HStack(spacing: Tokens.rowGap) {
-                Text(title).font(Tokens.sectionTitle).foregroundStyle(Tokens.textPrimary)
+                Text(L10n.text(title, locale: locale)).font(Tokens.sectionTitle).foregroundStyle(Tokens.textPrimary)
                 if let count {
                     Text("\(count)").font(Tokens.chip).foregroundStyle(Tokens.textSecondary)
                 }
@@ -281,6 +287,7 @@ struct BoardSection<Content: View>: View {
 // MARK: - 액션/선택 행
 
 struct ActionRow: View {
+    @Environment(\.locale) private var locale
     let systemImage: String
     let label: String
     var value: String = ""
@@ -295,13 +302,13 @@ struct ActionRow: View {
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(isDanger ? Tokens.danger : Tokens.textPrimary)
                     .frame(width: Tokens.iconColumn, height: Tokens.destinationIcon)
-                Text(label)
+                Text(L10n.text(label, locale: locale))
                     .font(Tokens.bodySemibold)
                     .foregroundStyle(isDanger ? Tokens.danger : Tokens.textPrimary)
                     .layoutPriority(1)
                 Spacer(minLength: Tokens.rowGap)
                 if !value.isEmpty {
-                    Text(value)
+                    Text(L10n.text(value, locale: locale))
                         .font(Tokens.meta)
                         .foregroundStyle(Tokens.textSecondary)
                         .lineLimit(1)
@@ -329,6 +336,7 @@ struct ActionRow: View {
 // MARK: - 상태 패널 / 빈 상태
 
 struct StatePanel: View {
+    @Environment(\.locale) private var locale
     let systemImage: String
     let title: String
     let message: String
@@ -341,10 +349,10 @@ struct StatePanel: View {
                 .foregroundStyle(isDanger ? Tokens.danger : Tokens.textPrimary)
                 .frame(width: Tokens.iconColumn)
             VStack(alignment: .leading, spacing: Tokens.rowGap) {
-                Text(title)
+                Text(L10n.text(title, locale: locale))
                     .font(Tokens.cardTitle)
                     .foregroundStyle(Tokens.textPrimary)
-                Text(message)
+                Text(L10n.text(message, locale: locale))
                     .font(Tokens.meta)
                     .foregroundStyle(Tokens.textSecondary)
                     .lineSpacing(Tokens.metaLineSpacing)
@@ -356,6 +364,7 @@ struct StatePanel: View {
 }
 
 struct EmptyStateView: View {
+    @Environment(\.locale) private var locale
     var systemImage = "tray"
     let title: String
     let message: String
@@ -365,8 +374,8 @@ struct EmptyStateView: View {
             Image(systemName: systemImage)
                 .font(.system(size: 26, weight: .bold))
                 .foregroundStyle(Tokens.textTertiary)
-            Text(title).font(Tokens.cardTitle).foregroundStyle(Tokens.textPrimary)
-            Text(message)
+            Text(L10n.text(title, locale: locale)).font(Tokens.cardTitle).foregroundStyle(Tokens.textPrimary)
+            Text(L10n.text(message, locale: locale))
                 .font(Tokens.meta)
                 .foregroundStyle(Tokens.textSecondary)
                 .lineSpacing(Tokens.metaLineSpacing)
@@ -446,13 +455,14 @@ struct FallbackDomain: View {
 // MARK: - 토스트
 
 struct ToastView: View {
+    @Environment(\.locale) private var locale
     let message: String
 
     var body: some View {
         HStack(spacing: Tokens.rowGap) {
             Image(systemName: "checkmark.circle")
                 .font(.system(size: 16, weight: .bold))
-            Text(message).font(Tokens.bodyBold)
+            Text(L10n.text(message, locale: locale)).font(Tokens.bodyBold)
         }
         .foregroundStyle(Tokens.textPrimary)
         .padding(.horizontal, Tokens.panelPad)

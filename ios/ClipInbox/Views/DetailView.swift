@@ -4,6 +4,7 @@ struct DetailView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @Environment(\.locale) private var locale
     let clipID: Int
 
     @State private var showShare = false
@@ -39,17 +40,17 @@ struct DetailView: View {
                         TokenBadge(tone: .type(clip.type))
                         if let state = clip.state { TokenBadge(tone: .state(state)) }
                     }
-                    Text(clip.title)
+                    Text(L10n.text(clip.title, locale: locale))
                         .font(Tokens.sectionTitle)
                         .foregroundStyle(Tokens.textPrimary)
                         .lineSpacing(Tokens.titleLineSpacing)
                     HStack(spacing: Tokens.rowGap) {
                         HStack(spacing: 5) {
                             Image(systemName: "globe").font(.system(size: 12, weight: .bold))
-                            Text(clip.source)
+                            Text(L10n.text(clip.source, locale: locale))
                         }
                         Spacer()
-                        Text(clip.time)
+                        Text(L10n.text(clip.time, locale: locale))
                     }
                     .font(Tokens.meta)
                     .foregroundStyle(Tokens.textSecondary)
@@ -61,7 +62,7 @@ struct DetailView: View {
                     }
 
                     if !clip.description.isEmpty {
-                        Text(clip.description)
+                        Text(L10n.text(clip.description, locale: locale))
                             .font(Tokens.body)
                             .foregroundStyle(Tokens.textPrimary)
                             .lineSpacing(Tokens.bodyLineSpacing)
@@ -113,7 +114,9 @@ struct DetailView: View {
                         showMove = true
                     }
                     organizeRow(label: "태그",
-                                value: clip.tags.isEmpty ? "없음" : clip.tags.joined(separator: " · "),
+                                value: clip.tags.isEmpty ? "없음" : clip.tags
+                                    .map { L10n.text($0, locale: locale) }
+                                    .joined(separator: " · "),
                                 systemImage: "tag") {
                         tagDraft = clip.tags
                         showTagEdit = true
@@ -197,11 +200,11 @@ struct DetailView: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Tokens.textSecondary)
                     .frame(width: Tokens.iconColumn)
-                Text(label)
+                Text(L10n.text(label, locale: locale))
                     .font(Tokens.bodySemibold)
                     .foregroundStyle(Tokens.textPrimary)
                 Spacer(minLength: Tokens.rowGap)
-                Text(value)
+                Text(L10n.text(value, locale: locale))
                     .font(Tokens.meta)
                     .foregroundStyle(Tokens.textSecondary)
                     .lineLimit(1)
@@ -221,7 +224,11 @@ struct DetailView: View {
     private func quietAction(label: String, systemImage: String, isDanger: Bool = false,
                              action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Label(label, systemImage: systemImage)
+            Label {
+                Text(L10n.text(label, locale: locale))
+            } icon: {
+                Image(systemName: systemImage)
+            }
                 .font(Tokens.bodySemibold)
                 .foregroundStyle(isDanger ? Tokens.danger : Tokens.textPrimary)
                 .frame(maxWidth: .infinity, minHeight: Tokens.touchTarget)
@@ -247,7 +254,7 @@ struct MoveFolderSheet: View {
                 VStack(spacing: 0) {
                     ForEach(store.destinationFolders) { folder in
                         ActionRow(systemImage: folder.systemImage, label: folder.label,
-                                  value: "\(store.folderCount(folder.label))개 클립",
+                                  value: L10n.format("format.folder_clip_count", store.folderCount(folder.label)),
                                   isSelected: destination == folder.label) {
                             destination = folder.label
                         }
@@ -259,7 +266,11 @@ struct MoveFolderSheet: View {
                 store.moveClip(id: clipID, to: destination)
                 dismiss()
             } label: {
-                Label("\(destination.withRoParticle) 이동", systemImage: "checkmark")
+                Label {
+                    Text(L10n.format("format.move_to_folder", L10n.text(destination)))
+                } icon: {
+                    Image(systemName: "checkmark")
+                }
             }
             .buttonStyle(PrimaryBoxButtonStyle())
         }

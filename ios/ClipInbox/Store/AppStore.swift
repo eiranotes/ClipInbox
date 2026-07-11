@@ -41,7 +41,7 @@ enum StoreError: LocalizedError {
     case message(String)
 
     var errorDescription: String? {
-        if case let .message(text) = self { return text }
+        if case let .message(text) = self { return L10n.text(text) }
         return nil
     }
 }
@@ -79,6 +79,7 @@ final class AppStore {
             folders = DefaultData.folders
             preferences = .standard
         }
+        syncSharedConfiguration()
     }
 
     private static func defaultFileURL() -> URL {
@@ -100,6 +101,7 @@ final class AppStore {
         do {
             let data = try encoder.encode(snapshot())
             try data.write(to: fileURL, options: .atomic)
+            syncSharedConfiguration()
             return true
         } catch {
             return false
@@ -184,7 +186,7 @@ final class AppStore {
         for item in pending {
             try? SharedClipQueue.remove(item)
         }
-        showToast("공유한 클립 \(pending.count)개를 인박스에 추가했습니다")
+        showToast(L10n.format("format.imported_shared_clips", pending.count))
     }
 
     func exportJSON() throws -> Data {
@@ -289,7 +291,12 @@ final class AppStore {
         var preferences = input.preferences
         if !["켬", "끔"].contains(preferences.appLock) { preferences.appLock = Preferences.standard.appLock }
         if !["라이트", "시스템 설정"].contains(preferences.theme) { preferences.theme = Preferences.standard.theme }
-        if !["한국어", "English"].contains(preferences.language) { preferences.language = Preferences.standard.language }
+        if !AppLanguage.allCases.map(\.rawValue).contains(preferences.language) {
+            preferences.language = Preferences.standard.language
+        }
+        if SharedSaveMode(rawValue: preferences.shareMode) == nil {
+            preferences.shareMode = Preferences.standard.shareMode
+        }
         if !safeFolders.contains(where: { $0.icon != "archive" && $0.label == preferences.defaultFolder }) {
             preferences.defaultFolder = inboxLabel
         }
@@ -316,7 +323,7 @@ final class AppStore {
     }
 
     func filterLabel(_ filter: InboxFilter) -> String {
-        "\(filter.baseLabel) \(filteredClips(filter).count)"
+        "\(L10n.text(filter.baseLabel)) \(filteredClips(filter).count)"
     }
 
     func folderCount(_ label: String) -> Int {
@@ -390,7 +397,7 @@ final class AppStore {
 
     func moveClip(id: Int, to folder: String) {
         mutate(id: id) { $0.folder = folder }
-        showToast("\(folder.withRoParticle) 이동했습니다")
+        showToast(L10n.format("format.moved_to_folder", L10n.text(folder)))
     }
 
     func updateClip(id: Int, title: String, memo: String, tags: [String]) throws {
@@ -436,7 +443,7 @@ final class AppStore {
                         memo: Self.cleanText(memo, maxLength: 1000))
         clips.insert(clip, at: 0)
         persist()
-        showToast("\(destination)에 저장했습니다")
+        showToast(L10n.format("format.saved_to_folder", L10n.text(destination)))
         return clip
     }
 
@@ -448,7 +455,7 @@ final class AppStore {
         }
         folders.append(Folder(icon: "folder", label: clean, defaultTag: defaultTag))
         persist()
-        showToast("\(clean) 폴더를 만들었습니다")
+        showToast(L10n.format("format.created_folder", clean))
         return clean
     }
 
@@ -509,6 +516,7 @@ final class AppStore {
         case .theme: preferences.theme = value
         case .language: preferences.language = value
         case .defaultFolder: preferences.defaultFolder = value
+        case .shareMode: preferences.shareMode = value
         }
         persist()
         showToast("설정을 저장했습니다")
@@ -526,10 +534,22 @@ final class AppStore {
 
     func showToast(_ message: String) {
         toastTask?.cancel()
-        toast = message
+        toast = L10n.text(message)
         toastTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(2.4))
             if !Task.isCancelled { self?.toast = nil }
         }
+    }
+
+    private func syncSharedConfiguration() {
+        let destinations = destinationFolders.map(\.label)
+        SharedClipQueue.saveConfiguration(
+            SharedClipConfiguration(
+                saveMode: preferences.sharedSaveMode,
+                language: preferences.appLanguage.sharedValue,
+                defaultFolder: preferences.defaultFolder,
+                folders: destinations.isEmpty ? [preferences.defaultFolder] : destinations
+            )
+        )
     }
 }

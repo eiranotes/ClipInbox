@@ -131,4 +131,24 @@ final class AppStoreTests: XCTestCase {
         XCTAssertFalse(lock.isEnabled)
         XCTAssertFalse(lock.isLocked)
     }
+
+    func testReleaseDefaultsKeepLockOffAndQuickSaveOn() {
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+
+        XCTAssertEqual(store.preferences.appLock, "끔")
+        XCTAssertEqual(store.preferences.sharedSaveMode, .quick)
+    }
+
+    func testJapaneseLanguageAndShareReviewModePersist() {
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+
+        store.updatePreference(key: .language, value: AppLanguage.japanese.rawValue)
+        store.updatePreference(key: .shareMode, value: SharedSaveMode.review.rawValue)
+
+        let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
+        XCTAssertEqual(reloaded.preferences.appLanguage, .japanese)
+        XCTAssertEqual(reloaded.preferences.sharedSaveMode, .review)
+        XCTAssertEqual(L10n.text("설정", language: .english), "Settings")
+        XCTAssertEqual(L10n.text("설정", language: .japanese), "設定")
+    }
 }

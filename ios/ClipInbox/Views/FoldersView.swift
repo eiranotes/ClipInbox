@@ -190,7 +190,7 @@ struct FolderDetailView: View {
 
             BoardSection(title: "폴더 정보") {
                 StatePanel(systemImage: "folder", title: currentLabel,
-                           message: "\(matches.count)개 클립을 보관 중")
+                           message: L10n.format("format.folder_contains", matches.count))
             }
 
             BoardSection(title: "클립", count: matches.count) {

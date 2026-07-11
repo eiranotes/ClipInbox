@@ -66,6 +66,7 @@ struct RootView: View {
 }
 
 private struct BottomNavBar: View {
+    @Environment(\.locale) private var locale
     @Binding var selected: AppTab
 
     var body: some View {
@@ -85,13 +86,13 @@ private struct BottomNavBar: View {
                                 RoundedRectangle(cornerRadius: Tokens.radiusChip, style: .continuous)
                                     .fill(selected == tab ? Tokens.accentYellow : .clear)
                             )
-                        Text(tab.label).font(Tokens.nav)
+                        Text(L10n.text(tab.label, locale: locale)).font(Tokens.nav)
                     }
                     .foregroundStyle(selected == tab ? Tokens.textPrimary : Tokens.textSecondary)
                     .frame(maxWidth: .infinity, minHeight: Tokens.actionTarget)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(tab.label)
+                .accessibilityLabel(L10n.text(tab.label, locale: locale))
                 .accessibilityAddTraits(selected == tab ? .isSelected : [])
             }
         }
@@ -108,6 +109,7 @@ private struct BottomNavBar: View {
 // MARK: - 공통 화면 헤더
 
 struct ScreenHeader<Trailing: View>: View {
+    @Environment(\.locale) private var locale
     let title: String
     var backLabel: String?
     var onBack: (() -> Void)?
@@ -131,9 +133,9 @@ struct ScreenHeader<Trailing: View>: View {
                         .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(backLabel ?? "뒤로")
+                .accessibilityLabel(L10n.text(backLabel ?? "뒤로", locale: locale))
             }
-            Text(title)
+            Text(L10n.text(title, locale: locale))
                 .font(Tokens.screenTitle)
                 .foregroundStyle(Tokens.textPrimary)
                 .lineLimit(1)

@@ -5,6 +5,7 @@ import UIKit
 struct ShareOptionsSheet: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
     let clipID: Int
 
     @State private var cardImage: Image?
@@ -21,11 +22,11 @@ struct ShareOptionsSheet: View {
                                 .frame(width: Tokens.resultThumbnailWidth, height: Tokens.resultThumbnailHeight)
                         }
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(clip.title)
+                            Text(L10n.text(clip.title, locale: locale))
                                 .font(Tokens.bodyBold)
                                 .foregroundStyle(Tokens.textPrimary)
                                 .lineLimit(2)
-                            Text(clip.source)
+                            Text(L10n.text(clip.source, locale: locale))
                                 .font(Tokens.meta)
                                 .foregroundStyle(Tokens.textSecondary)
                         }

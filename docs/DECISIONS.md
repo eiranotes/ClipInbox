@@ -231,3 +231,27 @@ Decision: The clip-detail read flow — badges through the 링크 열기 action 
 Why: At 220pt of media plus a 104pt editor the primary action fell below the fold, and the requested fix was explicitly to shrink media rather than tighten breathing room.
 
 Impact: `size.detailImageHeight` changed to 140px, `size.noteEditorMinHeight` was added, and Sort Later/Add previews share the same compact height. Fill-mode thumbnails are now clipped at their real frame (overlay-on-proposal composition), which the smaller viewport exposed as an overflow bug.
+
+## 2026-07-11: Selected App Language Is the Runtime Locale
+
+Decision: Persist Korean, English, or Japanese in the existing preferences model, inject the matching SwiftUI locale, and resolve shared-extension copy from the same App Group configuration.
+
+Why: The previous language row was decorative. One persisted selection now controls app UI, accessibility labels, default sample content, errors, toasts, Face ID purpose text, and Share Extension copy without maintaining duplicate state sources.
+
+Impact: Language changes apply immediately, old backups fall back safely, and the app and extension remain consistent even when the containing app is closed.
+
+## 2026-07-11: Share Capture Has Quick and Review Modes
+
+Decision: Store a `quick` or `review` Share mode in App Group preferences. Quick mode queues immediately and displays one compact success card; review mode allows folder and memo changes before queueing.
+
+Why: Users need both a low-friction capture path and an intentional organization path, chosen once in Settings rather than decided through a second confirmation on every quick save.
+
+Impact: Fresh installs default to quick save. The system-owned extension sheet remains under iOS control, while the extension opts out of full-screen presentation and limits its own content to either the compact status card or focused review form.
+
+## 2026-07-11: Release Metadata Describes a Local-Only Product
+
+Decision: Ship privacy manifests for the app and extension, declare only the required UserDefaults reasons used by the current implementation, and prepare ASO/privacy copy around local capture and organization rather than unimplemented cloud features.
+
+Why: Store metadata, privacy declarations, and review notes must match the binary. Inventing support URLs, contact details, or remote services would make the submission inaccurate.
+
+Impact: Repository-owned release material is ready under `docs/app-store/`; owned HTTPS support/privacy URLs, a monitored email, App Store Connect answers, signing, physical-device verification, and upload remain explicit external gates.

@@ -4,8 +4,11 @@
 
 ### Added
 
+- Korean, English, and Japanese runtime localization for the production app and Share Extension, including accessibility labels, default samples, toasts/errors, and localized Face ID purpose text.
+- Settings control for immediate Share save versus folder-and-memo review, synchronized to the extension through App Group preferences.
+- Privacy manifests for the app and Share Extension, plus localized ASO copy, screenshot storyboard, release checklist, and a trilingual privacy-policy draft.
 - Direct tag editing from the clip-detail organize row: the tag row opens the tag editor immediately and saves cleaned, deduplicated tags with a no-op guard, covered by a new `updateTags` XCTest regression.
-- Share Extension now shows a compact green "Clip Inbox에 저장됨" confirmation card for about 0.85s after the zero-confirm save, instead of disappearing without feedback.
+- Share Extension now shows a compact green "Clip Inbox에 저장됨" confirmation card for about 1.2 seconds after the zero-confirm save, instead of disappearing without feedback.
 - Korean "로/으로" particles in dynamic folder labels (move sheet, move toast, Sort Later CTA) now follow the final consonant — "디자인으로 분류하고 다음", "인박스로 이동" — via a tested `withRoParticle` helper.
 - Native `ClipInboxShare` Share Extension for Safari, Photos, and text sources, embedded in `ClipInbox.app` with URL, web-page, text, and single-image activation rules.
 - App Group file queue (`group.app.clipinbox.ClipInbox`) so the extension can save while the containing app is closed; the app imports queued clips whenever it becomes active.
@@ -18,6 +21,8 @@
 
 ### Changed
 
+- Fresh-install defaults are now App Lock off and immediate Share save on.
+- Quick Share capture now shows only one compact localized success card for about 1.2 seconds; review capture uses a focused folder/memo form.
 - Keyboard policy: the keyboard now opens only from a direct tap on the search field or a text editor. Search-tab entry and the new-folder/rename sheets no longer request focus programmatically, tapping outside the search field or switching bottom tabs dismisses the keyboard, and the keyboard process is prewarmed once at launch so the first tap presents it without cold-start delay.
 - Expanded the detail content rhythm to a 16pt stack (badges, title, source, media, description) and added line spacing to multi-line titles, body text, editors, and meta descriptions across detail, edit, add, sort, settings, and state/empty panels.
 - Unified folder and settings destination rows behind one divider rule — a hairline inset to the icon column with no divider after the last row — keeping both screens' icons on an identical vertical axis (measured center x 126px on the 3x simulator).
@@ -49,6 +54,8 @@
 
 ### Verified
 
+- Ten native XCTest regressions pass, including default lock/share behavior and Japanese/review preference persistence.
+- Korean, English, and Japanese were switched live on the iPhone 17 Pro simulator; Safari quick and review Share paths both completed, and the review payload appeared in the inbox. Evidence is stored in `.superloopy/evidence/frontend/20260711-localization-share-release`.
 - `xcodebuild` succeeds for the iOS 26.5 simulator and validates the embedded `ClipInboxShare.appex`.
 - Safari `example.com` share completed through the extension and appeared as a new link card in the app.
 - A Photos image share completed through the extension, persisted a JPEG in the App Group, and rendered as the new inbox card thumbnail.

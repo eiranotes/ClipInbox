@@ -43,19 +43,19 @@ final class AppLockController {
         var error: NSError?
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
             // 시뮬레이터 등 인증 수단이 없는 환경에서는 잠금을 해제하되 사유를 남긴다.
-            notice = "이 기기에서 잠금 인증을 사용할 수 없어 잠금을 건너뜁니다."
+            notice = L10n.text("이 기기에서 잠금 인증을 사용할 수 없어 잠금을 건너뜁니다.")
             isLocked = false
             return
         }
         do {
             let success = try await context.evaluatePolicy(.deviceOwnerAuthentication,
-                                                           localizedReason: "저장된 클립을 보호하기 위해 인증이 필요합니다.")
+                                                           localizedReason: L10n.text("저장된 클립을 보호하기 위해 인증이 필요합니다."))
             if success {
                 notice = nil
                 isLocked = false
             }
         } catch {
-            notice = "인증에 실패했습니다. 다시 시도하세요."
+            notice = L10n.text("인증에 실패했습니다. 다시 시도하세요.")
         }
     }
 }

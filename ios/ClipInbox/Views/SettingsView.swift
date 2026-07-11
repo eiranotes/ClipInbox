@@ -7,6 +7,7 @@ enum SettingKey: String, Hashable, CaseIterable {
     case theme
     case language
     case defaultFolder = "default-folder"
+    case shareMode = "share-mode"
     case backup
     case importData = "import"
     case about
@@ -18,6 +19,7 @@ enum SettingKey: String, Hashable, CaseIterable {
         case .theme: return "테마"
         case .language: return "언어"
         case .defaultFolder: return "기본 폴더"
+        case .shareMode: return "공유 저장 방식"
         case .backup: return "백업 및 내보내기"
         case .importData: return "가져오기"
         case .about: return "앱 정보"
@@ -30,7 +32,8 @@ enum SettingKey: String, Hashable, CaseIterable {
         case .appLock: return "앱을 열 때 Face ID 또는 기기 암호 인증을 요구합니다."
         case .theme: return "선택값은 로컬 설정에 저장되며 현재 화면 토큰은 라이트를 유지합니다."
         case .language: return "앱 표시 언어를 선택합니다."
-        case .defaultFolder: return "공유 시트에서 저장 버튼을 누르면 먼저 들어갈 폴더입니다."
+        case .defaultFolder: return "공유로 추가할 때 먼저 저장할 폴더입니다."
+        case .shareMode: return "바로 저장하거나, 저장 전에 폴더와 메모를 확인합니다."
         case .backup: return "클립, 태그, 폴더, 설정을 JSON 파일로 내보냅니다."
         case .importData: return "Clip Inbox에서 내보낸 JSON 백업을 검증한 뒤 현재 로컬 데이터로 복원합니다."
         case .about: return "Clip Inbox 0.3.0 SwiftUI 네이티브 빌드입니다."
@@ -44,6 +47,7 @@ enum SettingKey: String, Hashable, CaseIterable {
         case .theme: return "paintpalette"
         case .language: return "character.bubble"
         case .defaultFolder: return "folder"
+        case .shareMode: return "square.and.arrow.down"
         case .backup: return "square.and.arrow.up"
         case .importData: return "square.and.arrow.down"
         case .about: return "info.circle"
@@ -54,6 +58,7 @@ enum SettingKey: String, Hashable, CaseIterable {
 
 struct SettingsView: View {
     @Environment(AppStore.self) private var store
+    @Environment(\.locale) private var locale
     @State private var showDeleteConfirm = false
 
     var body: some View {
@@ -64,7 +69,8 @@ struct SettingsView: View {
                 (.appLock, store.preferences.appLock),
                 (.theme, store.preferences.theme),
                 (.language, store.preferences.language),
-                (.defaultFolder, store.preferences.defaultFolder)
+                (.defaultFolder, store.preferences.defaultFolder),
+                (.shareMode, shareModeLabel(store.preferences.sharedSaveMode))
             ])
 
             sectionHeading("데이터")
@@ -99,7 +105,7 @@ struct SettingsView: View {
     }
 
     private func sectionHeading(_ title: String) -> some View {
-        Text(title)
+        Text(L10n.text(title, locale: locale))
             .font(Tokens.sectionTitle)
             .foregroundStyle(Tokens.textPrimary)
     }
@@ -183,8 +189,9 @@ struct SettingDetailView: View {
         switch key {
         case .appLock: return ["켬", "끔"]
         case .theme: return ["라이트", "시스템 설정"]
-        case .language: return ["한국어", "English"]
+        case .language: return AppLanguage.allCases.map(\.rawValue)
         case .defaultFolder: return store.destinationFolders.map(\.label)
+        case .shareMode: return SharedSaveMode.allCases.map(\.rawValue)
         default: return []
         }
     }
@@ -195,6 +202,7 @@ struct SettingDetailView: View {
         case .theme: return store.preferences.theme
         case .language: return store.preferences.language
         case .defaultFolder: return store.preferences.defaultFolder
+        case .shareMode: return store.preferences.shareMode
         default: return ""
         }
     }
@@ -202,11 +210,11 @@ struct SettingDetailView: View {
     @ViewBuilder
     private var controls: some View {
         switch key {
-        case .appLock, .theme, .language, .defaultFolder:
+        case .appLock, .theme, .language, .defaultFolder, .shareMode:
             BoardSection(title: "옵션") {
                 VStack(spacing: Tokens.rowGap) {
                     ForEach(options, id: \.self) { option in
-                        ActionRow(systemImage: key.systemImage, label: option,
+                        ActionRow(systemImage: key.systemImage, label: optionLabel(option),
                                   isSelected: pending == option) {
                             pending = option
                         }
@@ -223,7 +231,8 @@ struct SettingDetailView: View {
 
         case .backup:
             BoardSection(title: "내보낼 항목", count: store.clips.count) {
-                Text("클립 \(store.clips.count)개와 폴더 \(max(store.folders.count - 1, 0))개, 현재 설정을 하나의 JSON 파일로 저장합니다.")
+                Text(L10n.format("format.backup_summary", store.clips.count,
+                                 max(store.folders.count - 1, 0)))
                     .font(Tokens.body)
                     .foregroundStyle(Tokens.textPrimary)
                     .lineSpacing(Tokens.bodyLineSpacing)
@@ -281,8 +290,14 @@ struct SettingDetailView: View {
         case .theme: store.updatePreference(key: .theme, value: pending)
         case .language: store.updatePreference(key: .language, value: pending)
         case .defaultFolder: store.updatePreference(key: .defaultFolder, value: pending)
+        case .shareMode: store.updatePreference(key: .shareMode, value: pending)
         default: break
         }
+    }
+
+    private func optionLabel(_ option: String) -> String {
+        guard key == .shareMode else { return option }
+        return shareModeLabel(SharedSaveMode(rawValue: option) ?? .quick)
     }
 
     private func handleImport(_ result: Result<URL, Error>) {
@@ -297,5 +312,12 @@ struct SettingDetailView: View {
         } catch {
             errorMessage = (error as? StoreError)?.localizedDescription ?? "백업을 가져오지 못했습니다."
         }
+    }
+}
+
+private func shareModeLabel(_ mode: SharedSaveMode) -> String {
+    switch mode {
+    case .quick: return "바로 저장"
+    case .review: return "폴더·메모 확인 후 저장"
     }
 }

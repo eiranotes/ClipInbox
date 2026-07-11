@@ -139,21 +139,26 @@ struct Preferences: Codable, Equatable {
     var theme: String
     var language: String
     var defaultFolder: String
+    var shareMode: String
 
     enum CodingKeys: String, CodingKey {
         case appLock = "app-lock"
         case theme
         case language
         case defaultFolder = "default-folder"
+        case shareMode = "share-mode"
     }
 
-    static let standard = Preferences(appLock: "켬", theme: "라이트", language: "한국어", defaultFolder: "인박스")
+    static let standard = Preferences(appLock: "끔", theme: "라이트", language: "한국어",
+                                      defaultFolder: "인박스", shareMode: SharedSaveMode.quick.rawValue)
 
-    init(appLock: String, theme: String, language: String, defaultFolder: String) {
+    init(appLock: String, theme: String, language: String, defaultFolder: String,
+         shareMode: String = SharedSaveMode.quick.rawValue) {
         self.appLock = appLock
         self.theme = theme
         self.language = language
         self.defaultFolder = defaultFolder
+        self.shareMode = shareMode
     }
 
     init(from decoder: Decoder) throws {
@@ -162,6 +167,7 @@ struct Preferences: Codable, Equatable {
         theme = (try? container?.decodeIfPresent(String.self, forKey: .theme)) ?? Self.standard.theme
         language = (try? container?.decodeIfPresent(String.self, forKey: .language)) ?? Self.standard.language
         defaultFolder = (try? container?.decodeIfPresent(String.self, forKey: .defaultFolder)) ?? Self.standard.defaultFolder
+        shareMode = (try? container?.decodeIfPresent(String.self, forKey: .shareMode)) ?? Self.standard.shareMode
     }
 }
 

@@ -2,6 +2,7 @@ import SwiftUI
 
 /// 인박스 클립 카드: 전체가 상세 진입 히트 타깃이고, 메뉴 버튼만 독립 컨트롤이다.
 struct ClipCardView: View {
+    @Environment(\.locale) private var locale
     let clip: Clip
     var onMenu: () -> Void
 
@@ -11,7 +12,7 @@ struct ClipCardView: View {
                 navigationContent
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("\(clip.title) 상세 보기")
+            .accessibilityLabel(L10n.format("format.clip_detail_accessibility", L10n.text(clip.title, locale: locale)))
 
             Button(action: onMenu) {
                 Image(systemName: "ellipsis")
@@ -21,7 +22,7 @@ struct ClipCardView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("\(clip.title) 메뉴")
+            .accessibilityLabel(L10n.format("format.clip_menu_accessibility", L10n.text(clip.title, locale: locale)))
         }
         .padding(.vertical, Tokens.cardPad)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -33,12 +34,12 @@ struct ClipCardView: View {
     private var navigationContent: some View {
         HStack(alignment: .center, spacing: Tokens.cardGap) {
             VStack(alignment: .leading, spacing: Tokens.space1) {
-                Text(clip.title)
+                Text(L10n.text(clip.title, locale: locale))
                     .font(Tokens.cardTitle)
                     .foregroundStyle(Tokens.textPrimary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                Text(clip.source)
+                Text(L10n.text(clip.source, locale: locale))
                     .font(Tokens.meta)
                     .foregroundStyle(Tokens.textSecondary)
                     .lineLimit(1)
@@ -61,6 +62,7 @@ struct ClipCardView: View {
 
 /// 검색 결과·폴더 상세에서 쓰는 컴팩트 행.
 struct CompactResultRow: View {
+    @Environment(\.locale) private var locale
     let clip: Clip
     var onOpen: () -> Void = {}
 
@@ -68,11 +70,11 @@ struct CompactResultRow: View {
         NavigationLink(value: Route.detail(clip.id)) {
             HStack(alignment: .center, spacing: Tokens.cardGap) {
                 VStack(alignment: .leading, spacing: Tokens.space1) {
-                    Text(clip.title)
+                    Text(L10n.text(clip.title, locale: locale))
                         .font(Tokens.bodySemibold)
                         .foregroundStyle(Tokens.textPrimary)
                         .lineLimit(1)
-                    Text(clip.source)
+                    Text(L10n.text(clip.source, locale: locale))
                         .font(Tokens.meta)
                         .foregroundStyle(Tokens.textSecondary)
                         .lineLimit(1)

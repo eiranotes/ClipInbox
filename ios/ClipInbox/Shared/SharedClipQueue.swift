@@ -1,5 +1,30 @@
 import Foundation
 
+enum SharedSaveMode: String, Codable, CaseIterable {
+    case quick
+    case review
+}
+
+enum SharedAppLanguage: String, Codable, CaseIterable {
+    case ko
+    case en
+    case ja
+}
+
+struct SharedClipConfiguration: Codable, Equatable {
+    var saveMode: SharedSaveMode
+    var language: SharedAppLanguage
+    var defaultFolder: String
+    var folders: [String]
+
+    static let standard = SharedClipConfiguration(
+        saveMode: .quick,
+        language: .ko,
+        defaultFolder: "인박스",
+        folders: ["인박스"]
+    )
+}
+
 enum SharedClipType: String, Codable {
     case link
     case text
@@ -48,6 +73,7 @@ struct SharedClipPayload: Codable, Identifiable {
 
 enum SharedClipQueue {
     static let appGroupIdentifier = "group.app.clipinbox.ClipInbox"
+    private static let configurationKey = "clip-inbox-share-configuration-v1"
 
     struct Item {
         let fileURL: URL
@@ -58,8 +84,23 @@ enum SharedClipQueue {
         case appGroupUnavailable
 
         var errorDescription: String? {
-            "Clip Inbox App Group 컨테이너를 열 수 없습니다. 서명과 App Group 권한을 확인하세요."
+            SharedL10n.text("Clip Inbox App Group 컨테이너를 열 수 없습니다. 서명과 App Group 권한을 확인하세요.")
         }
+    }
+
+    static func loadConfiguration() -> SharedClipConfiguration {
+        guard let defaults = UserDefaults(suiteName: appGroupIdentifier),
+              let data = defaults.data(forKey: configurationKey),
+              let value = try? JSONDecoder().decode(SharedClipConfiguration.self, from: data) else {
+            return .standard
+        }
+        return value
+    }
+
+    static func saveConfiguration(_ configuration: SharedClipConfiguration) {
+        guard let defaults = UserDefaults(suiteName: appGroupIdentifier),
+              let data = try? JSONEncoder().encode(configuration) else { return }
+        defaults.set(data, forKey: configurationKey)
     }
 
     static func enqueue(_ payload: SharedClipPayload) throws {
