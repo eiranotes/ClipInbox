@@ -30,12 +30,12 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         }
     }
 
-    // DESIGN.md: bg.app/card, accent.yellow/green, border.soft, text.primary/secondary.
+    // DESIGN.md: bg.app/card, accent.yellow, border.soft, text.primary/secondary.
     private enum Palette {
         static let bgApp = adaptive(light: 0xF3EFE7, dark: 0x171714)
         static let bgCard = adaptive(light: 0xFFFFFF, dark: 0x2B2924)
         static let accentYellow = adaptive(light: 0xFFD900, dark: 0xF4D21F)
-        static let accentGreen = adaptive(light: 0x9BE7B0, dark: 0x68C982)
+        static let onAccent = adaptive(light: 0x171714, dark: 0x171714)
         static let borderSoft = adaptive(light: 0xD8D1C4, dark: 0x44413B)
         static let textPrimary = adaptive(light: 0x171714, dark: 0xF4F1E9)
         static let textSecondary = adaptive(light: 0x5F6368, dark: 0xB5B1A8)
@@ -343,7 +343,9 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         statusIcon.isHidden = false
         statusLabel.text = localized("Clip Inbox에 저장됨")
         statusLabel.font = font(size: 15, semibold: true)
-        statusCard.backgroundColor = Palette.accentGreen
+        statusLabel.textColor = Palette.onAccent
+        statusIcon.tintColor = Palette.onAccent
+        statusCard.backgroundColor = Palette.accentYellow
         statusCard.alpha = 0
         UIView.animate(withDuration: 0.18) { self.statusCard.alpha = 1 }
     }

@@ -198,7 +198,7 @@ struct DetailView: View {
                 }
                 Button("취소", role: .cancel) {}
             } message: {
-                Text("이 클립은 인박스와 폴더에서 제거되며 5초 동안 되돌릴 수 있습니다.")
+                Text("이 클립은 휴지통으로 이동하며 5초 동안 바로 되돌릴 수 있습니다.")
             }
             .onAppear {
                 noteDraft = clip.memo ?? ""

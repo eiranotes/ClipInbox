@@ -19,7 +19,7 @@ struct InboxView: View {
             })
 
             VStack(spacing: Tokens.rowGap) {
-                if store.clips.isEmpty, filter == .all, dynamicTypeSize.isAccessibilitySize {
+                if store.activeClips.isEmpty, filter == .all, dynamicTypeSize.isAccessibilitySize {
                     FirstCaptureGuide {
                         selectedTab = .add
                     }
@@ -29,7 +29,7 @@ struct InboxView: View {
                     (store.filterLabel(item), filter == item, { filter = item })
                 })
 
-                if store.clips.isEmpty, filter == .all, !dynamicTypeSize.isAccessibilitySize {
+                if store.activeClips.isEmpty, filter == .all, !dynamicTypeSize.isAccessibilitySize {
                     FirstCaptureGuide {
                         selectedTab = .add
                     }
@@ -169,7 +169,7 @@ struct CardActionsSheet: View {
                 }
                 Button("취소", role: .cancel) {}
             } message: {
-                Text("이 클립은 인박스와 폴더에서 제거되며 5초 동안 되돌릴 수 있습니다.")
+                Text("이 클립은 휴지통으로 이동하며 5초 동안 바로 되돌릴 수 있습니다.")
             }
         }
     }

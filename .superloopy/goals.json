@@ -2,7 +2,7 @@
   "version": 1,
   "mode": "strict",
   "createdAt": "2026-07-09T12:28:56.858Z",
-  "updatedAt": "2026-07-11T03:33:18.729Z",
+  "updatedAt": "2026-07-11T11:48:59.647Z",
   "briefPath": ".superloopy/brief.md",
   "evidencePath": ".superloopy/evidence",
   "goalsPath": ".superloopy/goals.json",
@@ -15,7 +15,7 @@
       "status": "complete",
       "attempt": 1,
       "createdAt": "2026-07-09T12:28:56.858Z",
-      "updatedAt": "2026-07-11T03:33:18.729Z",
+      "updatedAt": "2026-07-11T11:48:59.647Z",
       "criteria": [
         {
           "id": "C001",
@@ -23,9 +23,9 @@
           "scenario": "Happy path works from the real user-facing surface.",
           "essential": true,
           "status": "pass",
-          "artifact": ".superloopy/evidence/frontend/20260711-share-image-link-settings/VISUAL_QA.md",
-          "capturedAt": "2026-07-11T03:33:18.729Z",
-          "notes": "Original image bytes and dimensions preserved; link-open preference and runtime diagnostics verified."
+          "artifact": ".superloopy/evidence/frontend/20260711-trash-onboarding/VISUAL_QA.md",
+          "capturedAt": "2026-07-11T11:48:58.732Z",
+          "notes": "Simulator UI and real Safari Share success verified."
         },
         {
           "id": "C002",
@@ -33,9 +33,9 @@
           "scenario": "Riskiest edge or failure path is handled.",
           "essential": true,
           "status": "pass",
-          "artifact": ".superloopy/evidence/frontend/20260710-ios-tag-search-audit/PERF.md",
-          "capturedAt": "2026-07-10T15:22:31.989Z",
-          "notes": "Xcode build, embedded share extension validation, three tests, and design compliance passed"
+          "artifact": ".superloopy/evidence/frontend/20260711-trash-onboarding/VERIFICATION.md",
+          "capturedAt": "2026-07-11T11:48:59.241Z",
+          "notes": "Trash expiry, restore, empty, duplicate URL, and 31-test regression gate passed."
         },
         {
           "id": "C003",
@@ -43,9 +43,9 @@
           "scenario": "Adjacent existing behavior still works.",
           "essential": true,
           "status": "pass",
-          "artifact": ".superloopy/evidence/frontend/20260710-ios-tag-search-audit/DESIGN_TOKENS.md",
-          "capturedAt": "2026-07-10T15:22:32.556Z",
-          "notes": "Five-column selectors and fixed clip rows remain inside the centralized token contract"
+          "artifact": ".superloopy/evidence/frontend/20260711-trash-onboarding/DESIGN_TOKENS.md",
+          "capturedAt": "2026-07-11T11:48:59.647Z",
+          "notes": "Yellow feedback, compact form spacing, trash, and onboarding remain under the token contract."
         }
       ],
       "startedAt": "2026-07-09T12:28:57.134Z",

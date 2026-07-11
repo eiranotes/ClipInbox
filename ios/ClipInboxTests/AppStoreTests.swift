@@ -135,7 +135,8 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(reloaded.clip(id: 1)?.memo, "다시 확인할 메모")
         XCTAssertTrue(reloaded.folders.contains { $0.label == "읽을거리" })
         XCTAssertEqual(reloaded.clip(id: added.id)?.tags, ["읽을거리"])
-        XCTAssertNil(reloaded.clip(id: 5))
+        XCTAssertFalse(reloaded.activeClips.contains { $0.id == 5 })
+        XCTAssertEqual(reloaded.trashedClips.map(\.id), [5])
     }
 
     func testDeleteCanBeUndoneAndPersistsRestoredClip() throws {
@@ -143,7 +144,8 @@ final class AppStoreTests: XCTestCase {
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
 
         XCTAssertTrue(store.deleteClip(id: 1))
-        XCTAssertNil(store.clip(id: 1))
+        XCTAssertNil(store.activeClips.first { $0.id == 1 })
+        XCTAssertTrue(store.clip(id: 1)?.isInTrash == true)
         XCTAssertEqual(store.pendingDeletion?.clip.id, 1)
         XCTAssertTrue(store.undoDelete())
         XCTAssertEqual(store.clip(id: 1)?.title, DefaultData.clips[0].title)
@@ -151,6 +153,35 @@ final class AppStoreTests: XCTestCase {
 
         let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
         XCTAssertNotNil(reloaded.clip(id: 1))
+    }
+
+    func testTrashRestoreEmptyAndThirtyDayExpiry() throws {
+        try seedDefaultLibrary()
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+
+        XCTAssertTrue(store.deleteClip(id: 1))
+        XCTAssertEqual(store.folderCount("휴지통"), 1)
+        XCTAssertTrue(store.restoreClip(id: 1))
+        XCTAssertTrue(store.trashedClips.isEmpty)
+
+        XCTAssertTrue(store.deleteClip(id: 2))
+        XCTAssertTrue(store.emptyTrash())
+        XCTAssertNil(store.clip(id: 2))
+        XCTAssertFalse(store.undoDelete())
+
+        var expired = DefaultData.clips[0]
+        expired.deletedAt = Date().addingTimeInterval(-31 * 24 * 60 * 60)
+        var retained = DefaultData.clips[1]
+        retained.deletedAt = Date().addingTimeInterval(-29 * 24 * 60 * 60)
+        let repository = TestClipRepository(bootstrapHandler: {
+            .loaded(DataSnapshot(version: 2, clips: [expired, retained],
+                                 folders: DefaultData.folders, preferences: .standard))
+        })
+        let reloaded = AppStore(userDefaults: defaults, repository: repository)
+
+        XCTAssertNil(reloaded.clip(id: expired.id))
+        XCTAssertEqual(reloaded.trashedClips.map(\.id), [retained.id])
+        XCTAssertEqual(repository.committedSnapshots.last?.clips.map(\.id), [retained.id])
     }
 
     func testUpdateTagsCleansValuesPersistsAndSkipsNoOp() throws {
@@ -223,8 +254,9 @@ final class AppStoreTests: XCTestCase {
         XCTAssertTrue(store.clips.isEmpty)
         XCTAssertEqual(store.bootstrapState, .firstRun)
         XCTAssertEqual(store.folders.map(\.label), [
-            "전체", "기본 폴더", "폴더 1", "폴더 2", "폴더 3", "폴더 4", "폴더 5"
+            "전체", "기본 폴더", "폴더 1", "폴더 2", "폴더 3", "폴더 4", "폴더 5", "휴지통"
         ])
+        XCTAssertFalse(store.destinationFolders.contains { $0.icon == "trash" })
         store.updatePreference(key: .theme, value: "다크")
 
         let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
@@ -473,7 +505,11 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(text.title, "첫 줄")
         XCTAssertEqual(text.description, "첫 줄\n둘째 줄")
         XCTAssertEqual(memo.source, "나의 메모")
-        XCTAssertEqual(store.existingClip(forManualURL: "https://EXAMPLE.com/path#other")?.id, link.id)
+        let duplicate = try store.createManualClip(
+            type: .link, title: "같은 링크도 저장", url: "https://EXAMPLE.com/path#other", text: "",
+            destination: "기본 폴더", tags: [], memo: ""
+        )
+        XCTAssertNotEqual(duplicate.id, link.id)
         XCTAssertThrowsError(try store.createManualClip(
             type: .link, title: "", url: "javascript:alert(1)", text: "",
             destination: "기본 폴더", tags: [], memo: ""

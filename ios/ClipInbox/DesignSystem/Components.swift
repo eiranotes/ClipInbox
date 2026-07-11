@@ -53,10 +53,10 @@ struct TwoRowHorizontalSelection: View {
     }
 
     let items: [SelectionItem]
+    var rowCount = Tokens.selectionRowCount
 
     private var gridSlots: [SelectionSlot] {
         let columnCount = Tokens.selectionColumnCount
-        let rowCount = Tokens.selectionRowCount
         let pageSize = columnCount * rowCount
         var slots: [SelectionSlot] = []
 
@@ -95,7 +95,7 @@ struct TwoRowHorizontalSelection: View {
             )
             let rows = Array(
                 repeating: GridItem(.fixed(Tokens.touchTarget), spacing: Tokens.chipGap),
-                count: Tokens.selectionRowCount
+                count: rowCount
             )
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -114,8 +114,8 @@ struct TwoRowHorizontalSelection: View {
                 .frame(minWidth: geometry.size.width, alignment: .leading)
             }
         }
-        .frame(height: Tokens.touchTarget * CGFloat(Tokens.selectionRowCount)
-            + Tokens.chipGap * CGFloat(Tokens.selectionRowCount - 1))
+        .frame(height: Tokens.touchTarget * CGFloat(rowCount)
+            + Tokens.chipGap * CGFloat(rowCount - 1))
     }
 
     private var accessibilitySelection: some View {
@@ -246,7 +246,7 @@ struct PrimaryBoxButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(Tokens.button)
-            .foregroundStyle(isDanger ? Color.white : Tokens.textPrimary)
+            .foregroundStyle(isDanger ? Color.white : Tokens.onAccent)
             .frame(maxWidth: .infinity, minHeight: Tokens.actionTarget)
             .background(
                 RoundedRectangle(cornerRadius: Tokens.radiusButton, style: .continuous)
@@ -286,7 +286,7 @@ struct UtilityIconButton: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(Tokens.textPrimary)
+                .foregroundStyle(isOn ? Tokens.onAccent : Tokens.textPrimary)
                 .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
                 .background(
                     RoundedRectangle(cornerRadius: Tokens.radiusChip, style: .continuous)
@@ -341,11 +341,11 @@ struct ActionRow: View {
             HStack(spacing: Tokens.cardGap) {
                 Image(systemName: systemImage)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(isDanger ? Tokens.danger : Tokens.textPrimary)
+                    .foregroundStyle(isDanger ? Tokens.danger : isSelected ? Tokens.onAccent : Tokens.textPrimary)
                     .frame(width: Tokens.iconColumn, height: Tokens.destinationIcon)
                 Text(L10n.text(label, locale: locale))
                     .font(Tokens.bodySemibold)
-                    .foregroundStyle(isDanger ? Tokens.danger : Tokens.textPrimary)
+                    .foregroundStyle(isDanger ? Tokens.danger : isSelected ? Tokens.onAccent : Tokens.textPrimary)
                     .layoutPriority(1)
                 Spacer(minLength: Tokens.rowGap)
                 if !value.isEmpty {
@@ -357,14 +357,14 @@ struct ActionRow: View {
                 }
                 Image(systemName: isSelected ? "checkmark" : "chevron.right")
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(isSelected ? Tokens.textPrimary : Tokens.textTertiary)
+                    .foregroundStyle(isSelected ? Tokens.onAccent : Tokens.textTertiary)
             }
             .padding(.horizontal, Tokens.space1)
             .frame(minHeight: Tokens.actionTarget)
             .contentShape(Rectangle())
             .background(
                 RoundedRectangle(cornerRadius: Tokens.radiusChip, style: .continuous)
-                    .fill(isSelected ? Tokens.accentYellow.opacity(0.16) : .clear)
+                    .fill(isSelected ? Tokens.accentYellow : .clear)
             )
             .overlay(alignment: .bottom) {
                 if !isSelected { Tokens.borderSoft.frame(height: Tokens.borderChipWidth) }
@@ -382,20 +382,21 @@ struct StatePanel: View {
     let title: String
     let message: String
     var isDanger = false
+    var isAccent = false
 
     var body: some View {
         HStack(alignment: .top, spacing: Tokens.cardGap) {
             Image(systemName: systemImage)
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(isDanger ? Tokens.danger : Tokens.textPrimary)
+                .foregroundStyle(isDanger ? Tokens.danger : isAccent ? Tokens.onAccent : Tokens.textPrimary)
                 .frame(width: Tokens.iconColumn)
             VStack(alignment: .leading, spacing: Tokens.rowGap) {
                 Text(L10n.text(title, locale: locale))
                     .font(Tokens.cardTitle)
-                    .foregroundStyle(Tokens.textPrimary)
+                    .foregroundStyle(isAccent ? Tokens.onAccent : Tokens.textPrimary)
                 Text(L10n.text(message, locale: locale))
                     .font(Tokens.meta)
-                    .foregroundStyle(Tokens.textSecondary)
+                    .foregroundStyle(isAccent ? Tokens.onAccent : Tokens.textSecondary)
                     .lineSpacing(Tokens.metaLineSpacing)
             }
             Spacer(minLength: 0)
@@ -510,10 +511,10 @@ struct ToastView: View {
                 .font(.system(size: 16, weight: .bold))
             Text(L10n.text(message, locale: locale)).font(Tokens.bodyBold)
         }
-        .foregroundStyle(Tokens.textPrimary)
+        .foregroundStyle(Tokens.onAccent)
         .padding(.horizontal, Tokens.panelPad)
         .padding(.vertical, 12)
-        .tokenSurface(fill: Tokens.accentGreen, radius: Tokens.radiusButton,
+        .tokenSurface(fill: Tokens.accentYellow, radius: Tokens.radiusButton,
                       border: Tokens.borderSoft, borderWidth: Tokens.borderChipWidth)
     }
 }
@@ -534,6 +535,7 @@ private extension EnvironmentValues {
 struct ScreenScaffold<Content: View>: View {
     @Environment(\.usesWorkflowSheetStyle) private var usesWorkflowSheetStyle
     var spacing: CGFloat = Tokens.sectionGap
+    var additionalBottomPadding: CGFloat = 0
     var dismissKeyboardOnBackgroundTap = true
     @ViewBuilder var content: Content
 
@@ -544,7 +546,8 @@ struct ScreenScaffold<Content: View>: View {
             }
             .padding(.horizontal, Tokens.screenX)
             .padding(.top, usesWorkflowSheetStyle ? Tokens.sheetTop : Tokens.screenTop)
-            .padding(.bottom, usesWorkflowSheetStyle ? Tokens.sheetBottom : Tokens.bottomSafe)
+            .padding(.bottom, (usesWorkflowSheetStyle ? Tokens.sheetBottom : Tokens.bottomSafe)
+                + additionalBottomPadding)
             .frame(maxWidth: Tokens.contentMax)
             .frame(maxWidth: .infinity)
         }

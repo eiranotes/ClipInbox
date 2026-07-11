@@ -9,14 +9,18 @@ Implemented screens:
 - Inbox with a two-row, five-column equal-width filter grid, full-row clip navigation, optional thumbnails, and text-only rows that keep the same height as media rows.
 - Share Extension with two user-selectable behaviors: immediate save shows one compact localized checkmark card for about 2 seconds before returning, while review mode exposes only folder, memo, save, and cancel controls.
 - Detail view with a 16pt content rhythm that fits one viewport through the 링크 열기 action (140pt aspect-fit preview, 72pt note editor), a zoomable full-screen image viewer, directly editable note and tags, flat organization rows, and actions kept above the bottom navigation.
-- Folder list with flat rows and counts, using `전체`, second-row `기본 폴더`, and rename-oriented `폴더 1` through `폴더 5` on fresh/reset data.
+- Folder list with flat rows and active-only counts, using `전체`, second-row `기본 폴더`, rename-oriented `폴더 1` through `폴더 5`, and a reserved `휴지통`. Deleted clips can be restored or permanently emptied; items older than 30 days are purged on launch.
 - Search with the shared 5x2 category selector, persisted real recent searches, results, and empty state. The keyboard opens only from a direct field tap and dismisses on outside taps or tab switches; synthetic launch-time prewarming was removed after runtime log diagnosis.
 - Sort Later classification flow without scores or percentages.
-- Settings with app lock, functional light/dark/system theme, Korean/English/Japanese language selection, default folder, global tag management, Share save behavior, direct/confirm link opening, JSON export/import, app info, contact, and delete. Link opening defaults to direct. Detail screens omit the redundant explanation panel and use content-aware vertical spacing.
+- Settings with app lock, functional light/dark/system theme, Korean/English/Japanese language selection, default folder, global tag management, Share save behavior, direct/confirm link opening, a reusable Share guide, JSON export/import, app info, contact, and a fully visible delete action above the bottom navigation. Link opening defaults to direct.
 - CTA destination screens for card menu, share, more actions, external link confirmation, folder move, clip edit, delete confirmation, save destination, tag editor, new folder, folder detail, and setting detail. Inbox filtering is direct and bookmark is an immediate toggle.
 - Native iOS Share Extension exposed in Safari and Photos, with App Group delivery into the app for links, text, and images.
 
 ## Completed Work
+
+- Added a generated-illustration, three-step first-run Share guide with Settings re-entry; compacted the Add type/title rhythm and removed manual URL duplicate detection so repeated URLs save as independent clips.
+- Added the reserved Trash folder, restore/empty actions, 30-day expiry notice and launch-time purge while keeping normal Inbox, Search, folder counts, and destinations free of trashed clips.
+- Unified selected menus, app feedback, Undo, and real Share Extension success feedback on the exact yellow accent with near-black foreground; simulator evidence is in `.superloopy/evidence/frontend/20260711-trash-onboarding`.
 
 - Completed the repository-owned portion of audit Phase 4. `scripts/verify_ios_release.sh` now regenerates and drift-checks the Xcode project, selects an available iPhone simulator, runs all native tests, creates an unsigned generic-device Release archive, and inspects bundle IDs, embedded Share Extension, privacy manifests, localized resources, and matching source App Group entitlements. GitHub Actions runs the same gate, and recovery, Share queue, and release runbooks separate local proof from signed/account/device requirements.
 - Completed audit Phase 3 with an honest empty-Inbox Share guide, a real Add handoff, durable five-second delete Undo, persistent recovered-library and quarantined-queue banners, on-device storage accounting, and explicit unencrypted JSON backup exclusions. Screen/section headings expose VoiceOver header traits; accessibility Dynamic Type switches the 5x2 selector to readable full-width rows and lets clip/detail content grow while normal sizes preserve the existing compact contracts.
@@ -86,7 +90,7 @@ Implemented screens:
 ## Known Risks
 
 - The Open Design refinement now succeeds: project `clip-inbox-cta-token-refinement` produced `clip-card.html`, which was ported into the app. The earlier Fable 5 usage-limit failure is resolved.
-- The Add tab now saves real Link/Text/Photo/Memo input. Exact canonical URL matches are disclosed but may still be saved separately; fuzzy text and perceptual-image duplicate handling remain deferred.
+- The Add tab now saves real Link/Text/Photo/Memo input. Repeated URLs are intentionally accepted without duplicate detection; fuzzy text and perceptual-image duplicate handling are also out of scope.
 - Simulator registration and data transfer are proven. A physical-device build still requires the same Apple Developer team and App Group capability on both the app and extension provisioning profiles.
 - On the external volume, `xcodebuild` fails with index-store rename errors unless DerivedData lives on the local disk and `COMPILER_INDEX_STORE_ENABLE=NO` is set (see DECISIONS).
 - Original shared images intentionally retain their source bytes up to the 50 MB/100 MP capture ceiling, so accepted files consume their full local size until the clip or all app data is deleted.

@@ -13,6 +13,7 @@
 		15E37327B46B826709278C2E /* ProviderDeadline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6B05B25B57CF846C0AF6F1 /* ProviderDeadline.swift */; };
 		18D61DC0A91F14752D703C7F /* Pretendard-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 57A9BAD05DACA83C3493E175 /* Pretendard-Bold.otf */; };
 		1C2AA3F041A5D4BEB6DE7CED /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 198ADE59C65E39BEF7A471E0 /* SearchView.swift */; };
+		2519FB944E14CC2EE3A859D8 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7365C572930FC86C218044A /* OnboardingView.swift */; };
 		2A1F0C4C40291AEFDC9BE1EE /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = E52555145B8B48251B7480B0 /* Localizable.strings */; };
 		33D515193F783FC9CE35E0E3 /* Pretendard-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 698A3F9E9E429775613CF875 /* Pretendard-Regular.otf */; };
 		3977138EC7EECAD7DD4DEE98 /* SortView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4DC97178A285DB2A4E61E7D /* SortView.swift */; };
@@ -120,6 +121,7 @@
 		DD1E7CE5A632B3A06290BD81 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E0C6743E26E3691E749EC44C /* ClipCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipCardView.swift; sourceTree = "<group>"; };
 		E2CE96CF2101B5E28C501E56 /* ClipInboxShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ClipInboxShare.entitlements; sourceTree = "<group>"; };
+		E7365C572930FC86C218044A /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		ED7F7D6963BF3DB266F080B2 /* AppStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStoreTests.swift; sourceTree = "<group>"; };
 		F4DC97178A285DB2A4E61E7D /* SortView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SortView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -191,6 +193,7 @@
 				179DCA4CAD478D4C0509FA05 /* DetailView.swift */,
 				3A443C1F0B4FA3D992DFE533 /* FoldersView.swift */,
 				6942E141A5785EB4AD63558A /* InboxView.swift */,
+				E7365C572930FC86C218044A /* OnboardingView.swift */,
 				0EBE2703CDE9A9D45B3F0EE1 /* RootView.swift */,
 				198ADE59C65E39BEF7A471E0 /* SearchView.swift */,
 				C67C3EA14CDBCBD1D419C728 /* SettingsView.swift */,
@@ -410,6 +413,7 @@
 				D6C11377635BCEB4A35A44F3 /* InboxView.swift in Sources */,
 				8F2C75DE7B328A72D3AC5C01 /* Localization.swift in Sources */,
 				8CB37864CA5821DCCE3681FA /* Models.swift in Sources */,
+				2519FB944E14CC2EE3A859D8 /* OnboardingView.swift in Sources */,
 				15E37327B46B826709278C2E /* ProviderDeadline.swift in Sources */,
 				0ECAA36F8B660E6D596DE192 /* RootView.swift in Sources */,
 				1C2AA3F041A5D4BEB6DE7CED /* SearchView.swift in Sources */,

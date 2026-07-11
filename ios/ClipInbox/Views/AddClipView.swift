@@ -21,12 +21,8 @@ struct AddClipView: View {
     @State private var photoAsset: SharedImageAsset?
     @State private var photoStatus: String?
 
-    private var duplicate: Clip? {
-        type == .link ? store.existingClip(forManualURL: url) : nil
-    }
-
     var body: some View {
-        ScreenScaffold {
+        ScreenScaffold(spacing: Tokens.formSectionGap) {
             ScreenHeader("추가")
 
             BoardSection(title: "클립 유형") {
@@ -36,7 +32,7 @@ struct AddClipView: View {
                         saved = false
                         saveError = nil
                     })
-                })
+                }, rowCount: Tokens.manualCaptureSelectionRowCount)
             }
 
             BoardSection(title: "제목 (선택)") {
@@ -49,14 +45,6 @@ struct AddClipView: View {
 
             captureFields
 
-            if let duplicate {
-                StatePanel(
-                    systemImage: "doc.on.doc",
-                    title: "이미 저장된 링크입니다",
-                    message: L10n.format("format.duplicate_clip_location", duplicate.folder)
-                )
-            }
-
             BoardSection(title: "저장 위치") {
                 Button {
                     showDestination = true
@@ -64,12 +52,12 @@ struct AddClipView: View {
                     HStack(spacing: Tokens.rowGap + 4) {
                         Image(systemName: "tray")
                             .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(Tokens.textPrimary)
+                            .foregroundStyle(Tokens.onAccent)
                             .frame(width: Tokens.destinationIcon, height: Tokens.destinationIcon)
                             .tokenSurface(fill: Tokens.accentYellow, radius: Tokens.radiusButton)
                         Text(destination)
                             .font(Tokens.bodyBold)
-                            .foregroundStyle(Tokens.textPrimary)
+                            .foregroundStyle(Tokens.onAccent)
                         Spacer()
                         Image(systemName: "chevron.down")
                             .font(.system(size: 13, weight: .bold))
@@ -119,9 +107,7 @@ struct AddClipView: View {
                 } else {
                     Text(saved
                          ? L10n.format("format.saved_in_folder", L10n.text(destination))
-                         : duplicate == nil
-                            ? L10n.format("format.save_to_folder", L10n.text(destination))
-                            : "별도로 저장")
+                         : L10n.format("format.save_to_folder", L10n.text(destination)))
                 }
             }
             .buttonStyle(PrimaryBoxButtonStyle())

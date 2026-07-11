@@ -57,7 +57,8 @@ struct SettingsView: View {
     @State private var showDeleteConfirm = false
 
     var body: some View {
-        ScreenScaffold {
+        ScreenScaffold(spacing: Tokens.formSectionGap,
+                       additionalBottomPadding: Tokens.bottomNavigationClearance) {
             ScreenHeader("설정")
 
             settingsGroup([
@@ -78,10 +79,7 @@ struct SettingsView: View {
             ])
 
             sectionHeading("기타")
-            settingsGroup([
-                (.about, "0.3.0"),
-                (.contact, "")
-            ])
+            otherSettingsGroup
 
             Button {
                 showDeleteConfirm = true
@@ -90,7 +88,6 @@ struct SettingsView: View {
             }
             .buttonStyle(SecondaryBoxButtonStyle(isDanger: true))
 
-            Spacer(minLength: Tokens.bottomSafe - Tokens.sectionGap * 2)
         }
         .alert("모든 데이터 삭제", isPresented: $showDeleteConfirm) {
             Button("삭제 확인", role: .destructive) {
@@ -121,6 +118,24 @@ struct SettingsView: View {
                     RowDivider()
                 }
             }
+        }
+    }
+
+    private var otherSettingsGroup: some View {
+        VStack(spacing: 0) {
+            NavigationLink {
+                OnboardingView(isFirstRun: false, onComplete: nil)
+                    .toolbar(.hidden, for: .navigationBar)
+            } label: {
+                DestinationRow(systemImage: "rectangle.portrait.and.arrow.right",
+                               title: "공유 저장 가이드")
+            }
+            .buttonStyle(.plain)
+            RowDivider()
+            settingsGroup([
+                (.about, "0.3.0"),
+                (.contact, "")
+            ])
         }
     }
 }
@@ -262,7 +277,7 @@ struct SettingDetailView: View {
                     Button(action: addTag) {
                         Image(systemName: "plus")
                             .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(Tokens.textPrimary)
+                            .foregroundStyle(Tokens.onAccent)
                             .frame(width: Tokens.actionTarget, height: Tokens.actionTarget)
                             .tokenSurface(fill: Tokens.accentYellow, radius: Tokens.radiusButton)
                     }
@@ -352,7 +367,7 @@ struct SettingDetailView: View {
                 StatePanel(
                     systemImage: "info.circle",
                     title: "원본 보존 정책",
-                    message: "이미지는 원본 형식과 바이트를 유지합니다. 자동 압축이나 자동 삭제는 하지 않으며, 클립 삭제 후 5초 안에는 되돌릴 수 있습니다."
+                    message: "이미지는 원본 형식과 바이트를 유지합니다. 삭제한 클립은 휴지통에서 복원할 수 있으며 30일 후 원본 이미지와 함께 자동 삭제됩니다."
                 )
             } else if let errorMessage {
                 StatePanel(systemImage: "externaldrive.badge.exclamationmark",
@@ -419,7 +434,8 @@ struct SettingDetailView: View {
     private var detailTopInset: CGFloat {
         switch key {
         case .defaultFolder, .tags: return 0
-        case .appLock, .theme, .language, .shareMode, .linkOpening: return Tokens.settingChoiceTop
+        case .appLock, .theme, .language, .shareMode, .linkOpening:
+            return Tokens.settingChoiceTop
         case .storage: return 0
         default: return Tokens.settingActionTop
         }

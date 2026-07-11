@@ -1,5 +1,21 @@
 # Decisions
 
+## 2026-07-11: Share Extensions Return to the Host App
+
+Decision: After durable capture, `ClipInboxShare` shows the token-matched yellow success card and completes the extension request back to the host app. Do not expose an “open Clip Inbox after sharing” preference or register a custom URL scheme solely for that behavior.
+
+Why: Public iOS extension APIs allow only Today widgets, not Share extensions, to ask the system to open their containing app. A setting that cannot work through supported App Store APIs would be a false control.
+
+Impact: The supported default requested by the product—do not move after sharing—is proven in Safari. Opening Clip Inbox remains an explicit user action; private URL-responder workarounds are not shipped.
+
+## 2026-07-11: Deleted Clips Live in a Reserved 30-Day Trash
+
+Decision: Reserve one system `휴지통` folder. Deletion sets `deletedAt` and removes the clip from active Inbox, Search, folder counts, and save destinations. Trash provides restore and permanent empty actions; launch normalization permanently removes items older than 30 days and their images.
+
+Why: A durable Trash makes accidental-deletion recovery discoverable beyond a five-second banner while preserving one clip state source and the existing JSON repository.
+
+Impact: The five-second Undo remains a fast path, but it restores from Trash instead of holding a separate removed record. Users see the 30-day policy inside Trash before destructive emptying.
+
 ## 2026-07-11: Adopt the Audit Through a Data-Safe, Product-Bounded Sequence
 
 Decision: Apply the A-to-Z audit in the order documented by `docs/AUDIT_ADOPTION_PLAN.md`, beginning with test fixtures and the data trust boundary. Keep the native Share-to-Inbox product, five-tab shell, direct 5x2 selectors, normal-size one-viewport detail, original image preservation, and local-only/no-account positioning.
@@ -34,19 +50,19 @@ Impact: Lock copy describes screen access protection rather than storage encrypt
 
 ## 2026-07-11: Add Is a Real Manual Capture Surface
 
-Decision: Keep the center Add tab, but replace its demo card with Link, Text, Photo, and Memo capture. Link input normalizes http/https URLs and shows exact canonical duplicates; Photo uses PhotosPicker and the same original-file limits; all types use existing folder/tag controls and the repository transaction.
+Decision: Keep the center Add tab, but replace its demo card with Link, Text, Photo, and Memo capture. Link input validates and normalizes http/https URLs without duplicate detection; Photo uses PhotosPicker and the same original-file limits; all types use existing folder/tag controls and the repository transaction.
 
 Why: A primary navigation action that creates a hardcoded brunch sample breaks product trust and App Review minimum functionality. Manual capture complements, rather than replaces, the Share Extension.
 
-Impact: No production action creates sample clips. Exact URL duplicates are disclosed and may be saved separately; fuzzy or perceptual duplicate merging remains intentionally deferred.
+Impact: No production action creates sample clips. Repeated URLs save as independent clips without a warning; fuzzy or perceptual duplicate merging is also intentionally absent.
 
-## 2026-07-11: Delete Uses a Five-Second Durable Undo Window
+## 2026-07-11: Delete Uses a Five-Second Undo Entry to Trash
 
-Decision: A clip removal is committed immediately, but its original record and image asset remain available for five seconds. Undo re-inserts and commits the clip at its prior index; the image file is deleted only when the window closes. A second deletion finalizes the previous window first.
+Decision: A clip deletion is committed immediately by assigning it to the reserved Trash with `deletedAt`. Undo clears the deletion metadata within five seconds; restore remains available from Trash afterward. Image files are retained until Trash is emptied or the 30-day expiry runs.
 
-Why: The app needs immediate list feedback and durable state without introducing a full Trash schema before the repository layer is proven. Delaying only asset cleanup provides a bounded recovery path while keeping version-2 backup compatibility.
+Why: The app needs immediate list feedback and durable recovery that survives beyond a short banner. Optional deletion metadata extends the existing version-2-compatible model without adding a second state store.
 
-Impact: Delete confirmations describe the Undo window, the root presents an actionable yellow banner, and automated tests prove the restored clip survives reload. A retained orphan after process death remains visible through storage diagnostics and can be addressed by later cleanup tooling.
+Impact: Delete confirmations describe the Trash destination, the root presents an actionable yellow Undo banner, and automated tests cover restore, empty, expiry, active-count isolation, and reload behavior.
 
 ## 2026-07-11: Accessibility Sizes Use Structural Variants
 

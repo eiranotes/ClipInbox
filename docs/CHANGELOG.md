@@ -12,6 +12,8 @@
 
 ### Added
 
+- Reserved Trash folder with restore, permanent empty, 30-day expiry notice, automatic launch cleanup, and active-list/count isolation.
+- Three-step first-run Share onboarding with generated token-matched illustrations and a reusable Settings entry point.
 - GitHub Actions coverage for XcodeGen drift, native tests, unsigned Release archive creation, embedded Share Extension, privacy manifests, localizations, and source App Group consistency.
 - Empty Inbox onboarding that explains Share capture, Quick/Review behavior, later organization, and links directly to real manual Add.
 - Five-second delete Undo that restores the durable clip before original-image cleanup.
@@ -28,7 +30,7 @@
 - Settings control for immediate Share save versus folder-and-memo review, synchronized to the extension through App Group preferences.
 - Privacy manifests for the app and Share Extension, plus localized ASO copy, screenshot storyboard, release checklist, and a trilingual privacy-policy draft.
 - Direct tag editing from the clip-detail organize row: the tag row opens the tag editor immediately and saves cleaned, deduplicated tags with a no-op guard, covered by a new `updateTags` XCTest regression.
-- Share Extension now shows a compact green "Clip Inbox에 저장됨" confirmation card with a checkmark for about 2 seconds after the zero-confirm save, instead of disappearing without feedback.
+- Share Extension now shows a compact yellow "Clip Inbox에 저장됨" confirmation card with a near-black checkmark before returning to the host app.
 - Korean "로/으로" particles in dynamic folder labels (move sheet, move toast, Sort Later CTA) now follow the final consonant — "디자인으로 분류하고 다음", "인박스로 이동" — via a tested `withRoParticle` helper.
 - Native `ClipInboxShare` Share Extension for Safari, Photos, and text sources, embedded in `ClipInbox.app` with URL, web-page, text, and single-image activation rules.
 - App Group file queue (`group.app.clipinbox.ClipInbox`) so the extension can save while the containing app is closed; the app imports queued clips whenever it becomes active.
@@ -41,6 +43,9 @@
 
 ### Changed
 
+- Settings content now clears the bottom navigation so the final delete action is never clipped; Add uses a compact one-row type selector and tighter title spacing.
+- Manual URL capture no longer performs or displays duplicate detection; repeated URLs save independently.
+- Selected menus, app notices, toasts, deletion Undo, and Share success use the same exact yellow accent and near-black foreground.
 - Accessibility Dynamic Type sizes render direct selector choices as full-width rows, expand clip/detail content, and stack secondary detail actions; standard sizes retain the 5x2 and one-viewport layouts.
 - JSON export now discloses its unencrypted format and exact exclusions before the file picker opens.
 - Screen and section titles now expose VoiceOver header traits.
@@ -74,6 +79,7 @@
 
 ### Fixed
 
+- Removed the unsupported Share-extension attempt and custom URL scheme for automatically launching the containing app; public iOS Share extensions return to their host app.
 - Clip deletion is no longer irreversible immediately after confirmation.
 - Empty production libraries no longer stop at a generic no-results message without explaining the primary Share workflow.
 - App Lock no longer unlocks content when LocalAuthentication cannot evaluate the device-owner policy.
@@ -98,6 +104,7 @@
 
 ### Verified
 
+- Thirty-one native XCTest regressions pass, including Trash restore/empty/30-day expiry, duplicate manual URL capture, selected-feedback token use, and the embedded Share Extension build.
 - The complete local release gate passed: 30 tests, unsigned generic iOS Release archive, embedded `ClipInboxShare.appex`, both privacy manifests, Korean/English/Japanese resources in both bundles, expected bundle IDs, and matching source App Group entitlements. Distribution signing, owned metadata, upload, and physical-device cases remain external gates.
 - Thirty native XCTest regressions pass, including durable delete Undo and storage summary separation. The same simulator build validates the embedded Share Extension.
 - A clean temporary iPhone 17 Pro simulator verified the complete standard first-run guide and the Accessibility Extra Large selector-row variant; evidence is in `.superloopy/evidence/frontend/20260711-audit-phase3`.

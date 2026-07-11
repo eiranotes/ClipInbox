@@ -103,6 +103,8 @@ final class AppStore {
     private static let recentSearchLimit = 5
     private static let tagCatalogKey = "clip-inbox-tag-catalog-v1"
     private static let linkOpenModeKey = "clip-inbox-link-open-mode-v1"
+    static let trashRetentionDays = 30
+    private static let trashRetentionInterval: TimeInterval = 30 * 24 * 60 * 60
 
     init(fileURL: URL? = nil, userDefaults: UserDefaults = .standard,
          repository: (any ClipRepository)? = nil) {
@@ -156,6 +158,7 @@ final class AppStore {
         }
         pendingDeletion = nil
         sharedQueueNotice = nil
+        _ = purgeExpiredTrash(showFeedback: false)
         try? syncSharedConfiguration()
     }
 
@@ -385,6 +388,22 @@ final class AppStore {
                                       label: label,
                                       defaultTag: folder.defaultTag.map { cleanText($0, maxLength: 50) }))
         }
+        safeFolders.removeAll { $0.icon == "trash" }
+        if let conflictIndex = safeFolders.firstIndex(where: {
+            $0.label.caseInsensitiveCompare("휴지통") == .orderedSame
+        }) {
+            let original = safeFolders[conflictIndex].label
+            var replacement = "휴지통 보관함"
+            var suffix = 2
+            while safeFolders.contains(where: { $0.label.caseInsensitiveCompare(replacement) == .orderedSame }) {
+                replacement = "휴지통 보관함 \(suffix)"
+                suffix += 1
+            }
+            safeFolders[conflictIndex].label = replacement
+            for index in safeClips.indices where safeClips[index].folder == original {
+                safeClips[index].folder = replacement
+            }
+        }
         if !safeFolders.contains(where: { $0.icon == "archive" }) {
             safeFolders.insert(Folder(icon: "archive", label: "전체"), at: 0)
         }
@@ -405,6 +424,7 @@ final class AppStore {
                 safeFolders.append(Folder(icon: "folder", label: safeClips[index].folder))
             }
         }
+        safeFolders.append(Folder(icon: "trash", label: "휴지통"))
 
         var preferences = input.preferences
         if !["켬", "끔"].contains(preferences.appLock) { preferences.appLock = Preferences.standard.appLock }
@@ -415,7 +435,9 @@ final class AppStore {
         if SharedSaveMode(rawValue: preferences.shareMode) == nil {
             preferences.shareMode = Preferences.standard.shareMode
         }
-        if !safeFolders.contains(where: { $0.icon != "archive" && $0.label == preferences.defaultFolder }) {
+        if !safeFolders.contains(where: {
+            $0.icon != "archive" && $0.icon != "trash" && $0.label == preferences.defaultFolder
+        }) {
             preferences.defaultFolder = inboxLabel
         }
 
@@ -429,14 +451,22 @@ final class AppStore {
         return clips.first { $0.id == id }
     }
 
+    var activeClips: [Clip] { clips.filter { !$0.isInTrash } }
+
+    var trashedClips: [Clip] {
+        clips.filter(\.isInTrash).sorted {
+            ($0.deletedAt ?? .distantPast) > ($1.deletedAt ?? .distantPast)
+        }
+    }
+
     func filteredClips(_ filter: InboxFilter) -> [Clip] {
         if let tag = filter.tag {
-            return clips.filter { $0.tags.contains(tag) }
+            return activeClips.filter { $0.tags.contains(tag) }
         }
         switch filter {
-        case .all: return clips
-        case .unsorted: return clips.filter { $0.state == .unsorted }
-        default: return clips.filter { $0.type == filter.clipType }
+        case .all: return activeClips
+        case .unsorted: return activeClips.filter { $0.state == .unsorted }
+        default: return activeClips.filter { $0.type == filter.clipType }
         }
     }
 
@@ -445,15 +475,19 @@ final class AppStore {
     }
 
     func folderCount(_ label: String) -> Int {
-        isAggregateFolder(label) ? clips.count : clips.filter { $0.folder == label }.count
+        if isTrashFolder(label) { return trashedClips.count }
+        return isAggregateFolder(label)
+            ? activeClips.count
+            : activeClips.filter { $0.folder == label }.count
     }
 
     func folderClips(_ label: String) -> [Clip] {
-        isAggregateFolder(label) ? clips : clips.filter { $0.folder == label }
+        if isTrashFolder(label) { return trashedClips }
+        return isAggregateFolder(label) ? activeClips : activeClips.filter { $0.folder == label }
     }
 
     var destinationFolders: [Folder] {
-        folders.filter { $0.icon != "archive" }
+        folders.filter { $0.icon != "archive" && $0.icon != "trash" }
     }
 
     var availableTags: [String] {
@@ -464,13 +498,17 @@ final class AppStore {
         folders.first(where: { $0.label == label })?.icon == "archive"
     }
 
-    var unsortedClips: [Clip] { clips.filter { $0.state == .unsorted } }
+    func isTrashFolder(_ label: String) -> Bool {
+        folders.first(where: { $0.label == label })?.icon == "trash"
+    }
+
+    var unsortedClips: [Clip] { activeClips.filter { $0.state == .unsorted } }
 
     func searchResults(query: String, filter: String) -> [Clip] {
         let term = query.trimmingCharacters(in: .whitespaces).lowercased()
         let base: [Clip] = term.isEmpty
-            ? Array(clips.prefix(3))
-            : clips.filter { clip in
+            ? Array(activeClips.prefix(3))
+            : activeClips.filter { clip in
                 [clip.title, clip.source, clip.tags.joined(separator: " "), clip.description, clip.memo ?? ""]
                     .joined(separator: " ").lowercased().contains(term)
             }
@@ -617,10 +655,10 @@ final class AppStore {
 
     @discardableResult
     func deleteClip(id: Int) -> Bool {
-        guard let index = clips.firstIndex(where: { $0.id == id }) else { return false }
+        guard let index = clips.firstIndex(where: { $0.id == id && !$0.isInTrash }) else { return false }
         finalizePendingDeletion()
         let clip = clips[index]
-        guard commitMutation({ clips.removeAll { $0.id == id } }) else { return false }
+        guard commitMutation({ clips[index].deletedAt = Date() }) else { return false }
         let deletion = PendingDeletion(id: UUID(), clip: clip, originalIndex: index)
         pendingDeletion = deletion
         deletionTask = Task { @MainActor [weak self] in
@@ -635,8 +673,14 @@ final class AppStore {
     func undoDelete() -> Bool {
         guard let deletion = pendingDeletion else { return false }
         deletionTask?.cancel()
-        let insertionIndex = min(deletion.originalIndex, clips.count)
-        guard commitMutation({ clips.insert(deletion.clip, at: insertionIndex) }) else {
+        guard let index = clips.firstIndex(where: { $0.id == deletion.clip.id && $0.isInTrash }) else {
+            pendingDeletion = nil
+            deletionTask = nil
+            return false
+        }
+        guard commitMutation({
+            clips[index] = deletion.clip
+        }) else {
             scheduleDeletionFinalization(deletion)
             return false
         }
@@ -644,6 +688,50 @@ final class AppStore {
         deletionTask = nil
         showToast("삭제를 취소했습니다")
         return true
+    }
+
+    @discardableResult
+    func restoreClip(id: Int) -> Bool {
+        guard let index = clips.firstIndex(where: { $0.id == id && $0.isInTrash }) else { return false }
+        guard commitMutation({ clips[index].deletedAt = nil }) else { return false }
+        if pendingDeletion?.clip.id == id { finalizePendingDeletion() }
+        showToast("클립을 복원했습니다")
+        return true
+    }
+
+    @discardableResult
+    func emptyTrash() -> Bool {
+        let removed = trashedClips
+        guard !removed.isEmpty else { return true }
+        guard commitMutation({ clips.removeAll { $0.isInTrash } }) else { return false }
+        if let pendingID = pendingDeletion?.clip.id,
+           removed.contains(where: { $0.id == pendingID }) {
+            finalizePendingDeletion()
+        }
+        removeStoredImages(for: removed)
+        showToast("휴지통을 비웠습니다")
+        return true
+    }
+
+    @discardableResult
+    func purgeExpiredTrash(now: Date = Date(), showFeedback: Bool = false) -> Int {
+        let cutoff = now.addingTimeInterval(-Self.trashRetentionInterval)
+        let expired = clips.filter { clip in
+            guard let deletedAt = clip.deletedAt else { return false }
+            return deletedAt <= cutoff
+        }
+        guard !expired.isEmpty else { return 0 }
+        let expiredIDs = Set(expired.map(\.id))
+        guard commitMutation({ clips.removeAll { expiredIDs.contains($0.id) } }) else { return 0 }
+        removeStoredImages(for: expired)
+        if showFeedback { showToast(L10n.format("format.auto_deleted_trash", expired.count)) }
+        return expired.count
+    }
+
+    func trashDaysRemaining(for clip: Clip, now: Date = Date()) -> Int {
+        guard let deletedAt = clip.deletedAt else { return Self.trashRetentionDays }
+        let expiry = deletedAt.addingTimeInterval(Self.trashRetentionInterval)
+        return max(0, Int(ceil(expiry.timeIntervalSince(now) / (24 * 60 * 60))))
     }
 
     func dismissRecoveredLibraryNotice() {
@@ -670,11 +758,6 @@ final class AppStore {
             components.port = nil
         }
         return components.url?.absoluteString
-    }
-
-    func existingClip(forManualURL value: String) -> Clip? {
-        guard let canonical = canonicalManualURL(value) else { return nil }
-        return clips.first { canonicalManualURL($0.url) == canonical }
     }
 
     @discardableResult
@@ -867,7 +950,7 @@ final class AppStore {
     /// 분류하기: 첫 미정리 클립을 지정 폴더로 옮기고 state를 해제한다.
     @discardableResult
     func applySort(to destination: String) -> Bool {
-        guard let index = clips.firstIndex(where: { $0.state == .unsorted }) else { return false }
+        guard let index = clips.firstIndex(where: { !$0.isInTrash && $0.state == .unsorted }) else { return false }
         return commitMutation {
             clips[index].folder = destination
             clips[index].state = nil
@@ -980,10 +1063,13 @@ final class AppStore {
         guard let deletion = pendingDeletion,
               id == nil || deletion.id == id else { return }
         deletionTask?.cancel()
-        if let imageName = deletion.clip.sharedImageName {
-            try? SharedClipQueue.removeImage(named: imageName)
-        }
         pendingDeletion = nil
         deletionTask = nil
+    }
+
+    private func removeStoredImages(for clips: [Clip]) {
+        for imageName in Set(clips.compactMap(\.sharedImageName)) {
+            try? SharedClipQueue.removeImage(named: imageName)
+        }
     }
 }

@@ -54,13 +54,14 @@ struct Clip: Identifiable, Codable, Equatable {
     var description: String
     var memo: String?
     var bookmarked: Bool
+    var deletedAt: Date?
 
     init(id: Int, type: ClipType, state: ClipState? = nil, title: String, source: String,
          url: String, time: String, folder: String, tags: [String] = [],
          folderSuggestions: [String] = [], image: String? = nil, sharedImageName: String? = nil,
          sharePayloadID: UUID? = nil,
          description: String = "",
-         memo: String? = nil, bookmarked: Bool = false) {
+         memo: String? = nil, bookmarked: Bool = false, deletedAt: Date? = nil) {
         self.id = id
         self.type = type
         self.state = state
@@ -77,6 +78,7 @@ struct Clip: Identifiable, Codable, Equatable {
         self.description = description
         self.memo = memo
         self.bookmarked = bookmarked
+        self.deletedAt = deletedAt
     }
 
     init(from decoder: Decoder) throws {
@@ -97,6 +99,7 @@ struct Clip: Identifiable, Codable, Equatable {
         description = (try? container.decodeIfPresent(String.self, forKey: .description)) ?? ""
         memo = try? container.decodeIfPresent(String.self, forKey: .memo)
         bookmarked = (try? container.decodeIfPresent(Bool.self, forKey: .bookmarked)) ?? false
+        deletedAt = try? container.decodeIfPresent(Date.self, forKey: .deletedAt)
     }
 
     /// 웹 백업의 "/public/images/clip-beach.png" 경로를 에셋 카탈로그 이름으로 매핑한다.
@@ -115,6 +118,8 @@ struct Clip: Identifiable, Codable, Equatable {
     var hasImageReference: Bool {
         image?.isEmpty == false || sharedImageName?.isEmpty == false
     }
+
+    var isInTrash: Bool { deletedAt != nil }
 }
 
 struct Folder: Identifiable, Codable, Equatable {
@@ -132,6 +137,7 @@ struct Folder: Identifiable, Codable, Equatable {
         case "globe": return "globe"
         case "file": return "doc"
         case "note": return "note.text"
+        case "trash": return "trash"
         default: return "folder"
         }
     }
@@ -242,6 +248,7 @@ enum DefaultData {
         Folder(icon: "folder", label: "폴더 2"),
         Folder(icon: "folder", label: "폴더 3"),
         Folder(icon: "folder", label: "폴더 4"),
-        Folder(icon: "folder", label: "폴더 5")
+        Folder(icon: "folder", label: "폴더 5"),
+        Folder(icon: "trash", label: "휴지통")
     ]
 }

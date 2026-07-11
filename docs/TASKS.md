@@ -92,6 +92,11 @@
 - [x] Prioritize image providers over accompanying URLs and preserve original image bytes, format, and pixel dimensions through Share Extension storage and the full-screen viewer.
 - [x] Add a persisted `바로 열기` / `열기 전 확인` link preference with direct opening as the default and exercise both setting and confirmation UI.
 - [x] Verify the iOS platform limits for containing-app auto-launch and share-sheet ordering; keep host return as the supported default and document user-managed Favorites ordering.
+- [x] Fix Settings bottom-action clearance and compact the Add type/title form rhythm; remove URL duplicate detection and its warning UI.
+- [x] Add a reserved Trash folder with restore, empty, active-count isolation, a 30-day notice, and launch-time expiry cleanup.
+- [x] Unify selected menus, app feedback, Undo, and Share Extension success on the exact yellow accent token.
+- [x] Generate and ship three token-matched onboarding illustrations, present the Share guide on first run, and make it reusable from Settings.
+- [x] Exercise the updated Settings, Add, Trash, onboarding, and Safari Share-success states on the iPhone 17 Pro simulator.
 
 ## In Progress
 

@@ -33,6 +33,7 @@ enum Tokens {
     static let textPrimary = Color.adaptive(light: 0x171714, dark: 0xF4F1E9)
     static let textSecondary = Color.adaptive(light: 0x5F6368, dark: 0xB5B1A8)
     static let textTertiary = Color.adaptive(light: 0x9AA0A6, dark: 0x817D75)
+    static let onAccent = Color(hex: 0x171714)
     static let borderStrong = Color.adaptive(light: 0x292824, dark: 0xECE8DF)
     static let borderSoft = Color.adaptive(light: 0xD8D1C4, dark: 0x44413B)
     static let accentYellow = Color.adaptive(light: 0xFFD900, dark: 0xF4D21F)
@@ -70,8 +71,10 @@ enum Tokens {
     static let screenX: CGFloat = 16
     static let panelPad: CGFloat = 16
     static let sectionGap: CGFloat = 24
+    static let formSectionGap: CGFloat = 16
     static let screenTop: CGFloat = 12
     static let bottomSafe: CGFloat = 24
+    static let bottomNavigationClearance: CGFloat = 72
     static let sheetTop: CGFloat = 20
     static let sheetBottom: CGFloat = 20
     static let settingChoiceTop: CGFloat = 72
@@ -80,11 +83,13 @@ enum Tokens {
     // Control sizes
     static let chipTarget: CGFloat = 40
     static let touchTarget: CGFloat = 44
+    static let iconBody: CGFloat = 16
     static let actionTarget: CGFloat = 52
     static let headerHeight: CGFloat = 44
     static let selectionIndicator: CGFloat = 2
     static let selectionColumnCount = 5
     static let selectionRowCount = 2
+    static let manualCaptureSelectionRowCount = 1
     static let selectionTextMinimumScale: CGFloat = 0.72
     static let iconColumn: CGFloat = 28
     static let destinationIcon: CGFloat = 34
@@ -97,6 +102,7 @@ enum Tokens {
     // 상세는 스크롤 없이 링크 열기까지 한 화면에 들어와야 하므로 미디어와 노트를 압축한다.
     static let detailImageHeight: CGFloat = 140
     static let noteEditorMinHeight: CGFloat = 72
+    static let onboardingImageHeight: CGFloat = 300
     static let sheetDetentCompact: CGFloat = 0.58
     static let sheetDetentStandard: CGFloat = 0.76
     static let contentMax: CGFloat = 720

@@ -32,6 +32,8 @@ struct RootView: View {
     @Environment(AppLockController.self) private var lock
     @State private var selectedTab: AppTab = .inbox
     @State private var keyboardVisible = false
+    @State private var showOnboarding = false
+    @AppStorage("clip-inbox-onboarding-completed-v1") private var onboardingCompleted = false
 
     var body: some View {
         Group {
@@ -80,6 +82,13 @@ struct RootView: View {
             }
         }
         .background(Tokens.bgApp.ignoresSafeArea())
+        .fullScreenCover(isPresented: $showOnboarding) {
+            OnboardingView(isFirstRun: true) {
+                onboardingCompleted = true
+                showOnboarding = false
+            }
+            .interactiveDismissDisabled()
+        }
         .overlay(alignment: .bottom) {
             VStack(spacing: Tokens.rowGap) {
                 if let pendingDeletion = store.pendingDeletion {
@@ -93,7 +102,7 @@ struct RootView: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .padding(.bottom, 72)
+            .padding(.bottom, Tokens.bottomNavigationClearance)
         }
         .animation(.easeOut(duration: Tokens.motionBase), value: store.toast)
         .animation(.easeOut(duration: Tokens.motionBase), value: store.pendingDeletion?.id)
@@ -109,6 +118,9 @@ struct RootView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             keyboardVisible = false
+        }
+        .onAppear {
+            if !onboardingCompleted { showOnboarding = true }
         }
     }
 }
@@ -138,9 +150,9 @@ private struct PersistentTrustBanner: View {
             .buttonStyle(.plain)
             .accessibilityLabel("복구 알림 닫기")
         }
-        .foregroundStyle(Tokens.textPrimary)
+        .foregroundStyle(Tokens.onAccent)
         .padding(.horizontal, Tokens.screenX)
-        .background(isDanger ? Tokens.accentYellow : Tokens.accentGreen)
+        .background(Tokens.accentYellow)
     }
 }
 
@@ -160,7 +172,7 @@ private struct UndoDeletionBanner: View {
                 .font(Tokens.bodyBold)
                 .frame(minWidth: Tokens.touchTarget, minHeight: Tokens.touchTarget)
         }
-        .foregroundStyle(Tokens.textPrimary)
+        .foregroundStyle(Tokens.onAccent)
         .padding(.leading, Tokens.panelPad)
         .padding(.trailing, Tokens.rowGap)
         .tokenSurface(fill: Tokens.accentYellow, radius: Tokens.radiusButton,
@@ -244,7 +256,7 @@ private struct BottomNavBar: View {
                             )
                         Text(L10n.text(tab.label, locale: locale)).font(Tokens.nav)
                     }
-                    .foregroundStyle(selected == tab ? Tokens.textPrimary : Tokens.textSecondary)
+                    .foregroundStyle(selected == tab ? Tokens.onAccent : Tokens.textSecondary)
                     .frame(maxWidth: .infinity, minHeight: Tokens.actionTarget)
                 }
                 .buttonStyle(.plain)
@@ -353,12 +365,14 @@ struct SettingsTab: View {
 enum Route: Hashable {
     case detail(Int)
     case folderDetail(String)
+    case trash
     case settingDetail(SettingKey)
 
     @ViewBuilder var destination: some View {
         switch self {
         case .detail(let id): DetailView(clipID: id)
         case .folderDetail(let label): FolderDetailView(label: label)
+        case .trash: TrashView()
         case .settingDetail(let key): SettingDetailView(key: key)
         }
     }
