@@ -29,6 +29,18 @@ final class AppStoreTests: XCTestCase {
         temporaryDirectory = nil
     }
 
+    private func seedDefaultLibrary() throws {
+        let snapshot = DataSnapshot(
+            version: 2,
+            clips: DefaultData.clips,
+            folders: DefaultData.folders,
+            preferences: .standard
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        try encoder.encode(snapshot).write(to: dataURL, options: .atomic)
+    }
+
     func testRecentSearchesAreRealDeduplicatedLimitedAndPersisted() {
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
 
@@ -42,7 +54,8 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(reloaded.recentSearches, store.recentSearches)
     }
 
-    func testDefaultTagFiltersAndSearchUseClipTags() {
+    func testDefaultTagFiltersAndSearchUseClipTags() throws {
+        try seedDefaultLibrary()
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
 
         XCTAssertEqual(store.filteredClips(.interior).map(\.id), [1])
@@ -54,6 +67,7 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testPrimaryMutationsPersistAcrossReload() throws {
+        try seedDefaultLibrary()
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
 
         store.toggleBookmark(id: 1)
@@ -73,11 +87,13 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testUpdateTagsCleansValuesPersistsAndSkipsNoOp() throws {
+        try seedDefaultLibrary()
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
         let original = try XCTUnwrap(store.clip(id: 1)?.tags)
+        let dataBeforeNoOp = try Data(contentsOf: dataURL)
 
         store.updateTags(id: 1, tags: original)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: dataURL.path))
+        XCTAssertEqual(try Data(contentsOf: dataURL), dataBeforeNoOp)
 
         store.updateTags(id: 1, tags: ["  독서 ", "", "여행"])
         XCTAssertEqual(store.clip(id: 1)?.tags, ["독서", "여행"])
@@ -87,6 +103,7 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testDefaultFoldersCanBeRenamedAndReferencesPersist() throws {
+        try seedDefaultLibrary()
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
 
         store.moveClip(id: 5, to: "기본 폴더")
@@ -104,7 +121,8 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(reloaded.folderCount("모든 클립"), reloaded.clips.count)
     }
 
-    func testFolderRenameRejectsDuplicateNamesWithoutChangingData() {
+    func testFolderRenameRejectsDuplicateNamesWithoutChangingData() throws {
+        try seedDefaultLibrary()
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
 
         XCTAssertThrowsError(try store.renameFolder(from: "기본 폴더", to: "폴더 1"))
@@ -113,6 +131,7 @@ final class AppStoreTests: XCTestCase {
     }
 
     func testTagCatalogRenameAndDeleteUpdateEveryReference() throws {
+        try seedDefaultLibrary()
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
 
         XCTAssertTrue(store.availableTags.contains("인테리어"))

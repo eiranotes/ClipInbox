@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-07-11: Adopt the Audit Through a Data-Safe, Product-Bounded Sequence
+
+Decision: Apply the A-to-Z audit in the order documented by `docs/AUDIT_ADOPTION_PLAN.md`, beginning with test fixtures and the data trust boundary. Keep the native Share-to-Inbox product, five-tab shell, direct 5x2 selectors, normal-size one-viewport detail, original image preservation, and local-only/no-account positioning.
+
+Why: The audit correctly identifies corruption, false-success, demo Add, Share image memory, App Lock, accessibility, and release risks. Its broader Library, database, encrypted-vault, OCR, sync, and platform-expansion recommendations would enlarge the product before its core storage contract is trustworthy.
+
+Impact: Repository/recovery/transaction work precedes Capture and Lock work; trust UX and accessibility follow; release automation and external signing close the sequence. Large architectural migrations and power-user features require later measurement or product evidence.
+
 ## 2026-07-10: Native SwiftUI Is the Product Source of Truth
 
 Decision: All future Clip Inbox product logic and UI implementation will be made in the native iOS code under `ios/`. The root `src/` web application remains a historical design prototype and is changed only when web work is explicitly requested.

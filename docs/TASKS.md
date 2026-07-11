@@ -95,7 +95,10 @@
 
 ## In Progress
 
-- [ ] None.
+- [ ] Phase 1: implement the data-safe repository, recovery, version, and rollback contract.
+- [ ] Phase 2: harden Share capture and App Lock, then replace the demo Add flow.
+- [ ] Phase 3: add trust states, Undo, storage/export disclosure, and accessibility variants.
+- [ ] Phase 4: complete CI, signed archive, policy, and physical-device release gates.
 
 ## Deferred
 
@@ -106,3 +109,4 @@
 - [ ] Complete App Store Connect metadata, screenshots, privacy answers, signed archive validation, and physical-device release checks.
 - [ ] Production bundling/minification, cache headers, and alternate responsive image encoding if the static prototype becomes a deployed web app.
 - [ ] Re-run Open Design agent refinement when model usage credits are available.
+- [ ] Revisit full Trash retention, advanced duplicate detection, indexed search, OCR, Spotlight, Shortcuts, CloudKit, and Mac support only after the data-safe 1.0 gate.

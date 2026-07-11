@@ -2,6 +2,10 @@
 
 ## Unreleased - 2026-07-11
 
+### Internal
+
+- Added the product-bounded A-to-Z audit adoption plan and moved native regression setup toward explicit version-2 fixtures so production sample removal can proceed safely.
+
 ### Added
 
 - Settings choice for opening links immediately or asking before opening the browser, with immediate opening as the default.
