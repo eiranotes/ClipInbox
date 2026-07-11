@@ -15,7 +15,9 @@ struct SearchView: View {
             content
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: Route.self) { route in
-                    route.destination.toolbar(.hidden, for: .navigationBar)
+                    route.destination
+                        .toolbar(.hidden, for: .navigationBar)
+                        .swipeBackFromLeadingEdge()
                 }
         }
     }
@@ -87,10 +89,6 @@ struct SearchView: View {
             }
 
             Spacer(minLength: Tokens.bottomSafe - Tokens.sectionGap * 2)
-        }
-        // 키보드는 검색창을 직접 탭했을 때만 올라오고, 다른 곳을 탭하면 내려간다.
-        .onTapGesture {
-            searchFieldFocused = false
         }
         .task(id: query) {
             guard query != settledQuery else { return }

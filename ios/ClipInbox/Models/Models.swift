@@ -85,7 +85,7 @@ struct Clip: Identifiable, Codable, Equatable {
         source = (try? container.decodeIfPresent(String.self, forKey: .source)) ?? "출처 없음"
         url = (try? container.decodeIfPresent(String.self, forKey: .url)) ?? ""
         time = (try? container.decodeIfPresent(String.self, forKey: .time)) ?? "저장됨"
-        folder = (try? container.decodeIfPresent(String.self, forKey: .folder)) ?? "인박스"
+        folder = (try? container.decodeIfPresent(String.self, forKey: .folder)) ?? "기본 폴더"
         tags = (try? container.decodeIfPresent([String].self, forKey: .tags)) ?? []
         folderSuggestions = (try? container.decodeIfPresent([String].self, forKey: .folderSuggestions)) ?? []
         image = try? container.decodeIfPresent(String.self, forKey: .image)
@@ -150,7 +150,7 @@ struct Preferences: Codable, Equatable {
     }
 
     static let standard = Preferences(appLock: "끔", theme: "라이트", language: "한국어",
-                                      defaultFolder: "인박스", shareMode: SharedSaveMode.quick.rawValue)
+                                      defaultFolder: "기본 폴더", shareMode: SharedSaveMode.quick.rawValue)
 
     init(appLock: String, theme: String, language: String, defaultFolder: String,
          shareMode: String = SharedSaveMode.quick.rawValue) {
@@ -200,40 +200,39 @@ enum DefaultData {
     static let clips: [Clip] = [
         Clip(id: 1, type: .link, state: .unsorted,
              title: "미니멀 거실 인테리어 참고", source: "m.blog.naver.com", url: "https://m.blog.naver.com",
-             time: "2시간 전", folder: "디자인", tags: ["인테리어", "거실", "미니멀"],
-             folderSuggestions: ["디자인", "인테리어", "나중에"], image: "/public/images/clip-living-room.png",
+             time: "2시간 전", folder: "폴더 2", tags: ["인테리어", "거실", "미니멀"],
+             folderSuggestions: ["폴더 2", "폴더 3", "나중에"], image: "/public/images/clip-living-room.png",
              description: "밝은 거실 레이아웃과 제품 상세 페이지에 맞는 무드 참고.",
              memo: "썸네일 비율과 여백이 좋아서 홈 섹션 이미지 참고로 보관."),
         Clip(id: 2, type: .image,
              title: "모바일 대시보드 UI 레퍼런스", source: "Pinterest", url: "https://www.pinterest.com",
-             time: "5시간 전", folder: "디자인", tags: ["UI/UX", "대시보드", "레퍼런스"],
-             folderSuggestions: ["디자인", "UI", "업무"], image: "/public/images/clip-dashboard.png",
+             time: "5시간 전", folder: "폴더 3", tags: ["UI/UX", "대시보드", "레퍼런스"],
+             folderSuggestions: ["폴더 3", "폴더 2", "폴더 4"], image: "/public/images/clip-dashboard.png",
              description: "카드 밀도와 차트 영역 구성을 보기 위한 이미지 저장."),
         Clip(id: 3, type: .memo, state: .new,
              title: "신규 제품 소개 문구 아이디어", source: "나의 메모", url: "",
-             time: "어제", folder: "아이디어", tags: ["카피라이팅", "제품소개", "아이디어"],
-             folderSuggestions: ["업무", "아이디어"], image: "/public/images/clip-lightbulb.png",
+             time: "어제", folder: "폴더 4", tags: ["카피라이팅", "제품소개", "아이디어"],
+             folderSuggestions: ["폴더 4", "폴더 3"], image: "/public/images/clip-lightbulb.png",
              description: "짧은 첫 문장, 보관 이유, 다음 행동을 한 카드에 담기."),
         Clip(id: 4, type: .link,
              title: "주말 강릉 여행 코스", source: "visitgangneung.net", url: "https://www.gn.go.kr/tour",
-             time: "어제", folder: "여행", tags: ["여행", "강릉", "코스"],
-             folderSuggestions: ["여행", "나중에"], image: "/public/images/clip-beach.png",
+             time: "어제", folder: "폴더 5", tags: ["여행", "강릉", "코스"],
+             folderSuggestions: ["폴더 5", "나중에"], image: "/public/images/clip-beach.png",
              description: "친구에게 공유할 후보 일정. 나중에 폴더에서 정리."),
         Clip(id: 5, type: .screenshot, state: .unsorted,
              title: "메타데이터 없는 상품 이미지", source: "product-store.co.kr", url: "https://product-store.co.kr",
-             time: "3일 전", folder: "인박스", tags: ["스크린샷", "확인필요"],
-             folderSuggestions: ["쇼핑", "나중에"],
+             time: "3일 전", folder: "폴더 1", tags: ["스크린샷", "확인필요"],
+             folderSuggestions: ["폴더 1", "나중에"],
              description: "미리보기 이미지를 못 받았지만 저장 자체는 완료된 상태.")
     ]
 
     static let folders: [Folder] = [
         Folder(icon: "archive", label: "전체"),
-        Folder(icon: "inbox", label: "인박스"),
-        Folder(icon: "folder", label: "디자인"),
-        Folder(icon: "bookmark", label: "자기계발"),
-        Folder(icon: "folder", label: "업무"),
-        Folder(icon: "globe", label: "여행"),
-        Folder(icon: "file", label: "맛집"),
-        Folder(icon: "note", label: "아이디어")
+        Folder(icon: "inbox", label: "기본 폴더"),
+        Folder(icon: "folder", label: "폴더 1"),
+        Folder(icon: "folder", label: "폴더 2"),
+        Folder(icon: "folder", label: "폴더 3"),
+        Folder(icon: "folder", label: "폴더 4"),
+        Folder(icon: "folder", label: "폴더 5")
     ]
 }

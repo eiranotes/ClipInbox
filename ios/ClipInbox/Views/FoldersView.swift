@@ -29,7 +29,7 @@ struct FoldersView: View {
             Spacer(minLength: Tokens.bottomSafe - Tokens.sectionGap * 2)
         }
         .sheet(isPresented: $showNewFolder) {
-            NewFolderSheet().workflowSheet()
+            NewFolderSheet().workflowSheet(.standard)
         }
     }
 }
@@ -207,13 +207,13 @@ struct FolderDetailView: View {
             }
         }
         .sheet(isPresented: $showNewFolder) {
-            NewFolderSheet().workflowSheet()
+            NewFolderSheet().workflowSheet(.standard)
         }
         .sheet(isPresented: $showRenameFolder) {
             RenameFolderSheet(originalLabel: currentLabel) { renamed in
                 currentLabel = renamed
             }
-            .workflowSheet()
+            .workflowSheet(.compact)
         }
     }
 }

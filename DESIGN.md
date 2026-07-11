@@ -10,24 +10,24 @@ Design Read: Reading this as a high-frequency personal clipping utility, product
 
 All production color values are declared here and mirrored as CSS variables.
 
-| Token | CSS Variable | Hex | Role |
-|---|---|---:|---|
-| color.bg.app | `--color-bg-app` | `#F3EFE7` | Main app background |
-| color.bg.board | `--color-bg-board` | `#EEE8DD` | Board and section background |
-| color.bg.card | `--color-bg-card` | `#FFFFFF` | Clip card background |
-| color.bg.cardMuted | `--color-bg-card-muted` | `#FAF8F2` | Secondary panels |
-| color.text.primary | `--color-text-primary` | `#171714` | Main text and icons |
-| color.text.secondary | `--color-text-secondary` | `#5F6368` | Metadata and secondary rows |
-| color.text.tertiary | `--color-text-tertiary` | `#9AA0A6` | Low priority text and placeholders |
-| color.border.strong | `--color-border-strong` | `#292824` | Emphasized control borders only |
-| color.border.soft | `--color-border-soft` | `#D8D1C4` | Inner separators and quiet controls |
-| color.accent.yellow | `--color-accent-yellow` | `#FFD900` | Primary actions, selected controls, and needs-review state |
-| color.accent.blue | `--color-accent-blue` | `#BBD7FF` | Informational type marker and focus ring |
-| color.accent.green | `--color-accent-green` | `#9BE7B0` | Saved and success state |
-| color.danger | `--color-danger` | `#FF4B4B` | Destructive action |
-| color.shadow.hard | `--color-shadow-hard` | `#292824` | Legacy token; native application surfaces do not use hard shadows |
+| Token | CSS Variable | Light | Dark | Role |
+|---|---|---:|---:|---|
+| color.bg.app | `--color-bg-app` | `#F3EFE7` | `#171714` | Main app background |
+| color.bg.board | `--color-bg-board` | `#EEE8DD` | `#211F1B` | Board and section background |
+| color.bg.card | `--color-bg-card` | `#FFFFFF` | `#2B2924` | Focused controls and clip cards |
+| color.bg.cardMuted | `--color-bg-card-muted` | `#FAF8F2` | `#24221E` | Secondary panels and bottom navigation |
+| color.text.primary | `--color-text-primary` | `#171714` | `#F4F1E9` | Main text and icons |
+| color.text.secondary | `--color-text-secondary` | `#5F6368` | `#B5B1A8` | Metadata and secondary rows |
+| color.text.tertiary | `--color-text-tertiary` | `#9AA0A6` | `#817D75` | Low priority text and placeholders |
+| color.border.strong | `--color-border-strong` | `#292824` | `#ECE8DF` | Emphasized control borders only |
+| color.border.soft | `--color-border-soft` | `#D8D1C4` | `#44413B` | Inner separators and quiet controls |
+| color.accent.yellow | `--color-accent-yellow` | `#FFD900` | `#F4D21F` | Primary actions, selected controls, and needs-review state |
+| color.accent.blue | `--color-accent-blue` | `#BBD7FF` | `#8FB8EE` | Informational type marker and focus ring |
+| color.accent.green | `--color-accent-green` | `#9BE7B0` | `#68C982` | Saved and success state |
+| color.danger | `--color-danger` | `#FF4B4B` | `#FF6B6B` | Destructive action |
+| color.shadow.hard | `--color-shadow-hard` | `#292824` | `#ECE8DF` | Legacy token; native application surfaces do not use hard shadows |
 
-Contrast note: Primary text on app, board, card, and yellow backgrounds passes normal text contrast. Secondary text is reserved for metadata on card or app backgrounds.
+Contrast note: Primary and secondary text pairs pass normal-text contrast in both themes. Dark mode uses warm near-black surfaces and warm off-white text rather than pure black or pure white. Yellow keeps near-black text in both themes.
 
 Do not use pure white for the app background. Do not add purple gradients, glow fields, hard shadows, sports/ranking colors, or per-content pastel colors beyond yellow, blue, green, and danger.
 
@@ -67,6 +67,8 @@ Base unit: 4px. Component spacing follows the product spec through named tokens.
 | space.bottomSafe | `--space-bottom-safe` | 24px | Content breathing room; nav uses safe-area inset |
 | space.sheetTop | native only | 20px | Workflow-sheet content inset below the grabber |
 | space.sheetBottom | native only | 20px | Workflow-sheet content inset after the final action |
+| space.settingChoiceTop | native only | 72px | Breathing room before short setting option groups |
+| space.settingActionTop | native only | 132px | Breathing room before one-action setting details |
 
 Responsive and control-size tokens:
 
@@ -80,7 +82,8 @@ Responsive and control-size tokens:
 | count.selectionColumns | native only | 5 | Equal-width selector cells visible per row |
 | count.selectionRows | native only | 2 | Visible selector rows |
 | scale.selectionTextMinimum | native only | 0.72 | Minimum label scale inside a fixed-width selector cell |
-| ratio.sheetDetent | native only | 0.68 | Default workflow-sheet height relative to the available screen |
+| ratio.sheetDetentCompact | native only | 0.58 | Short action-sheet height relative to the available screen |
+| ratio.sheetDetentStandard | native only | 0.76 | Medium workflow height relative to the available screen |
 | size.iconColumn | native only | 28px | Leading icon column in list and action rows |
 | size.destinationIcon | native only | 34px | Highlighted destination icon container |
 | size.clipThumbnailWidth | native only | 80px | Inbox clip thumbnail width |
@@ -89,7 +92,7 @@ Responsive and control-size tokens:
 | size.resultThumbnailWidth | native only | 64px | Search/folder thumbnail width |
 | size.resultThumbnailHeight | native only | 48px | Search/folder thumbnail height |
 | size.resultRowContentHeight | native only | 48px | Fixed compact-result content height with or without media |
-| size.detailImageHeight | native only | 140px | Detail/sort/save preview image height, sized so detail fits one screen |
+| size.detailImageHeight | native only | 140px | Detail/sort/save preview maximum image height, sized so detail fits one screen |
 | size.noteEditorMinHeight | native only | 72px | Detail note editor minimum height |
 | size.shareQuickHeight | native only | 132px | Compact Share Extension saving/saved card host height |
 | size.shareReviewHeight | native only | 390px | Share Extension folder and memo review form height |
@@ -110,7 +113,7 @@ Detail screen: the whole read flow — badges, title, source, preview, descripti
 
 Row hit areas: every selectable row (action rows, destination rows, selection rows) accepts taps across its full width and height, not only on the label or icon.
 
-Share Extension feedback: saving is zero-confirm, then a compact green confirmation card ("Clip Inbox에 저장됨", checkmark, 10px radius, soft border) appears for about 1.2s before returning to the host app. Korean particles in dynamic labels and toasts follow the final consonant ("디자인으로", "인박스로").
+Share Extension feedback: saving is zero-confirm, then a compact green confirmation card ("Clip Inbox에 저장됨", checkmark, 10px radius, soft border) appears for about 2s before returning to the host app. Korean particles in dynamic labels and toasts follow the final consonant ("디자인으로", "인박스로").
 
 Share Extension modes: quick save uses only one centered compact status card on a transparent host, constrained to `size.shareQuickHeight`; it never paints a full-screen app canvas. Review-before-save uses `size.shareReviewHeight` and shows one folder menu, one memo editor, and one primary save action. Both modes reuse the same radius, border, color, type, spacing, and motion tokens as the app.
 
@@ -128,7 +131,13 @@ Utility icon button and row menu: square 44px hit target with no visible contain
 
 Bottom navigation: white/card-muted surface, top separator, five stable tabs, yellow selected icon fill.
 
-Workflow sheet: opens at 68% of the available height and can expand to large. Content receives 20px top and bottom insets inside the sheet so the header does not crowd the grabber, primary actions remain visible, and short workflows do not leave a full-screen empty field.
+Workflow sheet: short action menus open at 58%, medium selectors at 76%, and destination/move/edit flows open at the large detent. Every sheet can expand when its content may grow. Content receives 20px top and bottom insets inside the sheet so the header does not crowd the grabber and the final action never touches or disappears below the sheet edge.
+
+Setting detail: the duplicated explanatory card is absent. Default-folder selection starts directly below the header because its list is long; short option groups begin after 72px and one-action details begin after 132px so their controls sit around the middle rhythm instead of clinging to the top edge.
+
+Tag management: Settings exposes one flat tag list with explicit edit and delete icon targets. Renaming updates every clip and folder-default reference; deleting removes the tag from those references. Destructive affordances use danger text and never rely on swipe-only discovery.
+
+Detail image: the full source image uses aspect-fit inside a maximum 140px preview, even when that leaves horizontal or vertical breathing room. Tapping it opens a dark-compatible full-screen viewer with close, pinch, and double-tap zoom controls.
 
 Responsive shell: mobile stays a single card stack. At 760px and wider the inbox and folder collections may use two columns when each card remains at least 340px wide. At 860px and wider the shell expands to 960px; secondary workflows keep a centered 720px reading measure.
 
@@ -136,7 +145,7 @@ Thumbnail: 8px radius with no border for large detail imagery and an optional so
 
 ## 6. Motion
 
-Motion is light and functional: `--motion-fast` 140ms, `--motion-base` 180ms, `--motion-ease` cubic-bezier(0.2, 0.8, 0.2, 1). The keyboard is raised only by a direct tap on the search field or a text editor; screens and workflow sheets never request focus programmatically. The keyboard process is prewarmed once right after launch so the first tap presents the keyboard without cold-start delay. In search, tapping outside the field dismisses the keyboard, and switching bottom tabs always dismisses it. Search result evaluation follows input by 120ms so Korean composition and key events stay responsive while results update after the user pauses. Buttons and rows use opacity only; sheets use the system transition. Reduced-motion removes custom transitions.
+Motion is light and functional: `--motion-fast` 140ms, `--motion-base` 180ms, `--motion-ease` cubic-bezier(0.2, 0.8, 0.2, 1). The keyboard is raised only by a direct tap on a text field or editor; screens and workflow sheets never request focus programmatically. The keyboard process is prewarmed once right after launch so the first tap presents the keyboard without cold-start delay. Tapping outside an input dismisses the keyboard on every input surface except the intentionally unchanged tag-selection sheet; the bottom navigation hides while the keyboard is visible instead of being lifted above it. Search result evaluation follows input by 120ms so Korean composition and key events stay responsive while results update after the user pauses. Pushed detail screens support a left-edge swipe to return. Buttons and rows use opacity only; sheets use the system transition. Reduced-motion removes custom transitions.
 
 ## 7. Depth
 

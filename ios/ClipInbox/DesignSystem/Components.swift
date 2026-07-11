@@ -404,16 +404,18 @@ enum SharedImageCache {
 struct ClipThumbnail: View {
     let clip: Clip
     var compact = false
+    var contentMode: ContentMode = .fill
 
     var body: some View {
         // aspectRatio(.fill)는 제안보다 큰 크기를 보고해 프레임 밖으로 번지므로,
         // 제안 크기를 그대로 갖는 Color.clear 위에 올려 경계에서 잘라 낸다.
         Color.clear
             .overlay(
-                Image(uiImage: thumbnailImage)
+                Image(uiImage: ClipImageResolver.image(for: clip))
                     .resizable()
-                    .aspectRatio(contentMode: .fill)
+                    .aspectRatio(contentMode: contentMode)
             )
+            .background(Tokens.bgCardMuted)
             .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusThumbnail, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: Tokens.radiusThumbnail, style: .continuous)
@@ -421,7 +423,10 @@ struct ClipThumbnail: View {
             )
     }
 
-    private var thumbnailImage: UIImage {
+}
+
+enum ClipImageResolver {
+    static func image(for clip: Clip) -> UIImage {
         if let url = clip.sharedImageURL, let uiImage = SharedImageCache.image(at: url) {
             return uiImage
         }
@@ -488,6 +493,7 @@ private extension EnvironmentValues {
 struct ScreenScaffold<Content: View>: View {
     @Environment(\.usesWorkflowSheetStyle) private var usesWorkflowSheetStyle
     var spacing: CGFloat = Tokens.sectionGap
+    var dismissKeyboardOnBackgroundTap = true
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -503,15 +509,120 @@ struct ScreenScaffold<Content: View>: View {
         }
         .background(Tokens.bgApp)
         .scrollDismissesKeyboard(.interactively)
+        .background {
+            if dismissKeyboardOnBackgroundTap {
+                KeyboardDismissInstaller()
+                    .frame(width: 0, height: 0)
+            }
+        }
     }
 }
 
+enum WorkflowSheetSize {
+    case compact
+    case standard
+    case expanded
+}
+
 extension View {
-    func workflowSheet() -> some View {
-        environment(\.usesWorkflowSheetStyle, true)
-            .presentationDetents([.fraction(Tokens.sheetDetentFraction), .large])
+    func workflowSheet(_ size: WorkflowSheetSize = .standard) -> some View {
+        let detents: Set<PresentationDetent> = switch size {
+        case .compact: [.fraction(Tokens.sheetDetentCompact), .large]
+        case .standard: [.fraction(Tokens.sheetDetentStandard), .large]
+        case .expanded: [.large]
+        }
+        return environment(\.usesWorkflowSheetStyle, true)
+            .presentationDetents(detents)
             .presentationDragIndicator(.visible)
             .presentationBackground(Tokens.bgApp)
+    }
+
+    func swipeBackFromLeadingEdge() -> some View {
+        modifier(LeadingEdgeSwipeBackModifier())
+    }
+}
+
+private struct LeadingEdgeSwipeBackModifier: ViewModifier {
+    @Environment(\.dismiss) private var dismiss
+
+    func body(content: Content) -> some View {
+        content.simultaneousGesture(
+            DragGesture(minimumDistance: Tokens.sheetTop, coordinateSpace: .global)
+                .onEnded { value in
+                    let isLeadingEdge = value.startLocation.x <= Tokens.sectionGap
+                    let isHorizontal = abs(value.translation.height) < Tokens.actionTarget
+                    let reachedThreshold = value.translation.width > Tokens.touchTarget * 2
+                        || value.predictedEndTranslation.width > Tokens.touchTarget * 3
+                    if isLeadingEdge, isHorizontal, reachedThreshold {
+                        dismiss()
+                    }
+                }
+        )
+    }
+}
+
+private struct KeyboardDismissInstaller: UIViewRepresentable {
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: .zero)
+        view.isUserInteractionEnabled = false
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        DispatchQueue.main.async {
+            context.coordinator.install(from: uiView)
+        }
+    }
+
+    static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {
+        coordinator.uninstall()
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        private weak var hostView: UIView?
+        private lazy var recognizer: UITapGestureRecognizer = {
+            let recognizer = UITapGestureRecognizer(target: self, action: #selector(didTapOutsideInput))
+            recognizer.cancelsTouchesInView = false
+            recognizer.delegate = self
+            return recognizer
+        }()
+
+        func install(from view: UIView) {
+            guard hostView == nil, let controllerView = parentViewController(of: view)?.view else { return }
+            hostView = controllerView
+            controllerView.addGestureRecognizer(recognizer)
+        }
+
+        func uninstall() {
+            hostView?.removeGestureRecognizer(recognizer)
+            hostView = nil
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            var candidate = touch.view
+            while let view = candidate {
+                if view is UITextField || view is UITextView {
+                    return false
+                }
+                candidate = view.superview
+            }
+            return true
+        }
+
+        @objc private func didTapOutsideInput() {
+            Keyboard.dismiss()
+        }
+
+        private func parentViewController(of view: UIView) -> UIViewController? {
+            var responder: UIResponder? = view
+            while let next = responder?.next {
+                if let controller = next as? UIViewController { return controller }
+                responder = next
+            }
+            return nil
+        }
     }
 }
 

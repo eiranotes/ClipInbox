@@ -15,6 +15,7 @@ struct DetailView: View {
     @State private var tagDraft: [String] = []
     @State private var showDeleteConfirm = false
     @State private var showExternalConfirm = false
+    @State private var showImageViewer = false
     @State private var noteDraft = ""
     @State private var noteDirty = false
 
@@ -56,9 +57,16 @@ struct DetailView: View {
                     .foregroundStyle(Tokens.textSecondary)
 
                     if clip.hasImageReference {
-                        ClipThumbnail(clip: clip)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: Tokens.detailImageHeight)
+                        Button {
+                            showImageViewer = true
+                        } label: {
+                            ClipThumbnail(clip: clip, contentMode: .fit)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: Tokens.detailImageHeight)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("이미지 크게 보기")
                     }
 
                     if !clip.description.isEmpty {
@@ -145,12 +153,15 @@ struct DetailView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showShare) { ShareOptionsSheet(clipID: clip.id).workflowSheet() }
-            .sheet(isPresented: $showMore) { CardActionsSheet(clipID: clip.id).workflowSheet() }
-            .sheet(isPresented: $showMove) { MoveFolderSheet(clipID: clip.id).workflowSheet() }
-            .sheet(isPresented: $showEdit) { EditClipSheet(clipID: clip.id).workflowSheet() }
+            .sheet(isPresented: $showShare) { ShareOptionsSheet(clipID: clip.id).workflowSheet(.standard) }
+            .sheet(isPresented: $showMore) { CardActionsSheet(clipID: clip.id).workflowSheet(.expanded) }
+            .sheet(isPresented: $showMove) { MoveFolderSheet(clipID: clip.id).workflowSheet(.expanded) }
+            .sheet(isPresented: $showEdit) { EditClipSheet(clipID: clip.id).workflowSheet(.expanded) }
             .sheet(isPresented: $showTagEdit, onDismiss: { store.updateTags(id: clipID, tags: tagDraft) }) {
-                TagEditorSheet(tags: $tagDraft).workflowSheet()
+                TagEditorSheet(tags: $tagDraft).workflowSheet(.standard)
+            }
+            .fullScreenCover(isPresented: $showImageViewer) {
+                ClipImageViewer(clip: clip)
             }
             .confirmationDialog("브라우저에서 열까요?", isPresented: $showExternalConfirm, titleVisibility: .visible) {
                 Button("브라우저에서 열기") {
@@ -235,6 +246,57 @@ struct DetailView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct ClipImageViewer: View {
+    @Environment(\.dismiss) private var dismiss
+    let clip: Clip
+    @State private var scale: CGFloat = 1
+    @State private var settledScale: CGFloat = 1
+
+    var body: some View {
+        ZStack {
+            Tokens.bgApp.ignoresSafeArea()
+            Image(uiImage: ClipImageResolver.image(for: clip))
+                .resizable()
+                .scaledToFit()
+                .scaleEffect(scale)
+                .padding(Tokens.screenX)
+                .gesture(
+                    MagnificationGesture()
+                        .onChanged { value in
+                            scale = min(max(settledScale * value, 1), 5)
+                        }
+                        .onEnded { _ in
+                            settledScale = scale
+                        }
+                )
+                .onTapGesture(count: 2) {
+                    let target: CGFloat = scale > 1 ? 1 : 2.5
+                    withAnimation(.easeOut(duration: Tokens.motionBase)) {
+                        scale = target
+                        settledScale = target
+                    }
+                }
+
+            VStack {
+                HStack {
+                    Spacer()
+                    UtilityIconButton(label: "닫기", systemImage: "xmark") {
+                        dismiss()
+                    }
+                    .background(
+                        Circle()
+                            .fill(Tokens.bgCard.opacity(0.92))
+                    )
+                }
+                Spacer()
+            }
+            .padding(.horizontal, Tokens.screenX)
+            .padding(.top, Tokens.screenTop)
+        }
+        .statusBarHidden(true)
     }
 }
 
@@ -347,7 +409,7 @@ struct EditClipSheet: View {
             tags = clip.tags
         }
         .sheet(isPresented: $showTagEditor) {
-            TagEditorSheet(tags: $tags).workflowSheet()
+            TagEditorSheet(tags: $tags).workflowSheet(.standard)
         }
     }
 }

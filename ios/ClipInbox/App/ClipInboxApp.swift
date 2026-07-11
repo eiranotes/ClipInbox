@@ -13,7 +13,7 @@ struct ClipInboxApp: App {
                 .environment(lock)
                 .environment(\.locale, Locale(identifier: store.preferences.appLanguage.localeIdentifier))
                 .font(Tokens.body)
-                .preferredColorScheme(.light)
+                .preferredColorScheme(preferredColorScheme)
                 .onAppear {
                     lock.configure(enabled: store.preferences.appLock == "켬", lockImmediately: true)
                     store.importSharedClips()
@@ -32,6 +32,14 @@ struct ClipInboxApp: App {
                     if phase == .background { lock.lockIfNeeded() }
                     if phase == .active { store.importSharedClips() }
                 }
+        }
+    }
+
+    private var preferredColorScheme: ColorScheme? {
+        switch store.preferences.theme {
+        case "라이트": return .light
+        case "다크": return .dark
+        default: return nil
         }
     }
 }

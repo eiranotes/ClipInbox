@@ -7,6 +7,7 @@ enum SettingKey: String, Hashable, CaseIterable {
     case theme
     case language
     case defaultFolder = "default-folder"
+    case tags
     case shareMode = "share-mode"
     case backup
     case importData = "import"
@@ -19,25 +20,12 @@ enum SettingKey: String, Hashable, CaseIterable {
         case .theme: return "테마"
         case .language: return "언어"
         case .defaultFolder: return "기본 폴더"
+        case .tags: return "태그 관리"
         case .shareMode: return "공유 저장 방식"
         case .backup: return "백업 및 내보내기"
         case .importData: return "가져오기"
         case .about: return "앱 정보"
         case .contact: return "문의하기"
-        }
-    }
-
-    var summary: String {
-        switch self {
-        case .appLock: return "앱을 열 때 Face ID 또는 기기 암호 인증을 요구합니다."
-        case .theme: return "선택값은 로컬 설정에 저장되며 현재 화면 토큰은 라이트를 유지합니다."
-        case .language: return "앱 표시 언어를 선택합니다."
-        case .defaultFolder: return "공유로 추가할 때 먼저 저장할 폴더입니다."
-        case .shareMode: return "바로 저장하거나, 저장 전에 폴더와 메모를 확인합니다."
-        case .backup: return "클립, 태그, 폴더, 설정을 JSON 파일로 내보냅니다."
-        case .importData: return "Clip Inbox에서 내보낸 JSON 백업을 검증한 뒤 현재 로컬 데이터로 복원합니다."
-        case .about: return "Clip Inbox 0.3.0 SwiftUI 네이티브 빌드입니다."
-        case .contact: return "문제 상황과 저장하려던 URL을 함께 남길 수 있도록 문의 이메일을 복사합니다."
         }
     }
 
@@ -47,6 +35,7 @@ enum SettingKey: String, Hashable, CaseIterable {
         case .theme: return "paintpalette"
         case .language: return "character.bubble"
         case .defaultFolder: return "folder"
+        case .tags: return "tag"
         case .shareMode: return "square.and.arrow.down"
         case .backup: return "square.and.arrow.up"
         case .importData: return "square.and.arrow.down"
@@ -70,6 +59,7 @@ struct SettingsView: View {
                 (.theme, store.preferences.theme),
                 (.language, store.preferences.language),
                 (.defaultFolder, store.preferences.defaultFolder),
+                (.tags, "\(store.availableTags.count)"),
                 (.shareMode, shareModeLabel(store.preferences.sharedSaveMode))
             ])
 
@@ -154,14 +144,15 @@ struct SettingDetailView: View {
     @State private var showImporter = false
     @State private var exportDocument: JSONBackupDocument?
     @State private var errorMessage: String?
+    @State private var newTag = ""
+    @State private var editingTag: TagEditTarget?
+    @State private var deletingTag: String?
 
     var body: some View {
         ScreenScaffold {
             ScreenHeader(key.title, onBack: { dismiss() })
 
-            BoardSection(title: "설정 설명") {
-                StatePanel(systemImage: key.systemImage, title: key.title, message: key.summary)
-            }
+            Color.clear.frame(height: detailTopInset)
 
             controls
 
@@ -183,12 +174,28 @@ struct SettingDetailView: View {
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.json]) { result in
             handleImport(result)
         }
+        .sheet(item: $editingTag) { target in
+            RenameTagSheet(originalTag: target.tag)
+                .workflowSheet(.compact)
+        }
+        .alert("태그 삭제", isPresented: Binding(
+            get: { deletingTag != nil },
+            set: { if !$0 { deletingTag = nil } }
+        )) {
+            Button("삭제 확인", role: .destructive) {
+                if let deletingTag { store.deleteTag(deletingTag) }
+                deletingTag = nil
+            }
+            Button("취소", role: .cancel) { deletingTag = nil }
+        } message: {
+            Text("이 태그는 모든 클립과 폴더 기본 태그에서 제거됩니다.")
+        }
     }
 
     private var options: [String] {
         switch key {
         case .appLock: return ["켬", "끔"]
-        case .theme: return ["라이트", "시스템 설정"]
+        case .theme: return ["라이트", "다크", "시스템 설정"]
         case .language: return AppLanguage.allCases.map(\.rawValue)
         case .defaultFolder: return store.destinationFolders.map(\.label)
         case .shareMode: return SharedSaveMode.allCases.map(\.rawValue)
@@ -228,6 +235,62 @@ struct SettingDetailView: View {
                 Label("설정 저장", systemImage: "checkmark")
             }
             .buttonStyle(PrimaryBoxButtonStyle())
+
+        case .tags:
+            BoardSection(title: "새 태그") {
+                HStack(spacing: Tokens.rowGap) {
+                    TextField("태그 이름", text: $newTag)
+                        .font(Tokens.body)
+                        .padding(.horizontal, Tokens.cardPad)
+                        .frame(minHeight: Tokens.actionTarget)
+                        .tokenSurface(radius: Tokens.radiusInput)
+                        .onSubmit(addTag)
+                    Button(action: addTag) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(Tokens.textPrimary)
+                            .frame(width: Tokens.actionTarget, height: Tokens.actionTarget)
+                            .tokenSurface(fill: Tokens.accentYellow, radius: Tokens.radiusButton)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("태그 추가")
+                }
+            }
+
+            BoardSection(title: "태그 목록", count: store.availableTags.count) {
+                VStack(spacing: 0) {
+                    ForEach(Array(store.availableTags.enumerated()), id: \.element) { index, tag in
+                        HStack(spacing: Tokens.rowGap) {
+                            Image(systemName: "tag")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Tokens.textSecondary)
+                                .frame(width: Tokens.iconColumn)
+                            Text(tag)
+                                .font(Tokens.bodySemibold)
+                                .foregroundStyle(Tokens.textPrimary)
+                            Spacer(minLength: Tokens.rowGap)
+                            UtilityIconButton(label: "태그 이름 편집", systemImage: "pencil") {
+                                editingTag = TagEditTarget(tag: tag)
+                            }
+                            Button {
+                                deletingTag = tag
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(Tokens.danger)
+                                    .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(L10n.text("태그 삭제"))
+                        }
+                        .frame(minHeight: Tokens.actionTarget)
+                        if index < store.availableTags.count - 1 {
+                            RowDivider()
+                        }
+                    }
+                }
+            }
 
         case .backup:
             BoardSection(title: "내보낼 항목", count: store.clips.count) {
@@ -295,6 +358,25 @@ struct SettingDetailView: View {
         }
     }
 
+    private var detailTopInset: CGFloat {
+        switch key {
+        case .defaultFolder, .tags: return 0
+        case .appLock, .theme, .language, .shareMode: return Tokens.settingChoiceTop
+        default: return Tokens.settingActionTop
+        }
+    }
+
+    private func addTag() {
+        do {
+            _ = try store.addTag(newTag)
+            newTag = ""
+            errorMessage = nil
+            Keyboard.dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     private func optionLabel(_ option: String) -> String {
         guard key == .shareMode else { return option }
         return shareModeLabel(SharedSaveMode(rawValue: option) ?? .quick)
@@ -311,6 +393,56 @@ struct SettingDetailView: View {
             dismiss()
         } catch {
             errorMessage = (error as? StoreError)?.localizedDescription ?? "백업을 가져오지 못했습니다."
+        }
+    }
+}
+
+private struct TagEditTarget: Identifiable {
+    let tag: String
+    var id: String { tag }
+}
+
+private struct RenameTagSheet: View {
+    @Environment(AppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let originalTag: String
+    @State private var name: String
+    @State private var errorMessage: String?
+
+    init(originalTag: String) {
+        self.originalTag = originalTag
+        _name = State(initialValue: originalTag)
+    }
+
+    var body: some View {
+        ScreenScaffold {
+            ScreenHeader("태그 이름 편집", onBack: { dismiss() })
+            BoardSection(title: "태그 이름") {
+                TextField("태그 이름", text: $name)
+                    .font(Tokens.body)
+                    .padding(.horizontal, Tokens.cardPad)
+                    .frame(minHeight: Tokens.actionTarget)
+                    .tokenSurface(radius: Tokens.radiusInput)
+                    .onSubmit(rename)
+            }
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(Tokens.metaBold)
+                    .foregroundStyle(Tokens.danger)
+            }
+            Button(action: rename) {
+                Label("이름 저장", systemImage: "checkmark")
+            }
+            .buttonStyle(PrimaryBoxButtonStyle())
+        }
+    }
+
+    private func rename() {
+        do {
+            try store.renameTag(from: originalTag, to: name)
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 }

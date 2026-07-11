@@ -45,7 +45,7 @@ struct InboxView: View {
             set: { actionClipID = $0?.id }
         )) { clip in
             CardActionsSheet(clipID: clip.id)
-                .workflowSheet()
+                .workflowSheet(.expanded)
         }
     }
 }
@@ -100,9 +100,9 @@ struct CardActionsSheet: View {
                     }
                 }
             }
-            .sheet(isPresented: $showShare) { ShareOptionsSheet(clipID: clip.id).workflowSheet() }
-            .sheet(isPresented: $showMove) { MoveFolderSheet(clipID: clip.id).workflowSheet() }
-            .sheet(isPresented: $showEdit) { EditClipSheet(clipID: clip.id).workflowSheet() }
+            .sheet(isPresented: $showShare) { ShareOptionsSheet(clipID: clip.id).workflowSheet(.standard) }
+            .sheet(isPresented: $showMove) { MoveFolderSheet(clipID: clip.id).workflowSheet(.expanded) }
+            .sheet(isPresented: $showEdit) { EditClipSheet(clipID: clip.id).workflowSheet(.expanded) }
             .confirmationDialog("브라우저에서 열까요?", isPresented: $showExternalConfirm, titleVisibility: .visible) {
                 Button("브라우저에서 열기") {
                     if let url = URL(string: clip.url) { openURL(url) }

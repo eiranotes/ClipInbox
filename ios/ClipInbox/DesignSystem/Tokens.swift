@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // DESIGN.md 토큰 계약의 Swift 대응. 값 변경은 DESIGN.md와 함께 맞춘다.
 
@@ -9,23 +10,35 @@ extension Color {
                   green: Double((hex >> 8) & 0xFF) / 255,
                   blue: Double(hex & 0xFF) / 255)
     }
+
+    static func adaptive(light: UInt32, dark: UInt32) -> Color {
+        Color(uiColor: UIColor { traits in
+            let value = traits.userInterfaceStyle == .dark ? dark : light
+            return UIColor(
+                red: CGFloat((value >> 16) & 0xFF) / 255,
+                green: CGFloat((value >> 8) & 0xFF) / 255,
+                blue: CGFloat(value & 0xFF) / 255,
+                alpha: 1
+            )
+        })
+    }
 }
 
 enum Tokens {
     // Color
-    static let bgApp = Color(hex: 0xF3EFE7)
-    static let bgBoard = Color(hex: 0xEEE8DD)
-    static let bgCard = Color(hex: 0xFFFFFF)
-    static let bgCardMuted = Color(hex: 0xFAF8F2)
-    static let textPrimary = Color(hex: 0x171714)
-    static let textSecondary = Color(hex: 0x5F6368)
-    static let textTertiary = Color(hex: 0x9AA0A6)
-    static let borderStrong = Color(hex: 0x292824)
-    static let borderSoft = Color(hex: 0xD8D1C4)
-    static let accentYellow = Color(hex: 0xFFD900)
-    static let accentBlue = Color(hex: 0xBBD7FF)
-    static let accentGreen = Color(hex: 0x9BE7B0)
-    static let danger = Color(hex: 0xFF4B4B)
+    static let bgApp = Color.adaptive(light: 0xF3EFE7, dark: 0x171714)
+    static let bgBoard = Color.adaptive(light: 0xEEE8DD, dark: 0x211F1B)
+    static let bgCard = Color.adaptive(light: 0xFFFFFF, dark: 0x2B2924)
+    static let bgCardMuted = Color.adaptive(light: 0xFAF8F2, dark: 0x24221E)
+    static let textPrimary = Color.adaptive(light: 0x171714, dark: 0xF4F1E9)
+    static let textSecondary = Color.adaptive(light: 0x5F6368, dark: 0xB5B1A8)
+    static let textTertiary = Color.adaptive(light: 0x9AA0A6, dark: 0x817D75)
+    static let borderStrong = Color.adaptive(light: 0x292824, dark: 0xECE8DF)
+    static let borderSoft = Color.adaptive(light: 0xD8D1C4, dark: 0x44413B)
+    static let accentYellow = Color.adaptive(light: 0xFFD900, dark: 0xF4D21F)
+    static let accentBlue = Color.adaptive(light: 0xBBD7FF, dark: 0x8FB8EE)
+    static let accentGreen = Color.adaptive(light: 0x9BE7B0, dark: 0x68C982)
+    static let danger = Color.adaptive(light: 0xFF4B4B, dark: 0xFF6B6B)
 
     // Typography (letter spacing 0, bundled Pretendard v1.3.9)
     static let screenTitle = Font.custom("Pretendard-Bold", size: 26)
@@ -61,6 +74,8 @@ enum Tokens {
     static let bottomSafe: CGFloat = 24
     static let sheetTop: CGFloat = 20
     static let sheetBottom: CGFloat = 20
+    static let settingChoiceTop: CGFloat = 72
+    static let settingActionTop: CGFloat = 132
 
     // Control sizes
     static let chipTarget: CGFloat = 40
@@ -82,7 +97,8 @@ enum Tokens {
     // 상세는 스크롤 없이 링크 열기까지 한 화면에 들어와야 하므로 미디어와 노트를 압축한다.
     static let detailImageHeight: CGFloat = 140
     static let noteEditorMinHeight: CGFloat = 72
-    static let sheetDetentFraction: CGFloat = 0.68
+    static let sheetDetentCompact: CGFloat = 0.58
+    static let sheetDetentStandard: CGFloat = 0.76
     static let contentMax: CGFloat = 720
     static let gridBreakpoint: CGFloat = 760
 

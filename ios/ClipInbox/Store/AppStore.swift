@@ -52,6 +52,7 @@ final class AppStore {
     var folders: [Folder]
     var preferences: Preferences
     private(set) var recentSearches: [String]
+    private(set) var tagCatalog: [String]
 
     var toast: String?
     private var toastTask: Task<Void, Never>?
@@ -60,6 +61,7 @@ final class AppStore {
     private let recentSearchDefaults: UserDefaults
     private static let recentSearchesKey = "clip-inbox-recent-searches-v1"
     private static let recentSearchLimit = 5
+    private static let tagCatalogKey = "clip-inbox-tag-catalog-v1"
 
     init(fileURL: URL? = nil, userDefaults: UserDefaults = .standard) {
         let base = fileURL ?? Self.defaultFileURL()
@@ -68,6 +70,11 @@ final class AppStore {
         recentSearches = Self.normalizeRecentSearches(
             userDefaults.stringArray(forKey: Self.recentSearchesKey) ?? []
         )
+        if let storedTags = userDefaults.stringArray(forKey: Self.tagCatalogKey) {
+            tagCatalog = Self.normalizeTags(storedTags)
+        } else {
+            tagCatalog = DefaultData.suggestedTags
+        }
         if let data = try? Data(contentsOf: base),
            let snapshot = try? JSONDecoder().decode(DataSnapshot.self, from: data) {
             let normalized = Self.normalize(snapshot)
@@ -128,8 +135,8 @@ final class AppStore {
 
         for item in pending {
             let payload = item.payload
-            var destination = Self.cleanText(payload.folder, fallback: "인박스", maxLength: 40)
-            if destination == "인박스",
+            var destination = Self.cleanText(payload.folder, fallback: preferences.defaultFolder, maxLength: 40)
+            if ["인박스", "기본 폴더"].contains(destination),
                !folders.contains(where: { $0.label == destination }),
                let renamedInbox = folders.first(where: { $0.icon == "inbox" }) {
                 destination = renamedInbox.label
@@ -186,6 +193,7 @@ final class AppStore {
         for item in pending {
             try? SharedClipQueue.remove(item)
         }
+        mergeTagsIntoCatalog(pending.flatMap(\.payload.tags))
         showToast(L10n.format("format.imported_shared_clips", pending.count))
     }
 
@@ -204,6 +212,7 @@ final class AppStore {
         clips = normalized.clips
         folders = normalized.folders
         preferences = normalized.preferences
+        mergeTagsIntoCatalog(clips.flatMap(\.tags) + folders.compactMap(\.defaultTag))
         persist()
     }
 
@@ -246,7 +255,7 @@ final class AppStore {
             clip.title = cleanText(clip.title, fallback: "제목 없는 클립")
             clip.source = cleanText(clip.source, fallback: "출처 없음", maxLength: 120)
             clip.url = safeExternalURL(clip.url)
-            clip.folder = cleanText(clip.folder, fallback: "인박스", maxLength: 40)
+            clip.folder = cleanText(clip.folder, fallback: "기본 폴더", maxLength: 40)
             clip.time = cleanText(clip.time, fallback: "저장됨", maxLength: 40)
             clip.description = cleanText(clip.description, maxLength: 500)
             clip.memo = clip.memo.map { cleanText($0, maxLength: 1000) }
@@ -271,9 +280,9 @@ final class AppStore {
             safeFolders.insert(Folder(icon: "archive", label: "전체"), at: 0)
         }
         if !safeFolders.contains(where: { $0.icon == "inbox" }) {
-            safeFolders.insert(Folder(icon: "inbox", label: "인박스"), at: min(1, safeFolders.count))
+            safeFolders.insert(Folder(icon: "inbox", label: "기본 폴더"), at: min(1, safeFolders.count))
         }
-        let inboxLabel = safeFolders.first(where: { $0.icon == "inbox" })?.label ?? "인박스"
+        let inboxLabel = safeFolders.first(where: { $0.icon == "inbox" })?.label ?? "기본 폴더"
         let aggregateLabels = Set(
             safeFolders.filter { $0.icon == "archive" }.map { $0.label.lowercased() }
         )
@@ -290,7 +299,7 @@ final class AppStore {
 
         var preferences = input.preferences
         if !["켬", "끔"].contains(preferences.appLock) { preferences.appLock = Preferences.standard.appLock }
-        if !["라이트", "시스템 설정"].contains(preferences.theme) { preferences.theme = Preferences.standard.theme }
+        if !["라이트", "다크", "시스템 설정"].contains(preferences.theme) { preferences.theme = Preferences.standard.theme }
         if !AppLanguage.allCases.map(\.rawValue).contains(preferences.language) {
             preferences.language = Preferences.standard.language
         }
@@ -338,6 +347,10 @@ final class AppStore {
         folders.filter { $0.icon != "archive" }
     }
 
+    var availableTags: [String] {
+        Self.normalizeTags(tagCatalog + clips.flatMap(\.tags) + folders.compactMap(\.defaultTag))
+    }
+
     func isAggregateFolder(_ label: String) -> Bool {
         folders.first(where: { $0.label == label })?.icon == "archive"
     }
@@ -368,6 +381,18 @@ final class AppStore {
             guard !clean.isEmpty, seen.insert(key).inserted else { continue }
             normalized.append(clean)
             if normalized.count == recentSearchLimit { break }
+        }
+        return normalized
+    }
+
+    static func normalizeTags(_ values: [String]) -> [String] {
+        var seen = Set<String>()
+        var normalized: [String] = []
+        for value in values {
+            let clean = cleanText(value, maxLength: 50)
+            let key = clean.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            guard !clean.isEmpty, seen.insert(key).inserted else { continue }
+            normalized.append(clean)
         }
         return normalized
     }
@@ -408,6 +433,7 @@ final class AppStore {
             $0.memo = Self.cleanText(memo, maxLength: 1000)
             $0.tags = tags
         }
+        mergeTagsIntoCatalog(tags)
         showToast("변경 내용을 저장했습니다")
     }
 
@@ -416,6 +442,7 @@ final class AppStore {
         let clean = Array(tags.map { Self.cleanText($0, maxLength: 50) }.filter { !$0.isEmpty }.prefix(12))
         guard let current = clip(id: id), current.tags != clean else { return }
         mutate(id: id) { $0.tags = clean }
+        mergeTagsIntoCatalog(clean)
         showToast("태그를 저장했습니다")
     }
 
@@ -443,6 +470,7 @@ final class AppStore {
                         memo: Self.cleanText(memo, maxLength: 1000))
         clips.insert(clip, at: 0)
         persist()
+        mergeTagsIntoCatalog(tags)
         showToast(L10n.format("format.saved_to_folder", L10n.text(destination)))
         return clip
     }
@@ -455,8 +483,66 @@ final class AppStore {
         }
         folders.append(Folder(icon: "folder", label: clean, defaultTag: defaultTag))
         persist()
+        mergeTagsIntoCatalog([defaultTag])
         showToast(L10n.format("format.created_folder", clean))
         return clean
+    }
+
+    @discardableResult
+    func addTag(_ value: String) throws -> String {
+        let clean = Self.cleanText(value, maxLength: 50)
+        guard !clean.isEmpty else { throw StoreError.message("태그 이름을 입력하세요.") }
+        guard !availableTags.contains(where: { $0.caseInsensitiveCompare(clean) == .orderedSame }) else {
+            throw StoreError.message("같은 이름의 태그가 이미 있습니다.")
+        }
+        tagCatalog.append(clean)
+        saveTagCatalog()
+        showToast("태그를 추가했습니다")
+        return clean
+    }
+
+    func renameTag(from original: String, to value: String) throws {
+        let clean = Self.cleanText(value, maxLength: 50)
+        guard !clean.isEmpty else { throw StoreError.message("태그 이름을 입력하세요.") }
+        guard original != clean else { return }
+        guard !availableTags.contains(where: {
+            $0 != original && $0.caseInsensitiveCompare(clean) == .orderedSame
+        }) else {
+            throw StoreError.message("같은 이름의 태그가 이미 있습니다.")
+        }
+
+        let originalClips = clips
+        let originalFolders = folders
+        let originalCatalog = tagCatalog
+        tagCatalog = tagCatalog.map { $0 == original ? clean : $0 }
+        if !tagCatalog.contains(clean) { tagCatalog.append(clean) }
+        for index in clips.indices {
+            clips[index].tags = Self.normalizeTags(clips[index].tags.map { $0 == original ? clean : $0 })
+        }
+        for index in folders.indices where folders[index].defaultTag == original {
+            folders[index].defaultTag = clean
+        }
+        guard persist() else {
+            clips = originalClips
+            folders = originalFolders
+            tagCatalog = originalCatalog
+            throw StoreError.message("태그 이름을 저장하지 못했습니다.")
+        }
+        saveTagCatalog()
+        showToast("태그 이름을 변경했습니다")
+    }
+
+    func deleteTag(_ tag: String) {
+        tagCatalog.removeAll { $0 == tag }
+        for index in clips.indices {
+            clips[index].tags.removeAll { $0 == tag }
+        }
+        for index in folders.indices where folders[index].defaultTag == tag {
+            folders[index].defaultTag = nil
+        }
+        persist()
+        saveTagCatalog()
+        showToast("태그를 삭제했습니다")
     }
 
     func renameFolder(from originalLabel: String, to name: String) throws -> String {
@@ -526,6 +612,8 @@ final class AppStore {
         clips = []
         folders = DefaultData.folders
         preferences = .standard
+        tagCatalog = DefaultData.suggestedTags
+        saveTagCatalog()
         if persist() { try? SharedClipQueue.removeAllImages() }
         showToast("로컬 데이터를 삭제했습니다")
     }
@@ -548,8 +636,20 @@ final class AppStore {
                 saveMode: preferences.sharedSaveMode,
                 language: preferences.appLanguage.sharedValue,
                 defaultFolder: preferences.defaultFolder,
-                folders: destinations.isEmpty ? [preferences.defaultFolder] : destinations
+                folders: destinations.isEmpty ? [preferences.defaultFolder] : destinations,
+                theme: preferences.theme
             )
         )
+    }
+
+    private func mergeTagsIntoCatalog(_ tags: [String]) {
+        let merged = Self.normalizeTags(tagCatalog + tags)
+        guard merged != tagCatalog else { return }
+        tagCatalog = merged
+        saveTagCatalog()
+    }
+
+    private func saveTagCatalog() {
+        recentSearchDefaults.set(tagCatalog, forKey: Self.tagCatalogKey)
     }
 }

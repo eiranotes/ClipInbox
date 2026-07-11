@@ -30,8 +30,6 @@
 	<string>$(IPHONEOS_DEPLOYMENT_TARGET)</string>
 	<key>NSExtension</key>
 	<dict>
-		<key>NSExtensionShareWantsFullScreenPresentation</key>
-		<false/>
 		<key>NSExtensionAttributes</key>
 		<dict>
 			<key>NSExtensionActivationRule</key>

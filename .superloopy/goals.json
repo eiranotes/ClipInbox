@@ -2,7 +2,7 @@
   "version": 1,
   "mode": "strict",
   "createdAt": "2026-07-09T12:28:56.858Z",
-  "updatedAt": "2026-07-10T15:22:32.556Z",
+  "updatedAt": "2026-07-11T02:55:14.643Z",
   "briefPath": ".superloopy/brief.md",
   "evidencePath": ".superloopy/evidence",
   "goalsPath": ".superloopy/goals.json",
@@ -15,7 +15,7 @@
       "status": "complete",
       "attempt": 1,
       "createdAt": "2026-07-09T12:28:56.858Z",
-      "updatedAt": "2026-07-10T15:22:32.556Z",
+      "updatedAt": "2026-07-11T02:55:14.643Z",
       "criteria": [
         {
           "id": "C001",
@@ -23,9 +23,9 @@
           "scenario": "Happy path works from the real user-facing surface.",
           "essential": true,
           "status": "pass",
-          "artifact": ".superloopy/evidence/frontend/20260710-ios-tag-search-audit/VISUAL_QA.md",
-          "capturedAt": "2026-07-10T15:22:31.498Z",
-          "notes": "Native inbox, search, equal-row layout, focus, recent history, and CTA smoke passed"
+          "artifact": ".superloopy/evidence/frontend/20260711-ux-theme-tags/VISUAL_QA.md",
+          "capturedAt": "2026-07-11T02:55:14.643Z",
+          "notes": "SwiftUI keyboard, tags, modal, detail media, transparent Share overlay, swipe-back, dark theme, and default-folder QA passed"
         },
         {
           "id": "C002",

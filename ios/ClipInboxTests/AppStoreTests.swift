@@ -87,14 +87,15 @@ final class AppStoreTests: XCTestCase {
     func testDefaultFoldersCanBeRenamedAndReferencesPersist() throws {
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
 
-        store.updatePreference(key: .defaultFolder, value: "인박스")
-        XCTAssertEqual(try store.renameFolder(from: "인박스", to: "받은 클립"), "받은 클립")
+        store.moveClip(id: 5, to: "기본 폴더")
+        store.updatePreference(key: .defaultFolder, value: "기본 폴더")
+        XCTAssertEqual(try store.renameFolder(from: "기본 폴더", to: "받은 클립"), "받은 클립")
         XCTAssertEqual(try store.renameFolder(from: "전체", to: "모든 클립"), "모든 클립")
 
         let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
         XCTAssertTrue(reloaded.folders.contains { $0.label == "받은 클립" && $0.icon == "inbox" })
         XCTAssertTrue(reloaded.folders.contains { $0.label == "모든 클립" && $0.icon == "archive" })
-        XCTAssertFalse(reloaded.folders.contains { $0.label == "인박스" })
+        XCTAssertFalse(reloaded.folders.contains { $0.label == "기본 폴더" })
         XCTAssertFalse(reloaded.folders.contains { $0.label == "전체" })
         XCTAssertEqual(reloaded.preferences.defaultFolder, "받은 클립")
         XCTAssertEqual(reloaded.clip(id: 5)?.folder, "받은 클립")
@@ -104,9 +105,40 @@ final class AppStoreTests: XCTestCase {
     func testFolderRenameRejectsDuplicateNamesWithoutChangingData() {
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
 
-        XCTAssertThrowsError(try store.renameFolder(from: "인박스", to: "디자인"))
-        XCTAssertTrue(store.folders.contains { $0.label == "인박스" })
-        XCTAssertEqual(store.clip(id: 5)?.folder, "인박스")
+        XCTAssertThrowsError(try store.renameFolder(from: "기본 폴더", to: "폴더 1"))
+        XCTAssertTrue(store.folders.contains { $0.label == "기본 폴더" })
+        XCTAssertEqual(store.clip(id: 5)?.folder, "폴더 1")
+    }
+
+    func testTagCatalogRenameAndDeleteUpdateEveryReference() throws {
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+
+        XCTAssertTrue(store.availableTags.contains("인테리어"))
+        try store.renameTag(from: "인테리어", to: "공간")
+        XCTAssertFalse(store.availableTags.contains("인테리어"))
+        XCTAssertTrue(store.availableTags.contains("공간"))
+        XCTAssertEqual(store.clip(id: 1)?.tags, ["공간", "거실", "미니멀"])
+
+        store.deleteTag("공간")
+        XCTAssertFalse(store.availableTags.contains("공간"))
+        XCTAssertEqual(store.clip(id: 1)?.tags, ["거실", "미니멀"])
+
+        let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
+        XCTAssertFalse(reloaded.availableTags.contains("인테리어"))
+        XCTAssertFalse(reloaded.availableTags.contains("공간"))
+        XCTAssertEqual(reloaded.clip(id: 1)?.tags, ["거실", "미니멀"])
+    }
+
+    func testFreshFoldersUseGenericRenameFriendlyOrderAndDarkThemePersists() {
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+
+        XCTAssertEqual(store.folders.map(\.label), [
+            "전체", "기본 폴더", "폴더 1", "폴더 2", "폴더 3", "폴더 4", "폴더 5"
+        ])
+        store.updatePreference(key: .theme, value: "다크")
+
+        let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
+        XCTAssertEqual(reloaded.preferences.theme, "다크")
     }
 
     func testRoParticleFollowsFinalConsonant() {

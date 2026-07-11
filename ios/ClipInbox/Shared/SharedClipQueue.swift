@@ -16,12 +16,14 @@ struct SharedClipConfiguration: Codable, Equatable {
     var language: SharedAppLanguage
     var defaultFolder: String
     var folders: [String]
+    var theme: String? = nil
 
     static let standard = SharedClipConfiguration(
         saveMode: .quick,
         language: .ko,
-        defaultFolder: "인박스",
-        folders: ["인박스"]
+        defaultFolder: "기본 폴더",
+        folders: ["기본 폴더"],
+        theme: "라이트"
     )
 }
 
@@ -52,7 +54,7 @@ struct SharedClipPayload: Codable, Identifiable {
         url: String = "",
         text: String = "",
         sharedImageName: String? = nil,
-        folder: String = "인박스",
+        folder: String = "기본 폴더",
         tags: [String] = [],
         memo: String = "",
         createdAt: Date = Date()

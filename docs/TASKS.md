@@ -81,6 +81,13 @@
 - [x] Replace the Share Extension's internal full-canvas feedback with a compact saved card and opt out of full-screen extension presentation.
 - [x] Exercise both Share modes through Safari, confirm review-mode import in the inbox, and record localized visual evidence.
 - [x] Add app and extension privacy manifests plus Korean, English, and Japanese App Store copy, privacy-policy draft, screenshot plan, and release checklist.
+- [x] Keep the bottom navigation from moving above the keyboard and add outside-tap keyboard dismissal across non-tag-selection input screens.
+- [x] Add persisted tag add/rename/delete management with clip and folder-reference propagation.
+- [x] Replace the single workflow-sheet height with compact, standard, and expanded detents and verify long move/action sheets do not clip.
+- [x] Preserve detail-image aspect ratio and add a tappable pinch/double-tap full-screen viewer.
+- [x] Restyle the Share Extension quick-save feedback as a compact checkmark confirmation and pass the app theme through App Group configuration.
+- [x] Remove setting-detail explanation cards, add deliberate short-screen spacing, enable leading-edge swipe back, and implement a readable adaptive dark theme.
+- [x] Change fresh/reset folder defaults to `전체`, second-row `기본 폴더`, and `폴더 1` through `폴더 5`.
 
 ## In Progress
 

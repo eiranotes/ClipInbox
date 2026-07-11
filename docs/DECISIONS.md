@@ -255,3 +255,35 @@ Decision: Ship privacy manifests for the app and extension, declare only the req
 Why: Store metadata, privacy declarations, and review notes must match the binary. Inventing support URLs, contact details, or remote services would make the submission inaccurate.
 
 Impact: Repository-owned release material is ready under `docs/app-store/`; owned HTTPS support/privacy URLs, a monitored email, App Store Connect answers, signing, physical-device verification, and upload remain explicit external gates.
+
+## 2026-07-11: Keyboard Chrome Does Not Move With Input
+
+Decision: Keep tap-only focus and launch prewarming, install one non-cancelling outside-tap dismiss recognizer per SwiftUI host, and hide the bottom navigation for the lifetime of the software keyboard. The existing tag-selection sheet intentionally opts out of the new outside-tap policy.
+
+Why: Letting `safeAreaInset` react to the keyboard lifted all five bottom tabs and made first input presentation feel heavier. Ignoring the keyboard safe area globally prevented text editors from scrolling above the keyboard, so hiding only the navigation preserves normal iOS input avoidance.
+
+Impact: Add, search, detail note, folder naming, clip editing, settings tag management, and Share review inputs dismiss on non-input taps. Text inputs still scroll into view, while the bottom menu never appears above the keyboard.
+
+## 2026-07-11: Tag Catalog Persists Beside the Version-2 Snapshot
+
+Decision: Persist the reusable tag catalog in app `UserDefaults`, while clip tag assignments and folder default-tag references remain in the existing version-2 JSON snapshot. Global rename/delete mutates every reference before persisting both stores.
+
+Why: A first-class catalog is required for managing names and deletions, but changing the backup schema would break the documented web/native version-2 compatibility contract. This follows the existing recent-search precedent for local UI state outside the backup.
+
+Impact: Settings can add, rename, and delete tags. Imported/edited clip tags merge into the catalog, delete-all restores suggested defaults, and twelve XCTest regressions cover reference propagation and reload behavior.
+
+## 2026-07-11: Dark Mode Uses Adaptive Warm-Neutral Tokens
+
+Decision: Every production color token resolves to a light and dark value, and Settings offers Light, Dark, or System. Dark mode uses warm near-black surfaces, warm off-white text, tonal dividers, and the same single yellow accent; Share Extension configuration receives the selected theme through the App Group.
+
+Why: A color-scheme override without adaptive tokens would only invert system chrome and leave app surfaces unreadable. A paired token contract keeps contrast and the existing productive-minimal identity consistent.
+
+Impact: The app updates immediately when the preference is saved, old backups still normalize to Light, and the Share Extension adopts the app choice when it launches.
+
+## 2026-07-11: Default Folders Teach Renaming Instead of Prescribing Categories
+
+Decision: Fresh and reset data shows `전체`, `기본 폴더`, then `폴더 1` through `폴더 5`. Existing user-created folder names are not destructively migrated.
+
+Why: Preset category names such as screenshots, interiors, references, ideas, or travel imply a fixed taxonomy. Generic numbered folders make the rename affordance and user ownership explicit while preserving the aggregate and incoming destinations.
+
+Impact: `기본 폴더` is always the second row and the default Share destination. Sample clips distribute across the five numbered folders; existing persisted installations keep their chosen names until reset or manual rename.

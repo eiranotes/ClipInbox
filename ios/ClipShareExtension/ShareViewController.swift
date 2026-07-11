@@ -1,7 +1,7 @@
 import UIKit
 import UniformTypeIdentifiers
 
-final class ShareViewController: UIViewController {
+final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
     private var configuration = SharedClipConfiguration.standard
     private var pendingImageData: Data?
     private var pendingPayload: SharedClipPayload?
@@ -10,6 +10,7 @@ final class ShareViewController: UIViewController {
 
     private let activityIndicator = UIActivityIndicatorView(style: .medium)
     private let statusLabel = UILabel()
+    private let statusIcon = UIImageView()
     private let statusCard = UIView()
     private let memoTextView = UITextView()
     private let folderButton = UIButton(type: .system)
@@ -25,25 +26,48 @@ final class ShareViewController: UIViewController {
 
     // DESIGN.md: bg.app/card, accent.yellow/green, border.soft, text.primary/secondary.
     private enum Palette {
-        static let bgApp = UIColor(red: 0xF3 / 255, green: 0xEF / 255, blue: 0xE7 / 255, alpha: 1)
-        static let bgCard = UIColor.white
-        static let accentYellow = UIColor(red: 0xFF / 255, green: 0xD9 / 255, blue: 0, alpha: 1)
-        static let accentGreen = UIColor(red: 0x9B / 255, green: 0xE7 / 255, blue: 0xB0 / 255, alpha: 1)
-        static let borderSoft = UIColor(red: 0xD8 / 255, green: 0xD1 / 255, blue: 0xC4 / 255, alpha: 1)
-        static let textPrimary = UIColor(red: 0x17 / 255, green: 0x17 / 255, blue: 0x14 / 255, alpha: 1)
-        static let textSecondary = UIColor(red: 0x5F / 255, green: 0x63 / 255, blue: 0x68 / 255, alpha: 1)
+        static let bgApp = adaptive(light: 0xF3EFE7, dark: 0x171714)
+        static let bgCard = adaptive(light: 0xFFFFFF, dark: 0x2B2924)
+        static let accentYellow = adaptive(light: 0xFFD900, dark: 0xF4D21F)
+        static let accentGreen = adaptive(light: 0x9BE7B0, dark: 0x68C982)
+        static let borderSoft = adaptive(light: 0xD8D1C4, dark: 0x44413B)
+        static let textPrimary = adaptive(light: 0x171714, dark: 0xF4F1E9)
+        static let textSecondary = adaptive(light: 0x5F6368, dark: 0xB5B1A8)
+
+        private static func adaptive(light: UInt32, dark: UInt32) -> UIColor {
+            UIColor { traits in
+                let value = traits.userInterfaceStyle == .dark ? dark : light
+                return UIColor(
+                    red: CGFloat((value >> 16) & 0xFF) / 255,
+                    green: CGFloat((value >> 8) & 0xFF) / 255,
+                    blue: CGFloat(value & 0xFF) / 255,
+                    alpha: 1
+                )
+            }
+        }
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         configuration = SharedClipQueue.loadConfiguration()
         selectedFolder = configuration.defaultFolder
-        modalPresentationStyle = .formSheet
+        switch configuration.theme {
+        case "라이트": overrideUserInterfaceStyle = .light
+        case "다크": overrideUserInterfaceStyle = .dark
+        default: overrideUserInterfaceStyle = .unspecified
+        }
+        modalPresentationStyle = configuration.saveMode == .quick ? .overFullScreen : .formSheet
         view.backgroundColor = .clear
+        view.isOpaque = false
+
+        let dismissKeyboardTap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        dismissKeyboardTap.cancelsTouchesInView = false
+        dismissKeyboardTap.delegate = self
+        view.addGestureRecognizer(dismissKeyboardTap)
 
         switch configuration.saveMode {
         case .quick:
-            preferredContentSize = CGSize(width: 320, height: 132)
+            preferredContentSize = CGSize(width: 280, height: 92)
             configureCompactStatus()
         case .review:
             preferredContentSize = CGSize(width: 0, height: 390)
@@ -53,6 +77,7 @@ final class ShareViewController: UIViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        clearHostBackgrounds()
         guard !hasStarted else { return }
         hasStarted = true
         Task { @MainActor in
@@ -71,6 +96,21 @@ final class ShareViewController: UIViewController {
         }
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        clearHostBackgrounds()
+    }
+
+    override func viewIsAppearing(_ animated: Bool) {
+        super.viewIsAppearing(animated)
+        clearHostBackgrounds()
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        clearHostBackgrounds()
+    }
+
     private func localized(_ key: String) -> String {
         SharedL10n.text(key, language: configuration.language)
     }
@@ -86,11 +126,15 @@ final class ShareViewController: UIViewController {
         activityIndicator.isHidden = false
         activityIndicator.startAnimating()
         activityIndicator.color = Palette.textPrimary
+        statusIcon.image = UIImage(systemName: "checkmark.circle.fill")
+        statusIcon.tintColor = Palette.textPrimary
+        statusIcon.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 18, weight: .bold)
+        statusIcon.isHidden = true
         statusLabel.text = localized("Clip Inbox에 저장하는 중…")
         statusLabel.font = font(size: 15)
         statusLabel.textColor = Palette.textPrimary
 
-        let content = UIStackView(arrangedSubviews: [activityIndicator, statusLabel])
+        let content = UIStackView(arrangedSubviews: [statusIcon, activityIndicator, statusLabel])
         content.axis = .horizontal
         content.alignment = .center
         content.spacing = 8
@@ -112,6 +156,7 @@ final class ShareViewController: UIViewController {
             content.trailingAnchor.constraint(equalTo: statusCard.trailingAnchor, constant: -16),
             statusCard.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             statusCard.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            statusCard.widthAnchor.constraint(lessThanOrEqualToConstant: 280),
             statusCard.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 20),
             statusCard.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -20)
         ])
@@ -270,7 +315,7 @@ final class ShareViewController: UIViewController {
             if finalPayload.folder.isEmpty { finalPayload.folder = configuration.defaultFolder }
             try SharedClipQueue.enqueue(finalPayload)
             showSavedConfirmation()
-            try? await Task.sleep(for: .milliseconds(1_200))
+            try? await Task.sleep(for: .milliseconds(2_000))
             extensionContext?.completeRequest(returningItems: nil)
         } catch {
             if let newlyStoredImageName { try? SharedClipQueue.removeImage(named: newlyStoredImageName) }
@@ -284,11 +329,41 @@ final class ShareViewController: UIViewController {
         configureCompactStatus()
         activityIndicator.stopAnimating()
         activityIndicator.isHidden = true
+        statusIcon.isHidden = false
         statusLabel.text = localized("Clip Inbox에 저장됨")
         statusLabel.font = font(size: 15, semibold: true)
         statusCard.backgroundColor = Palette.accentGreen
         statusCard.alpha = 0
         UIView.animate(withDuration: 0.18) { self.statusCard.alpha = 1 }
+    }
+
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        var candidate = touch.view
+        while let view = candidate {
+            if view is UITextField || view is UITextView { return false }
+            candidate = view.superview
+        }
+        return true
+    }
+
+    private func clearHostBackgrounds() {
+        guard configuration.saveMode == .quick else { return }
+        var ancestor: UIView? = view
+        while let current = ancestor {
+            current.backgroundColor = .clear
+            current.isOpaque = false
+            ancestor = current.superview
+        }
+        presentationController?.presentedView?.backgroundColor = .clear
+        presentationController?.presentedView?.isOpaque = false
+        presentationController?.containerView?.backgroundColor = .clear
+        presentationController?.containerView?.isOpaque = false
+        navigationController?.view.backgroundColor = .clear
+        navigationController?.view.isOpaque = false
     }
 
     @MainActor

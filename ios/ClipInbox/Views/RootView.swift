@@ -31,6 +31,7 @@ struct RootView: View {
     @Environment(AppStore.self) private var store
     @Environment(AppLockController.self) private var lock
     @State private var selectedTab: AppTab = .inbox
+    @State private var keyboardVisible = false
 
     var body: some View {
         Group {
@@ -44,7 +45,10 @@ struct RootView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            BottomNavBar(selected: $selectedTab)
+            if !keyboardVisible {
+                BottomNavBar(selected: $selectedTab)
+                    .transition(.identity)
+            }
         }
         .background(Tokens.bgApp.ignoresSafeArea())
         .overlay(alignment: .bottom) {
@@ -62,6 +66,12 @@ struct RootView: View {
             }
         }
         .animation(.easeOut(duration: Tokens.motionBase), value: lock.isLocked)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            keyboardVisible = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardVisible = false
+        }
     }
 }
 
@@ -155,7 +165,9 @@ struct InboxTab: View {
             InboxView()
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: Route.self) { route in
-                    route.destination.toolbar(.hidden, for: .navigationBar)
+                    route.destination
+                        .toolbar(.hidden, for: .navigationBar)
+                        .swipeBackFromLeadingEdge()
                 }
         }
     }
@@ -167,7 +179,9 @@ struct FoldersTab: View {
             FoldersView()
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: Route.self) { route in
-                    route.destination.toolbar(.hidden, for: .navigationBar)
+                    route.destination
+                        .toolbar(.hidden, for: .navigationBar)
+                        .swipeBackFromLeadingEdge()
                 }
         }
     }
@@ -179,7 +193,9 @@ struct SettingsTab: View {
             SettingsView()
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: Route.self) { route in
-                    route.destination.toolbar(.hidden, for: .navigationBar)
+                    route.destination
+                        .toolbar(.hidden, for: .navigationBar)
+                        .swipeBackFromLeadingEdge()
                 }
         }
     }

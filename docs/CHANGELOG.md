@@ -4,11 +4,15 @@
 
 ### Added
 
+- Adaptive light, dark, and system appearance with a warm near-black dark palette shared by the app and Share Extension configuration.
+- Settings tag management for adding, renaming, and deleting tags; rename/delete updates every clip tag and folder default-tag reference and persists the catalog separately from the version-2 backup schema.
+- Aspect-fit detail previews plus a tappable full-screen image viewer with pinch and double-tap zoom.
+- Leading-edge swipe-back gestures for pushed detail, folder, and setting screens.
 - Korean, English, and Japanese runtime localization for the production app and Share Extension, including accessibility labels, default samples, toasts/errors, and localized Face ID purpose text.
 - Settings control for immediate Share save versus folder-and-memo review, synchronized to the extension through App Group preferences.
 - Privacy manifests for the app and Share Extension, plus localized ASO copy, screenshot storyboard, release checklist, and a trilingual privacy-policy draft.
 - Direct tag editing from the clip-detail organize row: the tag row opens the tag editor immediately and saves cleaned, deduplicated tags with a no-op guard, covered by a new `updateTags` XCTest regression.
-- Share Extension now shows a compact green "Clip Inbox에 저장됨" confirmation card for about 1.2 seconds after the zero-confirm save, instead of disappearing without feedback.
+- Share Extension now shows a compact green "Clip Inbox에 저장됨" confirmation card with a checkmark for about 2 seconds after the zero-confirm save, instead of disappearing without feedback.
 - Korean "로/으로" particles in dynamic folder labels (move sheet, move toast, Sort Later CTA) now follow the final consonant — "디자인으로 분류하고 다음", "인박스로 이동" — via a tested `withRoParticle` helper.
 - Native `ClipInboxShare` Share Extension for Safari, Photos, and text sources, embedded in `ClipInbox.app` with URL, web-page, text, and single-image activation rules.
 - App Group file queue (`group.app.clipinbox.ClipInbox`) so the extension can save while the containing app is closed; the app imports queued clips whenever it becomes active.
@@ -21,8 +25,12 @@
 
 ### Changed
 
+- The bottom navigation now hides instead of moving above the keyboard. Every non-tag-selection input screen dismisses the keyboard when the user taps outside a text input.
+- Workflow sheets now use content-aware detents: 58% for short actions, 76% for medium selectors, and full height for destination/move/edit flows, all with explicit top and bottom insets.
+- Setting-detail screens no longer show the duplicated "설정 설명" block. Short option/action screens use deliberate top spacing, while the longer default-folder and tag lists begin near the header.
+- Fresh/reset folder defaults are now `전체`, `기본 폴더`, and rename-oriented `폴더 1` through `폴더 5` in that order.
 - Fresh-install defaults are now App Lock off and immediate Share save on.
-- Quick Share capture now shows only one compact localized success card for about 1.2 seconds; review capture uses a focused folder/memo form.
+- Quick Share capture now shows only one compact localized success card for about 2 seconds; review capture uses a focused folder/memo form.
 - Keyboard policy: the keyboard now opens only from a direct tap on the search field or a text editor. Search-tab entry and the new-folder/rename sheets no longer request focus programmatically, tapping outside the search field or switching bottom tabs dismisses the keyboard, and the keyboard process is prewarmed once at launch so the first tap presents it without cold-start delay.
 - Expanded the detail content rhythm to a 16pt stack (badges, title, source, media, description) and added line spacing to multi-line titles, body text, editors, and meta descriptions across detail, edit, add, sort, settings, and state/empty panels.
 - Unified folder and settings destination rows behind one divider rule — a hairline inset to the icon column with no divider after the last row — keeping both screens' icons on an identical vertical axis (measured center x 126px on the 3x simulator).
@@ -32,7 +40,7 @@
 - Reworked the native UI into a productive-minimal, list-first system with one warm canvas, row dividers, compact radii, quieter metadata, and no hard shadows.
 - Reduced the native main title, removed the duplicated lower Inbox label, and made the full clip row open detail while preserving the independent quick menu.
 - Removed the duplicate inbox filter modal; inbox, search, tag editor, and folder-tag selection now share a two-row selector with five equal-width controls per row and yellow selection underlines.
-- Changed menu, move, edit, and picker sheets to a 68% default detent with a large expansion option and 20pt top/bottom content insets.
+- Changed menu, move, edit, and picker sheets from one 68% default to compact/standard/expanded detents with 20pt top/bottom content insets.
 - Flattened the detail, folder, search-result, Sort Later, settings, and share-action hierarchy; detail media now has deliberate surrounding space and bottom actions stay above the tab bar.
 - Removed the count-only inbox header and Settings app-icon preview, and aligned Inbox/Folders/Add/Search/Settings titles to the same fixed header slot.
 - Changed Share Extension capture to save immediately after Clip Inbox is selected, without a second Save/OK step.
@@ -41,6 +49,8 @@
 
 ### Fixed
 
+- Detail images no longer crop their source ratio, and folder-move plus other long modals no longer appear cut at the top or bottom.
+- Keyboard presentation no longer lifts and animates the five-item bottom menu above the keyboard.
 - Completed the iPad orientation declarations so generic iPhoneOS Xcode validation no longer warns about an unsupported interface orientation.
 - Workflow sheets no longer crowd the grabber or leave a mostly empty full-height canvas; the duplicate filter sheet was removed entirely.
 - Yellow-button and bookmark/save feedback labels no longer render with duplicated black hard shadows.
@@ -54,6 +64,8 @@
 
 ### Verified
 
+- Twelve native XCTest regressions pass, including tag-catalog rename/delete propagation, generic folder ordering, and dark-theme persistence.
+- Light inbox, dark settings/folders/tag management, aspect-fit/full-screen image, expanded card/move sheets, outside-tap keyboard dismissal, and hidden keyboard navigation were exercised on the iOS 26.5 iPhone 17 Pro simulator. Evidence is stored in `.superloopy/evidence/frontend/20260711-ux-theme-tags`.
 - Ten native XCTest regressions pass, including default lock/share behavior and Japanese/review preference persistence.
 - Korean, English, and Japanese were switched live on the iPhone 17 Pro simulator; Safari quick and review Share paths both completed, and the review payload appeared in the inbox. Evidence is stored in `.superloopy/evidence/frontend/20260711-localization-share-release`.
 - `xcodebuild` succeeds for the iOS 26.5 simulator and validates the embedded `ClipInboxShare.appex`.

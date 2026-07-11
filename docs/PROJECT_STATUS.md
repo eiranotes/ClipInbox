@@ -7,12 +7,12 @@ Clip Inbox's production source of truth is now the native SwiftUI iOS app under 
 Implemented screens:
 
 - Inbox with a two-row, five-column equal-width filter grid, full-row clip navigation, optional thumbnails, and text-only rows that keep the same height as media rows.
-- Share Extension with two user-selectable behaviors: immediate save shows one compact localized success card for about 1.2 seconds before returning, while review mode exposes only folder, memo, save, and cancel controls.
-- Detail view with a 16pt content rhythm that fits one viewport through the 링크 열기 action (140pt preview, 72pt note editor), directly editable note and tags (the tag row opens the tag editor directly), flat organization rows, and actions kept above the bottom navigation.
-- Folder list with flat rows and counts, sharing the settings screen's row anatomy and inset divider rule so both screens' icons sit on one axis.
+- Share Extension with two user-selectable behaviors: immediate save shows one compact localized checkmark card for about 2 seconds before returning, while review mode exposes only folder, memo, save, and cancel controls.
+- Detail view with a 16pt content rhythm that fits one viewport through the 링크 열기 action (140pt aspect-fit preview, 72pt note editor), a zoomable full-screen image viewer, directly editable note and tags, flat organization rows, and actions kept above the bottom navigation.
+- Folder list with flat rows and counts, using `전체`, second-row `기본 폴더`, and rename-oriented `폴더 1` through `폴더 5` on fresh/reset data.
 - Search with the shared 5x2 category selector, persisted real recent searches, results, and empty state. The keyboard opens only from a direct field tap, is prewarmed at launch for instant presentation, and dismisses on outside taps or tab switches.
 - Sort Later classification flow without scores or percentages.
-- Settings with app lock, theme, working Korean/English/Japanese language selection, default folder, Share save behavior, JSON export/import, app info, contact, and delete; fresh installs default to App Lock off and immediate Share save.
+- Settings with app lock, functional light/dark/system theme, Korean/English/Japanese language selection, default folder, global tag management, Share save behavior, JSON export/import, app info, contact, and delete. Detail screens omit the redundant explanation panel and use content-aware vertical spacing.
 - CTA destination screens for card menu, share, more actions, external link confirmation, folder move, clip edit, delete confirmation, save destination, tag editor, new folder, folder detail, and setting detail. Inbox filtering is direct and bookmark is an immediate toggle.
 - Native iOS Share Extension exposed in Safari and Photos, with App Group delivery into the app for links, text, and images.
 
@@ -64,6 +64,9 @@ Implemented screens:
 - Added bundle-backed Korean, English, and Japanese localization across the production app and Share Extension; language changes take effect immediately and include default samples, accessibility labels, errors, toasts, and Face ID purpose text.
 - Added App Group-backed immediate/review Share modes. Safari review-save imported `Example Domain` and raised the live inbox count from 5 to 6; quick-save displayed only the compact English success card and auto-returned. Evidence in `.superloopy/evidence/frontend/20260711-localization-share-release`.
 - Added privacy manifests for both executables and prepared localized ASO copy, screenshot storyboard, release checklist, and a trilingual privacy-policy draft under `docs/app-store/`.
+- Added a persisted tag catalog with global add/rename/delete actions, reference propagation across clip tags and folder defaults, and XCTest coverage while retaining version-2 JSON backup compatibility.
+- Added adaptive dark tokens, working light/dark/system selection, content-aware workflow-sheet detents, aspect-fit/zoomable detail media, leading-edge swipe back, and a compact checkmark Share confirmation.
+- Reworked keyboard behavior so non-input taps dismiss it across input screens, the tag-selection sheet remains unchanged, and the bottom navigation hides rather than moving above the keyboard. Runtime evidence is in `.superloopy/evidence/frontend/20260711-ux-theme-tags`.
 
 ## Next Steps
 

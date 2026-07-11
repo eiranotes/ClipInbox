@@ -115,10 +115,10 @@ struct AddClipView: View {
             if destination.isEmpty { destination = store.preferences.defaultFolder }
         }
         .sheet(isPresented: $showDestination) {
-            DestinationSheet(destination: $destination).workflowSheet()
+            DestinationSheet(destination: $destination).workflowSheet(.expanded)
         }
         .sheet(isPresented: $showTagEditor) {
-            TagEditorSheet(tags: $tags).workflowSheet()
+            TagEditorSheet(tags: $tags).workflowSheet(.standard)
         }
     }
 
@@ -166,19 +166,18 @@ struct DestinationSheet: View {
 // MARK: - 태그 편집
 
 struct TagEditorSheet: View {
+    @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @Binding var tags: [String]
     @State private var newTag = ""
 
-    private let suggestions = DefaultData.suggestedTags
-
     private var tagOptions: [String] {
         var seen = Set<String>()
-        return (tags + suggestions).filter { seen.insert($0).inserted }
+        return (tags + store.availableTags).filter { seen.insert($0).inserted }
     }
 
     var body: some View {
-        ScreenScaffold {
+        ScreenScaffold(dismissKeyboardOnBackgroundTap: false) {
             ScreenHeader("태그 편집", onBack: { dismiss() })
 
             BoardSection(title: "태그 선택", count: tags.count) {
@@ -224,8 +223,12 @@ struct TagEditorSheet: View {
 
     private func addNewTag() {
         let tag = AppStore.cleanText(newTag, maxLength: 50)
-        guard !tag.isEmpty, !tags.contains(tag), tags.count < 12 else { return }
-        tags.append(tag)
+        guard !tag.isEmpty, tags.count < 12 else { return }
+        let canonical = store.availableTags.first {
+            $0.caseInsensitiveCompare(tag) == .orderedSame
+        } ?? (try? store.addTag(tag))
+        guard let canonical, !tags.contains(canonical) else { return }
+        tags.append(canonical)
         newTag = ""
     }
 }
