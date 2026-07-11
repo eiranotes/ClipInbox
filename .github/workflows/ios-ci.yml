@@ -1,0 +1,31 @@
+name: iOS CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ios-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-archive:
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Run local release gate
+        env:
+          DERIVED_DATA_PATH: ${{ runner.temp }}/ClipInbox-DerivedData
+          ARCHIVE_PATH: ${{ runner.temp }}/ClipInbox.xcarchive
+          REQUIRE_SIGNED_ARCHIVE: "0"
+          REQUIRE_OWNED_METADATA: "0"
+        run: scripts/verify_ios_release.sh

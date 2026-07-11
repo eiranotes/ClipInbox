@@ -64,6 +64,14 @@ Why: A local-only product still needs users to understand where private copies e
 
 Impact: Users can inspect storage and queue degradation before cleanup. Automatic retention, image optimization, encrypted archives, and complete asset backups remain separate future decisions.
 
+## 2026-07-11: One Release Script Separates Repository Proof From Distribution Approval
+
+Decision: Use `scripts/verify_ios_release.sh` as the shared local and CI release gate. It regenerates the Xcode project, runs the simulator suite, creates an unsigned Release archive, and verifies the app/extension bundle structure, privacy manifests, localizations, and source App Group contract. Strict flags validate an existing signed archive and reject placeholder metadata when account-owned inputs are available.
+
+Why: A simulator build alone does not prove archive contents, while CI cannot manufacture distribution profiles, owned URLs, App Store Connect state, or physical-device behavior. One script keeps repeatable checks identical without treating unavailable external authority as a repository success.
+
+Impact: The local gate can pass independently and is required on every pull request. The release remains blocked until the same version/build passes distribution signing, owned metadata, Xcode validation/upload, and the documented device matrix.
+
 ## 2026-07-10: Native SwiftUI Is the Product Source of Truth
 
 Decision: All future Clip Inbox product logic and UI implementation will be made in the native iOS code under `ios/`. The root `src/` web application remains a historical design prototype and is changed only when web work is explicitly requested.

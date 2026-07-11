@@ -4,6 +4,7 @@
 
 ### Internal
 
+- Added a shared local/CI iOS release gate plus data-recovery, Share-queue, and release-validation runbooks.
 - Added undo-persistence and storage-accounting regressions plus standard/accessibility first-run simulator evidence.
 - Added the product-bounded A-to-Z audit adoption plan and moved native regression setup toward explicit version-2 fixtures so production sample removal can proceed safely.
 - Added a `ClipRepository` boundary with typed bootstrap/commit failures, current/previous snapshot rotation, corrupt-file quarantine, version gating, and transaction rollback tests.
@@ -11,6 +12,7 @@
 
 ### Added
 
+- GitHub Actions coverage for XcodeGen drift, native tests, unsigned Release archive creation, embedded Share Extension, privacy manifests, localizations, and source App Group consistency.
 - Empty Inbox onboarding that explains Share capture, Quick/Review behavior, later organization, and links directly to real manual Add.
 - Five-second delete Undo that restores the durable clip before original-image cleanup.
 - Settings storage summary for clip metadata, original images, pending Share payloads, and quarantined items.
@@ -96,6 +98,7 @@
 
 ### Verified
 
+- The complete local release gate passed: 30 tests, unsigned generic iOS Release archive, embedded `ClipInboxShare.appex`, both privacy manifests, Korean/English/Japanese resources in both bundles, expected bundle IDs, and matching source App Group entitlements. Distribution signing, owned metadata, upload, and physical-device cases remain external gates.
 - Thirty native XCTest regressions pass, including durable delete Undo and storage summary separation. The same simulator build validates the embedded Share Extension.
 - A clean temporary iPhone 17 Pro simulator verified the complete standard first-run guide and the Accessibility Extra Large selector-row variant; evidence is in `.superloopy/evidence/frontend/20260711-audit-phase3`.
 - Twenty-eight native XCTest regressions pass, including provider timeout/cancellation, queue order/quarantine/quota/idempotency, file-backed image byte preservation and size rejection, real manual capture, and fail-closed authentication. The embedded Share Extension validates in the same build.

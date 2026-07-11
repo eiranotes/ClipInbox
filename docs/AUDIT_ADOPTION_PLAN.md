@@ -80,9 +80,13 @@ Exit: core flows pass in Korean, English, and Japanese across light/dark and acc
 
 ### Phase 4: Release gate
 
-- Add CI/release validation, signed archive checks, operational runbooks, policy URLs, metadata, and physical-device evidence.
+Status: repository gate complete on 2026-07-11; distribution exit pending external ownership and device access.
 
-Exit: P0 is zero and the signed app/extension/privacy/recovery matrix is green.
+- Add one repeatable local/CI gate for project regeneration, simulator tests, unsigned Release archive, embedded extension, privacy manifests, localization, and source App Group checks.
+- Add data-recovery, Share-queue, and release-validation runbooks.
+- Keep distribution signing, owned policy/support contact, App Store Connect metadata, upload, and physical-device evidence as explicit blocking release inputs rather than inventing repository values.
+
+Local exit: complete. Final exit: P0 is zero and the same-build signed app/extension/privacy/recovery/device matrix is green.
 
 ## Verification contract
 

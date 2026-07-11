@@ -12,7 +12,7 @@
 - App Lock defaults to off.
 - Share capture defaults to immediate save.
 - Share capture can be changed to folder-and-note review.
-- Privacy manifests exist in both executables. The app declares app-only and App Group UserDefaults access; the extension declares App Group UserDefaults access.
+- Privacy manifests exist in both executables. The app declares its UserDefaults required-reason access; the file-backed extension currently declares no required-reason API categories.
 - No tracking domains or collected-data types are declared by the current local-only implementation.
 - JSON export/import and delete-all controls exist.
 
@@ -44,10 +44,13 @@
 
 ## Final binary checks
 
-- `xcodegen generate --spec project.yml`
-- Simulator build and unit tests pass with DerivedData on the local disk and index store disabled.
-- Generic iPhoneOS Release build passes with distribution signing available.
-- Embedded `ClipInboxShare.appex` validation passes.
-- Both `PrivacyInfo.xcprivacy` files are present in the archived bundle.
-- Korean, English, and Japanese `Localizable.strings` are present in both app and extension bundles.
-- No placeholder `.local` email or placeholder HTTPS URL remains in product UI or submitted metadata.
+- [x] `scripts/verify_ios_release.sh` regenerates the project and rejects Xcode project drift.
+- [x] Simulator build and all 30 unit tests pass with DerivedData on the local disk and index store disabled.
+- [x] Unsigned generic iPhoneOS Release archive passes and contains the embedded `ClipInboxShare.appex`.
+- [x] Both `PrivacyInfo.xcprivacy` files are valid and present in the archived bundle.
+- [x] Korean, English, and Japanese `Localizable.strings` are present in both app and extension bundles.
+- [ ] Distribution-signed archive passes strict App Group entitlement checks for both executables.
+- [ ] Xcode Validate App and upload pass for the release build number.
+- [ ] No placeholder `.local` email or placeholder HTTPS URL remains in product UI or submitted metadata.
+
+Run the strict external gate against the signed archive as documented in `docs/runbooks/RELEASE_VALIDATION.md`.
