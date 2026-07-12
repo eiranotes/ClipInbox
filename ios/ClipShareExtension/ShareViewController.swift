@@ -16,6 +16,21 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
     private let folderButton = UIButton(type: .system)
     private let saveButton = UIButton(type: .system)
 
+    /// DESIGN.md의 Share Extension review 토큰을 UIKit에서 그대로 사용한다.
+    private enum Metrics {
+        static let reviewHeight: CGFloat = 360
+        static let reviewPanelWidth: CGFloat = 360
+        static let reviewPanelEdgeInset: CGFloat = 20
+        static let panelPadding: CGFloat = 16
+        static let compactPadding: CGFloat = 12
+        static let rowGap: CGFloat = 8
+        static let touchTarget: CGFloat = 44
+        static let compactTarget: CGFloat = 36
+        static let memoHeight: CGFloat = 64
+        static let radiusPanel: CGFloat = 12
+        static let radiusControl: CGFloat = 8
+    }
+
     private enum ShareError: LocalizedError {
         case missingPayload
         case providerTimedOut
@@ -62,7 +77,9 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         case "다크": overrideUserInterfaceStyle = .dark
         default: overrideUserInterfaceStyle = .unspecified
         }
-        modalPresentationStyle = configuration.saveMode == .quick ? .overFullScreen : .formSheet
+        // formSheet가 만드는 시스템 dimming surface를 사용하지 않는다. 두 모드 모두
+        // 투명한 전체 호스트 위에 필요한 카드만 직접 배치한다.
+        modalPresentationStyle = .overFullScreen
         view.backgroundColor = .clear
         view.isOpaque = false
 
@@ -76,7 +93,7 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
             preferredContentSize = CGSize(width: 280, height: 92)
             configureCompactStatus()
         case .review:
-            preferredContentSize = CGSize(width: 0, height: 390)
+            preferredContentSize = CGSize(width: Metrics.reviewPanelWidth, height: Metrics.reviewHeight)
             configureReviewLoadingState()
         }
     }
@@ -143,7 +160,7 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         let content = UIStackView(arrangedSubviews: [statusIcon, activityIndicator, statusLabel])
         content.axis = .horizontal
         content.alignment = .center
-        content.spacing = 8
+        content.spacing = Metrics.rowGap
         content.translatesAutoresizingMaskIntoConstraints = false
 
         statusCard.backgroundColor = Palette.bgCard
@@ -156,10 +173,10 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         view.addSubview(statusCard)
 
         NSLayoutConstraint.activate([
-            content.topAnchor.constraint(equalTo: statusCard.topAnchor, constant: 12),
-            content.bottomAnchor.constraint(equalTo: statusCard.bottomAnchor, constant: -12),
-            content.leadingAnchor.constraint(equalTo: statusCard.leadingAnchor, constant: 16),
-            content.trailingAnchor.constraint(equalTo: statusCard.trailingAnchor, constant: -16),
+            content.topAnchor.constraint(equalTo: statusCard.topAnchor, constant: Metrics.compactPadding),
+            content.bottomAnchor.constraint(equalTo: statusCard.bottomAnchor, constant: -Metrics.compactPadding),
+            content.leadingAnchor.constraint(equalTo: statusCard.leadingAnchor, constant: Metrics.panelPadding),
+            content.trailingAnchor.constraint(equalTo: statusCard.trailingAnchor, constant: -Metrics.panelPadding),
             statusCard.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             statusCard.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             statusCard.widthAnchor.constraint(lessThanOrEqualToConstant: 280),
@@ -179,8 +196,8 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         activityIndicator.stopAnimating()
 
         let container = UIView()
-        container.backgroundColor = Palette.bgApp
-        container.layer.cornerRadius = 12
+        container.backgroundColor = Palette.bgCard
+        container.layer.cornerRadius = Metrics.radiusPanel
         container.layer.cornerCurve = .continuous
         container.layer.borderWidth = 1
         container.layer.borderColor = Palette.borderSoft.cgColor
@@ -188,12 +205,12 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
 
         let heading = UILabel()
         heading.text = localized("폴더와 메모 확인")
-        heading.font = font(size: 18, semibold: true)
+        heading.font = font(size: 16, semibold: true)
         heading.textColor = Palette.textPrimary
 
         let clipTitle = UILabel()
         clipTitle.text = payload.title
-        clipTitle.font = font(size: 13)
+        clipTitle.font = font(size: 12)
         clipTitle.textColor = Palette.textSecondary
         clipTitle.numberOfLines = 1
         clipTitle.lineBreakMode = .byTruncatingTail
@@ -202,18 +219,20 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         configureFolderButton()
 
         let memoLabel = fieldLabel(localized("메모 (선택)"))
-        memoTextView.font = font(size: 15)
+        memoTextView.font = font(size: 13)
         memoTextView.textColor = Palette.textPrimary
-        memoTextView.backgroundColor = Palette.bgCard
-        memoTextView.layer.cornerRadius = 8
+        memoTextView.backgroundColor = Palette.bgApp
+        memoTextView.layer.cornerRadius = Metrics.radiusControl
         memoTextView.layer.cornerCurve = .continuous
         memoTextView.layer.borderWidth = 1
         memoTextView.layer.borderColor = Palette.borderSoft.cgColor
-        memoTextView.textContainerInset = UIEdgeInsets(top: 10, left: 8, bottom: 10, right: 8)
-        memoTextView.heightAnchor.constraint(equalToConstant: 82).isActive = true
+        memoTextView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        memoTextView.heightAnchor.constraint(equalToConstant: Metrics.memoHeight).isActive = true
 
         var saveConfiguration = UIButton.Configuration.filled()
-        saveConfiguration.title = localized("클립 저장")
+        var saveTitle = AttributedString(localized("클립 저장"))
+        saveTitle.font = font(size: 15, semibold: true)
+        saveConfiguration.attributedTitle = saveTitle
         saveConfiguration.image = UIImage(systemName: "checkmark")
         saveConfiguration.imagePadding = 8
         saveConfiguration.baseBackgroundColor = Palette.accentYellow
@@ -221,43 +240,45 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         saveConfiguration.cornerStyle = .fixed
         saveConfiguration.background.cornerRadius = 10
         saveButton.configuration = saveConfiguration
-        saveButton.titleLabel?.font = font(size: 16, semibold: true)
-        saveButton.heightAnchor.constraint(equalToConstant: 52).isActive = true
+        saveButton.heightAnchor.constraint(equalToConstant: Metrics.touchTarget).isActive = true
         saveButton.addTarget(self, action: #selector(saveReviewedClip), for: .touchUpInside)
 
         let cancelButton = UIButton(type: .system)
         cancelButton.setTitle(localized("취소"), for: .normal)
         cancelButton.setTitleColor(Palette.textSecondary, for: .normal)
-        cancelButton.titleLabel?.font = font(size: 15)
-        cancelButton.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        cancelButton.titleLabel?.font = font(size: 13)
+        cancelButton.heightAnchor.constraint(equalToConstant: Metrics.compactTarget).isActive = true
         cancelButton.addTarget(self, action: #selector(cancelShare), for: .touchUpInside)
 
         let stack = UIStackView(arrangedSubviews: [heading, clipTitle, folderLabel, folderButton,
                                                    memoLabel, memoTextView, saveButton, cancelButton])
         stack.axis = .vertical
-        stack.spacing = 8
-        stack.setCustomSpacing(16, after: clipTitle)
+        stack.spacing = Metrics.rowGap
+        stack.setCustomSpacing(12, after: clipTitle)
         stack.setCustomSpacing(12, after: folderButton)
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         container.addSubview(stack)
         view.addSubview(container)
+        let preferredPanelWidth = container.widthAnchor.constraint(equalToConstant: Metrics.reviewPanelWidth)
+        preferredPanelWidth.priority = .defaultHigh
         NSLayoutConstraint.activate([
-            container.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
-            container.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            container.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            container.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8),
-            stack.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
-            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
-            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -12)
+            container.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            container.centerYAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerYAnchor),
+            container.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor,
+                                             constant: -(Metrics.reviewPanelEdgeInset * 2)),
+            preferredPanelWidth,
+            stack.topAnchor.constraint(equalTo: container.topAnchor, constant: Metrics.compactPadding),
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: Metrics.panelPadding),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -Metrics.panelPadding),
+            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -Metrics.compactPadding)
         ])
     }
 
     private func fieldLabel(_ text: String) -> UILabel {
         let label = UILabel()
         label.text = text
-        label.font = font(size: 13, semibold: true)
+        label.font = font(size: 12, semibold: true)
         label.textColor = Palette.textPrimary
         return label
     }
@@ -267,19 +288,21 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         if !folders.contains(selectedFolder) { selectedFolder = folders.first ?? configuration.defaultFolder }
 
         var buttonConfiguration = UIButton.Configuration.plain()
-        buttonConfiguration.title = localized(selectedFolder)
+        var folderTitle = AttributedString(localized(selectedFolder))
+        folderTitle.font = font(size: 13, semibold: true)
+        buttonConfiguration.attributedTitle = folderTitle
         buttonConfiguration.image = UIImage(systemName: "folder")
         buttonConfiguration.imagePadding = 8
         buttonConfiguration.baseForegroundColor = Palette.textPrimary
         buttonConfiguration.background.backgroundColor = Palette.bgCard
         buttonConfiguration.background.strokeColor = Palette.borderSoft
         buttonConfiguration.background.strokeWidth = 1
-        buttonConfiguration.background.cornerRadius = 8
+        buttonConfiguration.background.cornerRadius = Metrics.radiusControl
         buttonConfiguration.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 12)
         folderButton.configuration = buttonConfiguration
         folderButton.contentHorizontalAlignment = .leading
         if folderButton.constraints.first(where: { $0.firstAttribute == .height }) == nil {
-            folderButton.heightAnchor.constraint(equalToConstant: 52).isActive = true
+            folderButton.heightAnchor.constraint(equalToConstant: Metrics.touchTarget).isActive = true
         }
         folderButton.showsMenuAsPrimaryAction = true
         folderButton.menu = UIMenu(children: folders.map { folder in
@@ -364,7 +387,6 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
     }
 
     private func clearHostBackgrounds() {
-        guard configuration.saveMode == .quick else { return }
         var ancestor: UIView? = view
         while let current = ancestor {
             current.backgroundColor = .clear

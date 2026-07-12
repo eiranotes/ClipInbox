@@ -12,6 +12,7 @@
 
 ### Changed
 
+- Review Share no longer opens over a black form-sheet background. It now shows a smaller centered folder-and-memo panel on a transparent host, with reduced typography and compact controls.
 - The Inbox top filter grid is now semantic: the top row lists folders (전체 + movable folders) and the bottom row lists tags actually used by active clips, replacing the fixed type/tag mix.
 
 ## Unreleased - 2026-07-11

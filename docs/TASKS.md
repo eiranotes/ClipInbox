@@ -2,6 +2,7 @@
 
 ## Done
 
+- [x] Remove the black Review Share background, center the folder-and-memo panel on a transparent host, and reduce its typography and control density.
 - [x] Apply the audited URL-only link metadata engine as in-app source with sidecar storage, coordinator-driven backfill, and fixture tests running in the Xcode test target.
 - [x] Show remote representative thumbnails for link clips without local images on Inbox cards, compact rows, and the detail header.
 - [x] Add the collapsed-by-default 링크 정보 detail section (4-line summary + meta line, 자세히 보기 expansion with 5-line value caps) and the short-summary card line.

@@ -100,7 +100,9 @@ Responsive and control-size tokens:
 | size.detailImageHeight | native only | 140px | Detail/sort/save preview maximum image height, sized so detail fits one screen |
 | size.noteEditorMinHeight | native only | 72px | Detail note editor minimum height |
 | size.shareQuickHeight | native only | 132px | Compact Share Extension saving/saved card host height |
-| size.shareReviewHeight | native only | 390px | Share Extension folder and memo review form height |
+| size.shareReviewHeight | native only | 360px | Transparent Share Extension review host target height |
+| size.shareReviewPanelMaxWidth | native only | 360px | Centered folder-and-memo review panel maximum width |
+| size.shareReviewMemoHeight | native only | 64px | Compact optional memo editor height in Share review |
 | size.onboardingImageHeight | native only | 300px | Generated onboarding illustration maximum height |
 | layout.appMax | `--layout-app-max` | 960px | Wide application-shell maximum |
 | layout.contentMax | `--layout-content-max` | 720px | Readable secondary-workflow measure |
@@ -121,7 +123,7 @@ Row hit areas: every selectable row (action rows, destination rows, selection ro
 
 Share Extension feedback: saving is zero-confirm, then a compact yellow confirmation card ("Clip Inbox에 저장됨", checkmark, 10px radius, soft border) appears briefly before returning to the host app. The fill is exactly `color.accent.yellow`, matching selected menus and primary actions. A Share Extension does not attempt to launch its containing app because public iOS extension APIs do not permit that transition. Korean particles in dynamic labels and toasts follow the final consonant ("디자인으로", "인박스로").
 
-Share Extension modes: quick save uses only one centered compact status card on a transparent host, constrained to `size.shareQuickHeight`; it never paints a full-screen app canvas. Review-before-save uses `size.shareReviewHeight` and shows one folder menu, one memo editor, and one primary save action. Both modes reuse the same radius, border, color, type, spacing, and motion tokens as the app.
+Share Extension modes: quick save uses only one centered compact status card on a transparent host, constrained to `size.shareQuickHeight`; it never paints a full-screen app canvas. Review-before-save also uses a transparent over-full-screen host, with no system dimming layer. Its `size.shareReviewPanelMaxWidth` folder-and-memo panel is vertically centered, uses the compact 12–16px type scale, and keeps the optional memo editor at `size.shareReviewMemoHeight`. Both modes reuse the same radius, border, color, type, spacing, and motion tokens as the app.
 
 Clip row: full-width navigation target with 12px vertical padding and a soft bottom divider. The inbox hierarchy is title first, source second, then an optional 80x64 thumbnail. Type, state, time, and tags are detail-only metadata. The menu remains an independent 44px trailing target. There is no outer row card or shadow.
 

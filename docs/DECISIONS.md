@@ -471,3 +471,11 @@ Decision: Make the new Korean first-three candidate follow the supplied screensh
 Why: The references have a clear App Store reading order, but their product UI no longer matches the native list-first app. A shared simple mark is also more legible in the iOS share sheet than the detailed card-tray illustration.
 
 Impact: `scripts/generate_aso_reference_refresh.sh` produces three 1320 x 2868 Korean assets. The first uses a real Safari Share sheet plus current Inbox, the next two use current Folder and Search captures, and the same mark appears on the Home screen, App Lock/privacy shield, and compiled Share Extension tile.
+
+## 2026-07-12: Review Share Uses a Transparent Centered Panel
+
+Decision: Present both Quick and Review Share modes with `.overFullScreen` and clear the extension host hierarchy instead of using the system `.formSheet` dimming layer. Review renders one centered 360pt-maximum folder-and-memo panel with compact type and controls.
+
+Why: The form-sheet presentation added an unrelated black canvas behind the folder selector and made the extension feel like a full-screen destination. Share review is a short capture checkpoint, so the host app should remain visible and only the actionable panel should occupy attention.
+
+Impact: Folder selection stays in the middle of the screen, the optional memo editor is 64pt high, primary controls are 44pt high, and visible copy uses the existing 12–16pt token scale. Quick save behavior and queue semantics are unchanged.
