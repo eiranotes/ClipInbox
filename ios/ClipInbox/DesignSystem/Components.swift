@@ -53,9 +53,37 @@ struct TwoRowHorizontalSelection: View {
     }
 
     let items: [SelectionItem]
-    var rowCount = Tokens.selectionRowCount
+    let rowCount: Int
+    /// 윗줄과 아랫줄이 서로 다른 의미를 가질 때(예: 인박스의 폴더/태그 필터)
+    /// 각 줄을 독립적으로 유지한 채 같은 5열 리듬으로 배치한다.
+    private let pairedRows: (top: [SelectionItem], bottom: [SelectionItem])?
+
+    init(items: [SelectionItem], rowCount: Int = Tokens.selectionRowCount) {
+        self.items = items
+        self.rowCount = rowCount
+        self.pairedRows = nil
+    }
+
+    init(topRow: [SelectionItem], bottomRow: [SelectionItem]) {
+        self.items = topRow + bottomRow
+        self.rowCount = 2
+        self.pairedRows = (topRow, bottomRow)
+    }
 
     private var gridSlots: [SelectionSlot] {
+        if let pairedRows {
+            // 열마다 위줄·아랫줄 항목을 하나씩 배치하고, 짧은 줄은 빈 칸으로 채운다.
+            let columns = max(pairedRows.top.count, pairedRows.bottom.count)
+            var slots: [SelectionSlot] = []
+            for column in 0..<columns {
+                slots.append(SelectionSlot(id: slots.count,
+                                           item: column < pairedRows.top.count ? pairedRows.top[column] : nil))
+                slots.append(SelectionSlot(id: slots.count,
+                                           item: column < pairedRows.bottom.count ? pairedRows.bottom[column] : nil))
+            }
+            return slots
+        }
+
         let columnCount = Tokens.selectionColumnCount
         let pageSize = columnCount * rowCount
         var slots: [SelectionSlot] = []

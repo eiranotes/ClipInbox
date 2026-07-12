@@ -25,14 +25,21 @@ struct InboxView: View {
                     }
                 }
 
-                TwoRowHorizontalSelection(items: InboxFilter.allCases.map { item in
-                    (store.filterLabel(item), filter == item, { filter = item })
-                })
+                // 윗줄은 폴더, 아랫줄은 태그 필터를 보여 준다.
+                TwoRowHorizontalSelection(
+                    topRow: store.inboxFolderFilters.map { item in
+                        (store.filterLabel(item), filter == item, { filter = item })
+                    },
+                    bottomRow: store.inboxTagFilters.map { item in
+                        (store.filterLabel(item), filter == item, { filter = item })
+                    }
+                )
 
                 if store.activeClips.isEmpty, filter == .all, !dynamicTypeSize.isAccessibilitySize {
                     FirstCaptureGuide {
                         selectedTab = .add
                     }
+                    .padding(.top, Tokens.emptyGuideTop)
                 } else if list.isEmpty {
                     EmptyStateView(title: "표시할 클립이 없습니다",
                                    message: "다른 항목을 선택하거나 새 클립을 추가해 보세요.")

@@ -1,38 +1,25 @@
 import Foundation
 import Observation
 
-enum InboxFilter: String, CaseIterable, Identifiable {
-    case all, unsorted, link, image, memo, screenshot
-    case interior, reference, idea, travel
+/// 인박스 상단 필터. 윗줄은 폴더, 아랫줄은 태그를 나타낸다.
+enum InboxFilter: Hashable, Identifiable {
+    case all
+    case folder(String)
+    case tag(String)
 
-    var id: String { rawValue }
-
-    var clipType: ClipType? {
+    var id: String {
         switch self {
-        case .link: return .link
-        case .image: return .image
-        case .memo: return .memo
-        case .screenshot: return .screenshot
-        default: return nil
+        case .all: return "all"
+        case .folder(let label): return "folder:\(label)"
+        case .tag(let tag): return "tag:\(tag)"
         }
     }
 
     var baseLabel: String {
         switch self {
         case .all: return "전체"
-        case .unsorted: return "미정리"
-        case .interior: return "인테리어"
-        case .reference: return "레퍼런스"
-        case .idea: return "아이디어"
-        case .travel: return "여행"
-        default: return clipType?.label ?? ""
-        }
-    }
-
-    var tag: String? {
-        switch self {
-        case .interior, .reference, .idea, .travel: return baseLabel
-        default: return nil
+        case .folder(let label): return label
+        case .tag(let tag): return tag
         }
     }
 }
@@ -460,18 +447,30 @@ final class AppStore {
     }
 
     func filteredClips(_ filter: InboxFilter) -> [Clip] {
-        if let tag = filter.tag {
-            return activeClips.filter { $0.tags.contains(tag) }
-        }
         switch filter {
-        case .all: return activeClips
-        case .unsorted: return activeClips.filter { $0.state == .unsorted }
-        default: return activeClips.filter { $0.type == filter.clipType }
+        case .all:
+            return activeClips
+        case .folder(let label):
+            return activeClips.filter { $0.folder == label }
+        case .tag(let tag):
+            return activeClips.filter { $0.tags.contains(tag) }
         }
     }
 
     func filterLabel(_ filter: InboxFilter) -> String {
         "\(L10n.text(filter.baseLabel)) \(filteredClips(filter).count)"
+    }
+
+    /// 인박스 필터 윗줄: 전체 + 이동 가능한 폴더 목록.
+    var inboxFolderFilters: [InboxFilter] {
+        [.all] + destinationFolders.map { .folder($0.label) }
+    }
+
+    /// 인박스 필터 아랫줄: 실제 클립에 붙어 있는 태그. 없으면 추천 태그 카탈로그를 보여 준다.
+    var inboxTagFilters: [InboxFilter] {
+        let used = Self.normalizeTags(activeClips.flatMap(\.tags))
+        let tags = used.isEmpty ? tagCatalog : used
+        return tags.map { .tag($0) }
     }
 
     func folderCount(_ label: String) -> Int {

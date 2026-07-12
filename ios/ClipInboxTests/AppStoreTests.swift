@@ -102,10 +102,12 @@ final class AppStoreTests: XCTestCase {
         try seedDefaultLibrary()
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
 
-        XCTAssertEqual(store.filteredClips(.interior).map(\.id), [1])
-        XCTAssertEqual(store.filteredClips(.reference).map(\.id), [2])
-        XCTAssertEqual(store.filteredClips(.idea).map(\.id), [3])
-        XCTAssertEqual(store.filteredClips(.travel).map(\.id), [4])
+        XCTAssertEqual(store.filteredClips(.tag("인테리어")).map(\.id), [1])
+        XCTAssertEqual(store.filteredClips(.tag("레퍼런스")).map(\.id), [2])
+        XCTAssertEqual(store.filteredClips(.tag("아이디어")).map(\.id), [3])
+        XCTAssertEqual(store.filteredClips(.tag("여행")).map(\.id), [4])
+        XCTAssertEqual(store.filteredClips(.folder("폴더 2")).map(\.id), [1])
+        XCTAssertEqual(store.filteredClips(.all).count, store.activeClips.count)
         XCTAssertEqual(store.searchResults(query: "대시보드", filter: "레퍼런스").map(\.id), [2])
         XCTAssertEqual(store.searchResults(query: "아이디어", filter: "태그").map(\.id), [3])
     }
