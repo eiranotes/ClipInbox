@@ -2,7 +2,13 @@
 
 ## Done
 
+- [x] Add four real-simulator ASO proof frames per locale (save, note, link preview/open, folders) with phone chrome cropped, seeded notes/links, and live locale-language link summaries; refresh store descriptions with the link-preview feature.
+- [x] Localize metadata presentation strings (types, statuses, durations, section labels, dates) to English and Japanese via a language-aware `PresentationBuilder`, and hide the open-link action on URL-less clips instead of showing a disabled placeholder.
 - [x] Remove the black Review Share background, center the folder-and-memo panel on a transparent host, and reduce its typography and control density.
+- [x] Finalize the supplied ko-KR, en-US, and ja-JP ASO drafts as nine opaque sRGB 1320 x 2868 upload assets and validate localized metadata field budgets.
+- [x] Redraw the app and Share Extension mark as a larger, thicker, deeper golden paperclip and generate a separate transparent paperclip-only lock/privacy asset.
+- [x] Give the Inbox folder row and tag row separate horizontal `ScrollView` state while preserving the shared five-column rhythm.
+- [x] Pass the simulator build and all 59 tests, then capture final Inbox, lock, icon, and multilingual ASO evidence.
 - [x] Apply the audited URL-only link metadata engine as in-app source with sidecar storage, coordinator-driven backfill, and fixture tests running in the Xcode test target.
 - [x] Show remote representative thumbnails for link clips without local images on Inbox cards, compact rows, and the detail header.
 - [x] Add the collapsed-by-default 링크 정보 detail section (4-line summary + meta line, 자세히 보기 expansion with 5-line value caps) and the short-summary card line.
