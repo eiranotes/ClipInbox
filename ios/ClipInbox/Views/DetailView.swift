@@ -44,7 +44,7 @@ struct DetailView: View {
                         TokenBadge(tone: .type(clip.type))
                         if let state = clip.state { TokenBadge(tone: .state(state)) }
                     }
-                    Text(L10n.text(metadata.cardPresentation(for: clip)?.title ?? clip.title, locale: locale))
+                    Text(L10n.text(metadata.cardPresentation(for: clip, locale: locale)?.title ?? clip.title, locale: locale))
                         .font(Tokens.sectionTitle)
                         .foregroundStyle(Tokens.textPrimary)
                         .lineSpacing(Tokens.titleLineSpacing)
@@ -52,7 +52,7 @@ struct DetailView: View {
                     HStack(spacing: Tokens.rowGap) {
                         HStack(spacing: 5) {
                             Image(systemName: "globe").font(.system(size: 12, weight: .bold))
-                            Text(L10n.text(metadata.cardPresentation(for: clip)?.subtitle ?? clip.source, locale: locale))
+                            Text(L10n.text(metadata.cardPresentation(for: clip, locale: locale)?.subtitle ?? clip.source, locale: locale))
                         }
                         Spacer()
                         Text(L10n.text(clip.time, locale: locale))
@@ -73,7 +73,7 @@ struct DetailView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("이미지 크게 보기")
-                    } else if let thumbnailURL = metadata.cardPresentation(for: clip)?.thumbnailURL.flatMap(URL.init(string:)) {
+                    } else if let thumbnailURL = metadata.cardPresentation(for: clip, locale: locale)?.thumbnailURL.flatMap(URL.init(string:)) {
                         MetadataRemoteImage(url: thumbnailURL, contentMode: .fit)
                             .frame(maxWidth: .infinity)
                             .frame(height: dynamicTypeSize.isAccessibilitySize
@@ -94,16 +94,16 @@ struct DetailView: View {
 
                 MetadataDetailSectionsView(clip: clip)
 
-                // 링크 열기는 첫 뷰포트에서 스크롤 없이 보이도록 링크 정보 바로 아래에 둔다.
-                Button {
-                    openLink(clip)
-                } label: {
-                    Label(clip.url.isEmpty ? "열 수 있는 링크 없음" : "링크 열기",
-                          systemImage: "arrow.up.right.square")
+                // 링크 열기는 첫 뷰포트에서 스크롤 없이 보이도록 링크 정보 바로 아래에 두고,
+                // URL이 없는 클립에서는 비활성 자리표시자 대신 아예 표시하지 않는다.
+                if !clip.url.isEmpty {
+                    Button {
+                        openLink(clip)
+                    } label: {
+                        Label("링크 열기", systemImage: "arrow.up.right.square")
+                    }
+                    .buttonStyle(PrimaryBoxButtonStyle())
                 }
-                .buttonStyle(PrimaryBoxButtonStyle())
-                .disabled(clip.url.isEmpty)
-                .opacity(clip.url.isEmpty ? 0.5 : 1)
 
                 VStack(alignment: .leading, spacing: Tokens.rowGap) {
                     HStack {

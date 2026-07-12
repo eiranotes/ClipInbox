@@ -148,7 +148,7 @@ struct MetadataDetailSectionsView: View {
         // 접힘 상태에서 이미 보여 준 요약과 같은 텍스트가 반복되지 않도록
         // "정보" 섹션의 요약 항목은 펼침 목록에서 제외한다.
         let collapsed = collapsedSummary(result)
-        let sections = PresentationBuilder().detailSections(from: result)
+        let sections = PresentationBuilder(language: .presentation(for: locale)).detailSections(from: result)
             .compactMap { section -> DetailPresentationSection? in
                 let items = section.items.filter { item in
                     !(item.id == "summary" || (item.id == "description" && item.value == collapsed))

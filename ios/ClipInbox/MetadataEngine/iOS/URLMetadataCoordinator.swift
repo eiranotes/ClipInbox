@@ -1,6 +1,17 @@
 import Foundation
 import Observation
 
+extension PresentationLanguage {
+    /// SwiftUI locale 환경값을 표시 언어로 변환한다.
+    static func presentation(for locale: Locale) -> PresentationLanguage {
+        switch locale.language.languageCode?.identifier {
+        case "en": return .english
+        case "ja": return .japanese
+        default: return .korean
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class URLMetadataCoordinator {
@@ -39,9 +50,9 @@ final class URLMetadataCoordinator {
         activeClipIDs.contains(clipID)
     }
 
-    func cardPresentation(for clip: Clip) -> MainCardPresentation? {
+    func cardPresentation(for clip: Clip, locale: Locale = Locale(identifier: "ko")) -> MainCardPresentation? {
         guard let result = results[clip.id] else { return nil }
-        var card = PresentationBuilder().mainCard(from: result)
+        var card = PresentationBuilder(language: .presentation(for: locale)).mainCard(from: result)
         if !AppStore.isMetadataPlaceholderTitle(clip.title, url: clip.url) {
             card.title = clip.title
         }
@@ -49,10 +60,10 @@ final class URLMetadataCoordinator {
     }
 
     /// 메인 카드 보조 줄: 결정적 짧은 요약을 우선하고, 없으면 카드 부제로 대체한다.
-    func cardSummary(for clip: Clip) -> String? {
+    func cardSummary(for clip: Clip, locale: Locale = Locale(identifier: "ko")) -> String? {
         guard let result = results[clip.id] else { return nil }
         if let summary = result.summaryShort?.value, !summary.isEmpty { return summary }
-        let subtitle = PresentationBuilder().mainCard(from: result).subtitle
+        let subtitle = PresentationBuilder(language: .presentation(for: locale)).mainCard(from: result).subtitle
         return subtitle.isEmpty ? nil : subtitle
     }
 
