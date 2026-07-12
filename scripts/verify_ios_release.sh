@@ -155,4 +155,4 @@ fi
 
 log "local release gate passed"
 log "archive: $ARCHIVE_PATH"
-log "remaining external gates: signed validation/upload, physical-device Share/App Lock checks, published HTTPS metadata URLs"
+log "remaining external gates: signed validation/upload and physical-device Share/App Lock checks"

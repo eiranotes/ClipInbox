@@ -259,6 +259,7 @@ struct DestinationRow: View {
     let systemImage: String
     let title: String
     var value = ""
+    var trailingSystemImage = "chevron.right"
 
     var body: some View {
         HStack(spacing: Tokens.cardGap) {
@@ -276,7 +277,7 @@ struct DestinationRow: View {
                     .foregroundStyle(Tokens.textSecondary)
                     .lineLimit(1)
             }
-            Image(systemName: "chevron.right")
+            Image(systemName: trailingSystemImage)
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(Tokens.textTertiary)
         }

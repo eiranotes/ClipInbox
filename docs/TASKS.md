@@ -2,6 +2,8 @@
 
 ## Done
 
+- [x] Set the first public release to `MARKETING_VERSION 1.0.0` with build `1`, and derive the Settings version label from the app bundle.
+- [x] Publish the Notion Terms, Support, and Privacy pages, replace metadata placeholders with their final HTTPS URLs, and expose all three links in the localized Settings screen.
 - [x] Make the first release iPhone-only, migrate all signing/App Group identifiers to the `app.eiradev.ClipInbox` namespace, and keep Team `83BB7YWQHU` unchanged.
 - [x] Replace the support contact with `eiradev000@gmail.com` and prepare trilingual Notion-ready Terms, Support, and Privacy pages.
 - [x] Remove the unused GitHub Actions workflow, keep the release gate local, and version only `final-aso/` plus `final-aso-raw/` from generated output.
@@ -137,7 +139,8 @@
 - [ ] Date-based clip timestamps with a relative formatter.
 - [ ] Interactive Face ID unlock verification on an enrolled device.
 - [ ] Physical-device App Group/signing verification with the release Apple Developer team.
-- [ ] Publish the prepared Notion Terms, Support, and Privacy pages and enter their final HTTPS URLs before App Store submission.
+- [ ] Confirm export-compliance status and declare `ITSAppUsesNonExemptEncryption` only if the App Store Connect determination supports it.
+- [ ] Complete App Review contact/notes, release option, and EU trader-status fields as applicable in App Store Connect.
 - [ ] Complete App Store Connect metadata, screenshots, privacy answers, signed archive validation, and physical-device release checks.
 - [ ] Production bundling/minification, cache headers, and alternate responsive image encoding if the static prototype becomes a deployed web app.
 - [ ] Re-run Open Design agent refinement when model usage credits are available.

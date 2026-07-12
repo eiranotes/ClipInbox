@@ -2,6 +2,18 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
+enum AppExternalLinks {
+    static let privacyPolicy = URL(string: "https://shrouded-fennel-dd8.notion.site/Clip-Inbox-Privacy-Policy-39bb714ca5c680cc86cfd6dbd697bbc3")!
+    static let support = URL(string: "https://shrouded-fennel-dd8.notion.site/Clip-Inbox-Support-39bb714ca5c6805bbfb9f4dacaf411d4")!
+    static let termsOfUse = URL(string: "https://shrouded-fennel-dd8.notion.site/Clip-Inbox-Terms-of-Use-39bb714ca5c68000bcd3c412afcdb006")!
+}
+
+enum AppBuildInfo {
+    static var marketingVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
+    }
+}
+
 enum SettingKey: String, Hashable, CaseIterable {
     case appLock = "app-lock"
     case theme
@@ -133,10 +145,31 @@ struct SettingsView: View {
             .buttonStyle(.plain)
             RowDivider()
             settingsGroup([
-                (.about, "0.3.0"),
+                (.about, AppBuildInfo.marketingVersion),
                 (.contact, "")
             ])
+            RowDivider()
+            externalLinkRow(systemImage: "lifepreserver",
+                            title: "고객지원",
+                            destination: AppExternalLinks.support)
+            RowDivider()
+            externalLinkRow(systemImage: "hand.raised",
+                            title: "개인정보 처리방침",
+                            destination: AppExternalLinks.privacyPolicy)
+            RowDivider()
+            externalLinkRow(systemImage: "doc.text",
+                            title: "이용약관",
+                            destination: AppExternalLinks.termsOfUse)
         }
+    }
+
+    private func externalLinkRow(systemImage: String, title: String, destination: URL) -> some View {
+        Link(destination: destination) {
+            DestinationRow(systemImage: systemImage,
+                           title: title,
+                           trailingSystemImage: "arrow.up.right")
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -391,7 +424,7 @@ struct SettingDetailView: View {
         case .about:
             BoardSection(title: "버전") {
                 VStack(alignment: .leading, spacing: Tokens.rowGap) {
-                    Text("Clip Inbox · 0.3.0")
+                    Text("Clip Inbox · \(AppBuildInfo.marketingVersion)")
                     Text("저장 위치 · 이 기기의 앱 데이터 폴더")
                 }
                 .font(Tokens.body)

@@ -57,8 +57,7 @@ Record pass/fail, device, OS, app build, and evidence for each case:
 
 Repository verification cannot supply or approve:
 
-- published HTTPS Privacy Policy and Support URLs based on the prepared Notion copy;
-- App Store Connect metadata, privacy answers, screenshots, and account agreements;
+- App Store Connect entry of the published URLs, metadata, privacy answers, review contact, screenshots, pricing, release option, and account agreements;
 - distribution signing, Xcode validation/upload, and physical-device evidence.
 
 Do not mark the release green until these items and the local gate all pass for the same version and build.

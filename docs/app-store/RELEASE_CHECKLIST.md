@@ -18,23 +18,27 @@
 - JSON export/import and delete-all controls exist.
 - The in-app support email is `eiradev000@gmail.com`.
 - Trilingual Notion-ready Terms, Support, and Privacy copy exists under `docs/app-store/notion/`.
+- Published HTTPS Privacy Policy, Support, and Terms of Use URLs are recorded in `ASO_COPY.md` and open from localized Settings rows.
 
 ## Must be completed outside the repository
 
 - Confirm `app.eiradev.ClipInbox`, the extension ID, and the App Group are registered in the distribution team account.
 - Create or confirm App Store Connect app record and SKU.
-- Provide an owned HTTPS Privacy Policy URL. This is required for iOS apps.
-- Provide an owned HTTPS Support URL.
-- Publish the prepared Terms, Support, and Privacy pages and enter the resulting HTTPS URLs.
+- Choose the primary category and optional secondary category that best describe the app.
+- Enter the published Privacy Policy and Support URLs in App Store Connect.
 - Confirm the seller name and copyright text.
 - Complete age rating, export compliance, content rights, and availability.
+- Determine the export-compliance answer for the app's use of system HTTPS; `ITSAppUsesNonExemptEncryption` is not currently declared in the generated Info.plist.
 - Complete App Privacy answers so they match the local-only behavior and bundled privacy manifests.
+- Enter the required App Review contact name, email, and phone number. Add review notes explaining that no login is required, App Lock is off by default, and Share Extension testing starts from another app's share sheet.
+- If distributing in the EU, complete the App Store Connect trader-status declaration and any required public contact details.
 - Verify the distribution provisioning profiles include the same App Group for both executables.
-- Increment `CURRENT_PROJECT_VERSION` for every uploaded build.
-- Decide whether `MARKETING_VERSION 0.3.0` is the public release version or should become `1.0.0`.
+- [x] Use `MARKETING_VERSION 1.0.0` and `CURRENT_PROJECT_VERSION 1` for the first upload; increment the build number for every subsequent upload.
 - Archive with the Release configuration, run Xcode validation, and upload from the account holder's signed environment.
+- Select the uploaded build, choose the version release option, add it to the review submission, and submit it.
 - Test Safari URL, plain text, and Photos image sharing on a physical device before submission.
 - Test Face ID after enabling App Lock on a physical Face ID device.
+- Optionally publish accurate iPhone Accessibility Nutrition Labels after completing a common-task accessibility audit; Apple currently describes these labels as voluntary but planned to become mandatory later.
 
 ## Upfront paid app at target ₩1,900
 
@@ -65,6 +69,6 @@
 - [x] Korean, English, and Japanese `Localizable.strings` are present in both app and extension bundles.
 - [ ] Distribution-signed archive passes strict App Group entitlement checks for both executables.
 - [ ] Xcode Validate App and upload pass for the release build number.
-- [ ] No placeholder HTTPS URL remains in submitted metadata.
+- [x] No placeholder HTTPS URL remains in the repository metadata.
 
 Run the strict external gate against the signed archive as documented in `docs/runbooks/RELEASE_VALIDATION.md`.

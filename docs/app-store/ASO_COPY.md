@@ -177,11 +177,12 @@ To test the Share Extension:
 
 App Lock is off by default. If enabled, it uses the system device-owner authentication prompt. The app stores clips locally and exposes JSON backup and delete-all controls in Settings.
 
-## Required App Store Connect Values Not Invented Here
+## App Store Connect URLs
 
-- Privacy Policy URL: `<HTTPS_PRIVACY_POLICY_URL_REQUIRED>`
-- Support URL: `<HTTPS_SUPPORT_URL_REQUIRED>`
-- Marketing URL: optional, `<HTTPS_MARKETING_URL>`
+- Privacy Policy URL: `https://shrouded-fennel-dd8.notion.site/Clip-Inbox-Privacy-Policy-39bb714ca5c680cc86cfd6dbd697bbc3`
+- Support URL: `https://shrouded-fennel-dd8.notion.site/Clip-Inbox-Support-39bb714ca5c6805bbfb9f4dacaf411d4`
+- Terms of Use URL: `https://shrouded-fennel-dd8.notion.site/Clip-Inbox-Terms-of-Use-39bb714ca5c68000bcd3c412afcdb006`
+- Marketing URL: optional; leave blank for the first release.
 - Support email in the app: `eiradev000@gmail.com`.
-- Notion-ready Terms, Support, and Privacy page copy is under `docs/app-store/notion/`; replace the URL placeholders after publishing those pages.
+- Published Terms, Support, and Privacy copy is mirrored under `docs/app-store/notion/`.
 - App ownership, seller name, copyright, price, availability, age-rating questionnaire, and export-compliance answers must be completed by the account holder.

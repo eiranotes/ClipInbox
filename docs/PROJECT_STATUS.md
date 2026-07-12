@@ -2,7 +2,7 @@
 
 ## Current State
 
-Clip Inbox's production source of truth is now the iPhone-only native SwiftUI app under `ios/`. The dependency-free web implementation under `src/` is retained as a historical design prototype and is no longer a target for product-logic changes unless web work is explicitly requested. The native app uses a productive-minimal, list-first interface: one warm canvas, hairline-separated rows, quieter metadata, and yellow reserved for selection and primary actions.
+Clip Inbox's production source of truth is now the iPhone-only native SwiftUI app under `ios/`, prepared as App Store version `1.0.0 (1)`. The dependency-free web implementation under `src/` is retained as a historical design prototype and is no longer a target for product-logic changes unless web work is explicitly requested. The native app uses a productive-minimal, list-first interface: one warm canvas, hairline-separated rows, quieter metadata, and yellow reserved for selection and primary actions.
 
 Implemented screens:
 
@@ -18,6 +18,8 @@ Implemented screens:
 
 ## Completed Work
 
+- Set the first public App Store version to `1.0.0 (1)` and made the Settings version label read `CFBundleShortVersionString` from the built bundle.
+- Connected the published Notion Support, Privacy Policy, and Terms of Use pages to localized rows in Settings and replaced the release-metadata URL placeholders with their final HTTPS values.
 - Locked the first release to iPhone, migrated the app/extension/test/App Group namespace to `app.eiradev.ClipInbox`, replaced the support contact with `eiradev000@gmail.com`, prepared trilingual Notion copy for Terms, Support, and Privacy, versioned only the final ASO output and raw simulator sources, and retired the unused GitHub Actions workflow while preserving the local release gate.
 - Refreshed the localized seven-frame App Store screenshot libraries with three ImageGen photo assets (lemon pasta, a quiet hanok lane, and a terracotta-and-teal creative desk). The real Inbox proof now opens with distinct food, city, workspace, memo, and exhibition content; the link-detail proof uses the hanok image instead of repeating the beach image, which remains on only one lower library item. Rebuilt all ko-KR, en-US, and ja-JP feature frames at opaque sRGB 1320 x 2868 and recorded source/visual evidence in `.superloopy/evidence/frontend/20260712-aso-sample-variety/`.
 - Completed the seven-frame localized App Store screenshot sets: the three supplied concept drafts plus four new real-simulator proof frames per locale (Inbox save, note detail, link preview/open, folders) via `scripts/generate_aso_feature_frames.sh`, with phone chrome cropped, locale-seeded fictional data including filled notes, and live Wikipedia link summaries in each locale's language. Localized the metadata engine's presentation strings (types, statuses, durations, section labels, dates) to English and Japanese, removed the disabled open-link placeholder on URL-less clips, and refreshed store descriptions/What's New with the link-preview feature. Evidence: `.superloopy/evidence/frontend/20260712-aso-feature-frames/`.
@@ -90,12 +92,12 @@ Implemented screens:
 ## Next Steps
 
 - Use App Store Connect Product Page Optimization to compare the dense onboarding panorama with the preserved real-UI candidate once the listing has enough first-time-download traffic.
-- Close the external Phase 4 release gates: publish the prepared support/privacy pages, run the strict script mode against a distribution-signed archive, validate/upload it in Xcode, and complete the physical-device matrix in `docs/runbooks/RELEASE_VALIDATION.md`.
+- Close the external Phase 4 release gates: enter the published URLs in App Store Connect, run the strict script mode against a distribution-signed archive, validate/upload it in Xcode, and complete the physical-device matrix in `docs/runbooks/RELEASE_VALIDATION.md`.
 - In App Store Connect, accept the Paid Apps Agreement, use South Korea as the base storefront, confirm whether `₩1,900` is offered as an exact current price point, and set the app's upfront price before review. The binary intentionally has no StoreKit paywall, subscription, or restore-purchase UI because the whole app is paid before download.
 - Replace the static `time` strings with `Date`-based values and a relative formatter once real capture exists.
 - Run the app on a Face ID-enrolled device/simulator session to exercise the interactive unlock path end to end.
 - Verify the same App Group capability with the distribution team's signing profile on a physical device before release.
-- Publish the prepared Notion Terms, Support, and Privacy pages, replace the URL placeholders with their HTTPS links, and complete App Store Connect metadata, privacy answers, archive validation, and upload.
+- Complete App Store Connect metadata and privacy answers using the published URLs, then validate and upload the signed archive.
 
 ## Known Risks
 
@@ -107,7 +109,8 @@ Implemented screens:
 - Original shared images intentionally retain their source bytes up to the 50 MB/100 MP capture ceiling, so accepted files consume their full local size until the clip or all app data is deleted.
 - iOS does not let a `com.apple.share-services` extension open its containing app through supported APIs, and the app cannot force itself to the first share-sheet position. The current default returns to the host app; users can place Clip Inbox first through the share sheet's More → Edit → Favorites order.
 - The headless simulator cannot complete a real Face ID prompt. Injected authenticator tests prove unavailable/failure states remain locked and success unlocks, while enrolled-device authentication still requires the physical-device release matrix.
-- Store submission is blocked until the prepared Notion Support and Privacy pages are published and their HTTPS URLs replace the remaining metadata placeholders.
+- The policy pages and repository metadata are ready, but submission still depends on entering the URLs and remaining metadata in the signed-in App Store Connect account.
 - The exact `₩1,900` price point cannot be proven from the public repository or public Apple price table; it must be selected or confirmed in the signed-in App Store Connect price schedule. If it is unavailable, the account holder must choose the nearest available Korean price point rather than implementing an in-app purchase.
-- Audit Phases 1–3 removed the false-success, corrupt-snapshot fallback, demo Add, unbounded Share provider/queue, fail-open lock, irreversible immediate delete, hidden storage scope, and fixed accessibility selector paths. Phase 4 now has a passing local release archive/inspection gate; owned policy URLs, distribution signing, App Store Connect, and physical-device evidence remain external blockers to the final release exit.
+- Export compliance still requires an account-holder determination. The generated Info.plist does not currently declare `ITSAppUsesNonExemptEncryption`; set it only after confirming the App Store Connect answer for the app's system HTTPS usage.
+- Audit Phases 1–3 removed the false-success, corrupt-snapshot fallback, demo Add, unbounded Share provider/queue, fail-open lock, irreversible immediate delete, hidden storage scope, and fixed accessibility selector paths. Phase 4 now has a passing local release archive/inspection gate and published policy URLs; distribution signing, App Store Connect completion, and physical-device evidence remain external blockers to the final release exit.
 - Lighthouse was rerun three times per form factor after import hardening: mobile median 99/100/100/100 and desktop median 100/100/100/100. The remaining mobile performance point is limited by source minification, cache headers, and alternate image encoding in the dependency-free static serving path.

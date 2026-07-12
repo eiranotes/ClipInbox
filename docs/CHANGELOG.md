@@ -4,6 +4,7 @@
 
 ### Added
 
+- Settings now opens the published Support, Privacy Policy, and Terms of Use pages directly, with localized Korean, English, and Japanese row labels.
 - Notion-ready Terms of Use, Support, and Privacy Policy pages in Korean, English, and Japanese under `docs/app-store/notion/`.
 - The final localized App Store screenshot set and final simulator sources are now versioned under `docs/app-store/generated/final-aso/` and `final-aso-raw/`; intermediate generated candidates remain ignored.
 - Three generated editorial photo assets for App Store sample data: lemon pasta, a quiet hanok lane, and a terracotta-and-teal creative studio desk.
@@ -19,6 +20,8 @@
 
 ### Changed
 
+- Set the first App Store release version to `1.0.0 (1)` and made Settings read the displayed marketing version from the app bundle instead of duplicating it in Swift source.
+- Replaced the App Store metadata URL placeholders with the published Notion Privacy Policy, Support, and Terms of Use URLs.
 - The release is iPhone-only, and app, extension, test, and App Group identifiers now share the `app.eiradev.ClipInbox` namespace while retaining Team `83BB7YWQHU`.
 - The in-app support contact is now `eiradev000@gmail.com`, and policy copy discloses direct external requests used for link previews.
 - Refreshed all ko-KR, en-US, and ja-JP feature frames so the Inbox opens with distinct food, hanok, studio, memo, and exhibition content; the beach image appears on one lower item only, and the link-detail proof now shows the hanok route instead of repeating the beach.

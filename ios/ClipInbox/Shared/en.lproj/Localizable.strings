@@ -161,6 +161,9 @@
 "가져오기" = "Import";
 "앱 정보" = "About";
 "문의하기" = "Contact";
+"고객지원" = "Support";
+"개인정보 처리방침" = "Privacy Policy";
+"이용약관" = "Terms of Use";
 "데이터" = "Data";
 "모든 데이터 삭제" = "Delete all data";
 "로컬에 저장된 클립, 폴더, 설정을 기본값으로 되돌립니다." = "Reset locally stored clips, folders, and settings.";
@@ -178,7 +181,6 @@
 "공유로 추가할 때 먼저 저장할 폴더입니다." = "The first folder used when you add something from the share sheet.";
 "클립, 태그, 폴더, 설정을 JSON 파일로 내보냅니다." = "Export clips, tags, folders, and settings as JSON.";
 "Clip Inbox에서 내보낸 JSON 백업을 검증한 뒤 현재 로컬 데이터로 복원합니다." = "Validate a Clip Inbox JSON backup, then replace the current local data.";
-"Clip Inbox 0.3.0 SwiftUI 네이티브 빌드입니다." = "Clip Inbox 0.3.0, built natively with SwiftUI.";
 "문제 상황과 저장하려던 URL을 함께 남길 수 있도록 문의 이메일을 복사합니다." = "Copy the support email so you can include the issue and URL you were saving.";
 
 "Clip Inbox 잠금" = "Clip Inbox locked";
