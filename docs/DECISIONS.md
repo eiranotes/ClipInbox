@@ -1,5 +1,29 @@
 # Decisions
 
+## 2026-07-12: Link Metadata Lives in a Sidecar, Not the Clip JSON
+
+Decision: Adopt the audited URL-only metadata engine (`docs/Audit/ClipInbox-URLMetadataEngine-implementation.zip`) as in-app source under `ios/ClipInbox/MetadataEngine/`. Full extraction results are stored in an Application Support sidecar (`link-metadata-v1.json`) keyed by clip ID and source URL; the version-2 clip JSON keeps its schema, and clip title/source/description are updated only when empty or a known placeholder. Analysis runs after save and never blocks or fails a capture.
+
+Why: The engine needs rich provenance data (per-field source/confidence, extraction attempts, volatile attributes) that would bloat and destabilize the backup-compatible clip schema. A sidecar preserves user edits, keeps exports unchanged, and lets analysis fail without touching saved clips. No external dependencies, platform API keys, or LLMs are introduced.
+
+Impact: Link cards and detail screens read presentation data through `URLMetadataCoordinator`; deleting the sidecar only removes enrichment. Re-analysis is explicit per clip, and cache TTL is seven days.
+
+## 2026-07-12: Link Detail Shows a Collapsed Summary First
+
+Decision: The detail screen's metadata section is collapsed by default: at most four summary lines plus one meta line. A "자세히 보기" toggle expands the extracted sections, with each value capped at five lines. The Inbox card's secondary line shows the deterministic short summary when available.
+
+Why: The product goal is a simple summarized link on the main list and moderately detailed metadata on the detail page without overwhelming the one-viewport rhythm; unbounded extracted values (README excerpts, abstracts) would dominate the screen.
+
+Impact: Full values remain available via text selection and the original link; the layout stays within the existing token rhythm.
+
+## 2026-07-12: Inbox Filter Rows Are Semantic — Folders on Top, Tags Below
+
+Decision: Replace the fixed `InboxFilter` enum (type/tag mix) with dynamic cases `all`, `folder(String)`, `tag(String)`. The top selector row lists 전체 plus movable folders; the bottom row lists tags in use by active clips (falling back to the tag catalog when none exist). `TwoRowHorizontalSelection` gains a paired-rows mode that keeps each row independent in the same five-column rhythm.
+
+Why: The previous grid mixed content types and sample tags in reading order, so rows had no stable meaning. Folders and tags are the two real organizational axes users maintain.
+
+Impact: Type-based quick filters (링크/이미지/메모/스크린샷) leave the Inbox top bar; type filtering remains available in Search. Store filter tests now target folder/tag cases.
+
 ## 2026-07-11: Share Extensions Return to the Host App
 
 Decision: After durable capture, `ClipInboxShare` shows the token-matched yellow success card and completes the extension request back to the host app. Do not expose an “open Clip Inbox after sharing” preference or register a custom URL scheme solely for that behavior.
@@ -399,3 +423,51 @@ Decision: Store the Share Extension configuration as one atomic App Group JSON f
 Why: The configuration was already a single Codable blob, so CFPrefs added no benefit and produced a simulator AnyUser/container warning. Synthetic keyboard prewarming connected and immediately detached private text-input reporters, producing `Reporter disconnected` noise.
 
 Impact: App and extension configuration remains cross-process and atomic, legacy values migrate on first read, and the keyboard still appears only after an actual user tap. The CA launch-measurement message remains OS telemetry, not an app failure. A Share Extension cannot legally auto-open the containing app on iOS, and share-sheet Favorites order remains user-controlled.
+
+## 2026-07-11: One App Mark Represents Capture and Privacy
+
+Decision: Use the selected warm-white card stack, yellow paperclip, and near-black inbox tray as the 1024px App Store icon, the App Lock illustration, and the inactive privacy mark. Keep the previous generated directions as documented candidates rather than shipping multiple competing marks.
+
+Why: The selected mark communicates clipping and collection at small sizes, stays within the existing yellow/ivory/near-black token system, and avoids adding an unrelated security badge. Reusing it makes the locked state feel like the same product rather than a separate utility screen.
+
+Impact: App Lock waits for an explicit unlock tap before presenting LocalAuthentication, so the user can read the lock state and is not surprised by a launch-time biometric prompt. The lock remains fail-closed until authentication succeeds.
+
+## 2026-07-11: Monetize as an Upfront Paid App
+
+Decision: Sell the complete app as a paid App Store download with a target Korean storefront price of `₩1,900`. Do not add StoreKit, subscriptions, a feature paywall, or a restore-purchase screen to the binary.
+
+Why: The whole product is available after download and there is no free-to-paid unlock boundary. App Store purchase and re-download handling already belong to Apple's storefront for an upfront paid app.
+
+Impact: The account holder must accept the Paid Apps Agreement, complete banking/tax setup, choose the Korean base storefront and exact available price point, and set availability before review. The public Apple documentation does not expose the signed-in app's exact Korean price-point list, so `₩1,900` remains an App Store Connect confirmation gate.
+
+## 2026-07-12: Lead the Korean Screenshot Gallery with One Continuous Story
+
+Decision: Build the first three Korean App Store screenshots from one continuous phone-free ImageGen master, then use onboarding art plus upright real simulator UI for frames four through seven. Render exact copy with the bundled Pretendard family and remove simulator status and home chrome.
+
+Why: Apple may show the first one to three portrait screenshots in search results and recommends using later screenshots for individual benefits. A large-type capture, collect, retrieve sequence communicates the product before small UI details become readable, while the remaining real UI provides product proof.
+
+Impact: `scripts/generate_aso_screenshots.sh` now outputs the Korean set first, rejects blank launch-screen captures, slices a 3960 x 2868 master pixel-perfectly, and defers English/Japanese expansion until the Korean direction is approved.
+
+## 2026-07-12: Test Real UI Proof in the First Three Gallery Frames
+
+Decision: Keep the continuous ImageGen paper background, but place one large upright product capture in every leading frame: Safari link Share, yellow immediate-save confirmation, and the populated Inbox. Keep each headline complete when viewed alone.
+
+Why: The phone-free illustration direction communicates the capture, collect, retrieve story, but does not prove how the actual app works. The UI-proof variant makes the app category, low-friction save behavior, and resulting Inbox visible without relying on small supporting copy.
+
+Impact: `scripts/generate_aso_panorama_ui_v2.sh` produces three 1320 x 2868 Korean candidates from a 3960 x 2868 master. Generated imagery stays in the background, exact Korean copy remains deterministic, and the UI sources stay upright without a fake device frame.
+
+## 2026-07-12: Prefer Onboarding Illustration for the First Three Frames
+
+Decision: Promote a screenshot-free onboarding-style panorama as the preferred Korean first-three App Store direction. Use the real-UI panorama as a comparison candidate and reserve product screenshots for later proof frames.
+
+Why: Apple exposes the first one to three portrait screenshots in search results when no app preview is present. Large tactile illustrations and short standalone benefit headlines remain legible at that scale, avoid small system UI and stale localization inside the opening gallery, and communicate the product's `fast and effortless save` value before secondary organization features.
+
+Impact: `scripts/generate_aso_onboarding_panorama_v3.sh` creates the preferred 3960 x 2868 master and three exact 1320 x 2868 slices. The headline uses 156px Pretendard Bold, the support statement uses two-line 68px Pretendard SemiBold on a yellow paper band, and the 1800px-high illustration begins at 1068px so no inactive center band remains. ImageGen supplies only the text-free continuous paper-craft scene.
+
+## 2026-07-12: Use the Supplied Reference Grammar with Current Product Proof
+
+Decision: Make the new Korean first-three candidate follow the supplied screenshots' centered brand, oversized two-line benefit copy, yellow underline, and three-point footer, but replace every outdated mock screen with fresh current-version simulator UI. Replace the previous card-tray mark with one simple yellow paperclip and compile it into both the app and Share Extension icon catalogs.
+
+Why: The references have a clear App Store reading order, but their product UI no longer matches the native list-first app. A shared simple mark is also more legible in the iOS share sheet than the detailed card-tray illustration.
+
+Impact: `scripts/generate_aso_reference_refresh.sh` produces three 1320 x 2868 Korean assets. The first uses a real Safari Share sheet plus current Inbox, the next two use current Folder and Search captures, and the same mark appears on the Home screen, App Lock/privacy shield, and compiled Share Extension tile.

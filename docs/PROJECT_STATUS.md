@@ -6,9 +6,9 @@ Clip Inbox's production source of truth is now the native SwiftUI iOS app under 
 
 Implemented screens:
 
-- Inbox with a two-row, five-column equal-width filter grid, full-row clip navigation, optional thumbnails, and text-only rows that keep the same height as media rows.
+- Inbox with a two-row, five-column equal-width filter grid (top row folders, bottom row in-use tags), full-row clip navigation, optional thumbnails (local first, then remote link-metadata images), a metadata short-summary secondary line, and text-only rows that keep the same height as media rows.
 - Share Extension with two user-selectable behaviors: immediate save shows one compact localized checkmark card for about 2 seconds before returning, while review mode exposes only folder, memo, save, and cancel controls.
-- Detail view with a 16pt content rhythm that fits one viewport through the 링크 열기 action (140pt aspect-fit preview, 72pt note editor), a zoomable full-screen image viewer, directly editable note and tags, flat organization rows, and actions kept above the bottom navigation.
+- Detail view with a 16pt content rhythm that fits one viewport through the 링크 열기 action (140pt aspect-fit preview, 72pt note editor), a zoomable full-screen image viewer, directly editable note and tags, flat organization rows, and actions kept above the bottom navigation. Link clips add a remote metadata preview image and a collapsed-by-default 링크 정보 section (4-line summary, 자세히 보기 expansion with per-value 5-line caps, explicit re-analysis).
 - Folder list with flat rows and active-only counts, using `전체`, second-row `기본 폴더`, rename-oriented `폴더 1` through `폴더 5`, and a reserved `휴지통`. Deleted clips can be restored or permanently emptied; items older than 30 days are purged on launch.
 - Search with the shared 5x2 category selector, persisted real recent searches, results, and empty state. The keyboard opens only from a direct field tap and dismisses on outside taps or tab switches; synthetic launch-time prewarming was removed after runtime log diagnosis.
 - Sort Later classification flow without scores or percentages.
@@ -18,6 +18,13 @@ Implemented screens:
 
 ## Completed Work
 
+- Adopted the audited URL-only link metadata engine from `docs/Audit/ClipInbox-URLMetadataEngine-implementation.zip` as in-app source (`ios/ClipInbox/MetadataEngine/`): sidecar storage in Application Support, coordinator-driven backfill on activation/import, non-persistent WKWebView fallback rendering, and 28 fixture tests running inside the Xcode test target (59 total tests green). Link clips now show remote representative thumbnails and short summaries on cards, and the detail screen gained the collapsed/expandable 링크 정보 section. The Inbox filter grid became semantic (folders top, in-use tags bottom) via a paired-rows mode in `TwoRowHorizontalSelection` and a dynamic `InboxFilter`. Simulator evidence: `.superloopy/evidence/frontend/20260712-url-metadata-engine/`.
+- Rebuilt the Korean first-three ASO candidate from the three supplied references under `docs/app-store/generated/aso-reference-refresh-v1/`. The new set keeps the centered brand, oversized two-line copy, yellow underline, and three-point footer while replacing the outdated mock UI with fresh current-version Inbox, Folder, Search, and real Safari Share-sheet captures. A new single yellow-paperclip ImageGen mark now drives the app icon, App Lock/privacy image, and Share Extension icon.
+- Reworked the preferred Korean first-three App Store frames as a dense screenshot-free onboarding panorama under `docs/app-store/generated/aso-onboarding-panorama-v3/`. A 156px benefit headline, a two-line 68px semibold statement on a yellow paper band, and enlarged artwork connect fast Share capture, zero-input Inbox collection, and immediate retrieval without the previous dead zone.
+- Produced a Korean three-frame App Store panorama candidate under `docs/app-store/generated/aso-panorama-v2/`. One ImageGen paper background connects a real Safari link share sheet, the real yellow save confirmation, and a populated Korean Inbox. The three 1320 x 2868 upload files reconstruct the 3960 x 2868 master with zero changed pixels.
+- Rebuilt the Korean App Store screenshot set under `docs/app-store/generated/aso-ko-v1/`: three continuous ImageGen panels followed by four onboarding-art plus real-simulator product frames. All seven are 1320 x 2868 without alpha, use bundled Pretendard, remove phone chrome, and show a varied fictional ten-clip library instead of placeholder `example.com` data. English and Japanese expansion is deferred until Korean approval.
+- Finalized the release-facing visual pass: Korean now presents the product name as `클립 인박스` while English/Japanese retain `Clip Inbox`; the Share guide follows the same rule. The current single yellow-paperclip mark is the 1024px app icon, App Lock/privacy mark, and Share Extension icon. Empty Inbox guidance has a dedicated filter-to-guide gap, selected bottom-tab labels remain readable in dark mode, and App Lock waits for an explicit unlock tap before presenting system authentication.
+- Produced real-simulator App Store screenshots at `1320 x 2868` with no alpha: seven Korean, three English, and two Japanese images under `docs/app-store/generated/upload/`, plus four ImageGen icon explorations and the selected source under `docs/app-store/generated/icon-candidates/`.
 - Added a generated-illustration, three-step first-run Share guide with Settings re-entry; compacted the Add type/title rhythm and removed manual URL duplicate detection so repeated URLs save as independent clips.
 - Added the reserved Trash folder, restore/empty actions, 30-day expiry notice and launch-time purge while keeping normal Inbox, Search, folder counts, and destinations free of trashed clips.
 - Unified selected menus, app feedback, Undo, and real Share Extension success feedback on the exact yellow accent with near-black foreground; simulator evidence is in `.superloopy/evidence/frontend/20260711-trash-onboarding`.
@@ -81,7 +88,9 @@ Implemented screens:
 
 ## Next Steps
 
+- Use App Store Connect Product Page Optimization to compare the dense onboarding panorama with the preserved real-UI candidate once the listing has enough first-time-download traffic.
 - Close the external Phase 4 release gates: supply owned support/privacy contacts, run the strict script mode against a distribution-signed archive, validate/upload it in Xcode, and complete the physical-device matrix in `docs/runbooks/RELEASE_VALIDATION.md`.
+- In App Store Connect, accept the Paid Apps Agreement, use South Korea as the base storefront, confirm whether `₩1,900` is offered as an exact current price point, and set the app's upfront price before review. The binary intentionally has no StoreKit paywall, subscription, or restore-purchase UI because the whole app is paid before download.
 - Replace the static `time` strings with `Date`-based values and a relative formatter once real capture exists.
 - Run the app on a Face ID-enrolled device/simulator session to exercise the interactive unlock path end to end.
 - Verify the same App Group capability with the distribution team's signing profile on a physical device before release.
@@ -89,6 +98,7 @@ Implemented screens:
 
 ## Known Risks
 
+- ASO guidance and third-party case studies support the denser copy/contrast direction, but they do not prove conversion for Clip Inbox; only a controlled Product Page Optimization test can select the winning first-three treatment.
 - The Open Design refinement now succeeds: project `clip-inbox-cta-token-refinement` produced `clip-card.html`, which was ported into the app. The earlier Fable 5 usage-limit failure is resolved.
 - The Add tab now saves real Link/Text/Photo/Memo input. Repeated URLs are intentionally accepted without duplicate detection; fuzzy text and perceptual-image duplicate handling are also out of scope.
 - Simulator registration and data transfer are proven. A physical-device build still requires the same Apple Developer team and App Group capability on both the app and extension provisioning profiles.
@@ -97,5 +107,6 @@ Implemented screens:
 - iOS does not let a `com.apple.share-services` extension open its containing app through supported APIs, and the app cannot force itself to the first share-sheet position. The current default returns to the host app; users can place Clip Inbox first through the share sheet's More → Edit → Favorites order.
 - The headless simulator cannot complete a real Face ID prompt. Injected authenticator tests prove unavailable/failure states remain locked and success unlocks, while enrolled-device authentication still requires the physical-device release matrix.
 - Store submission is blocked until an owned support email and HTTPS support/privacy URLs are supplied; placeholders are documented but intentionally not invented.
+- The exact `₩1,900` price point cannot be proven from the public repository or public Apple price table; it must be selected or confirmed in the signed-in App Store Connect price schedule. If it is unavailable, the account holder must choose the nearest available Korean price point rather than implementing an in-app purchase.
 - Audit Phases 1–3 removed the false-success, corrupt-snapshot fallback, demo Add, unbounded Share provider/queue, fail-open lock, irreversible immediate delete, hidden storage scope, and fixed accessibility selector paths. Phase 4 now has a passing local release archive/inspection gate; owned policy URLs, distribution signing, App Store Connect, and physical-device evidence remain external blockers to the final release exit.
 - Lighthouse was rerun three times per form factor after import hardening: mobile median 99/100/100/100 and desktop median 100/100/100/100. The remaining mobile performance point is limited by source minification, cache headers, and alternate image encoding in the dependency-free static serving path.

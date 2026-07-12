@@ -2,6 +2,20 @@
 
 ## Done
 
+- [x] Apply the audited URL-only link metadata engine as in-app source with sidecar storage, coordinator-driven backfill, and fixture tests running in the Xcode test target.
+- [x] Show remote representative thumbnails for link clips without local images on Inbox cards, compact rows, and the detail header.
+- [x] Add the collapsed-by-default 링크 정보 detail section (4-line summary + meta line, 자세히 보기 expansion with 5-line value caps) and the short-summary card line.
+- [x] Rebuild the Inbox top filter as semantic rows: folders on top, in-use tags below, with paired-row support in `TwoRowHorizontalSelection`.
+- [x] Rebuild the supplied three-reference Korean ASO direction with current-version Inbox, Folder, Search, and real Safari Share-sheet captures; generate one new yellow clip mark and apply it to the app, lock/privacy surface, and Share Extension.
+- [x] Replace the preferred Korean first-three ASO direction with a dense onboarding-style panorama, oversized fast-save copy, strong yellow support bands, and artwork that fills the remaining canvas.
+- [x] Create a Korean background-connected App Store panorama that proves the real Share to save to Inbox flow in three standalone 1320 x 2868 frames.
+- [x] Rebuild the Korean ASO set as a phone-chrome-free 3-frame continuous story plus four upright real-app proof frames, using Pretendard and varied fictional sample data.
+- [x] Add a retry gate that rejects blank simulator launch-screen captures before ASO composition.
+- [x] Localize the visible product name as `클립 인박스` in Korean and `Clip Inbox` in English/Japanese, including the Share save guide and app display name.
+- [x] Add filter-to-first-capture spacing, fix dark-mode selected bottom-tab label contrast, and verify both on the iPhone 17 Pro simulator.
+- [x] Promote one yellow-paperclip mark to the 1024px app icon, App Lock/privacy mark, and Share Extension icon; require an explicit unlock tap before system authentication.
+- [x] Generate four ImageGen icon directions and prepare real-UI App Store screenshots at 1320 x 2868 without alpha: seven Korean, three English, and two Japanese.
+- [x] Document the upfront paid-app model and the external App Store Connect checks for a target Korean price of ₩1,900.
 - [x] Initialize Git repository.
 - [x] Read `clip_inbox_trello_token_ui_spec_v1_5.md`.
 - [x] Inspect all local reference images.
@@ -108,6 +122,7 @@
 
 ## Deferred
 
+- [ ] Run App Store Connect Product Page Optimization against the denser onboarding panorama after enough first-time-download traffic is available.
 - [ ] Date-based clip timestamps with a relative formatter.
 - [ ] Interactive Face ID unlock verification on an enrolled device.
 - [ ] Physical-device App Group/signing verification with the release Apple Developer team.

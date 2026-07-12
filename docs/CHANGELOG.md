@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased - 2026-07-12
+
+### Added
+
+- A URL-only link metadata engine (`ios/ClipInbox/MetadataEngine/`): saved link clips are analyzed from public responses (Open Graph, Twitter Card, JSON-LD, Microdata/RDFa, semantic DOM, platform adapters) without platform API keys, external crawlers, or LLMs. Full results live in an Application Support sidecar so user edits and the version-2 clip JSON stay untouched.
+- Link clips without a local image now show a remote representative thumbnail (OG/JSON-LD image) on Inbox cards, compact search/folder rows, and the detail header.
+- Inbox cards show a deterministic short summary of the link content as the secondary line when metadata is available, falling back to the source host.
+- Detail screens gain a collapsed-by-default "링크 정보" section: up to four summary lines with a "자세히 보기" toggle that expands extracted sections (each value capped at five lines) and re-analysis controls. The 링크 열기 primary action sits directly below the collapsed section so it is reachable without scrolling.
+- Remote metadata thumbnails clip to the same rounded 80x64 frame as local thumbnails instead of overflowing into the row's menu area.
+
+### Changed
+
+- The Inbox top filter grid is now semantic: the top row lists folders (전체 + movable folders) and the bottom row lists tags actually used by active clips, replacing the fixed type/tag mix.
+
 ## Unreleased - 2026-07-11
 
 ### Internal
@@ -12,6 +26,13 @@
 
 ### Added
 
+- A reference-driven Korean three-frame ASO set using fresh current-version simulator UI, a real Safari Share-sheet capture, upload-ready 1320 x 2868 files, a contact sheet, and a reproducible generator.
+- A dedicated Share Extension icon asset so the yellow clip mark is compiled into the extension bundle and appears in the iOS share sheet.
+- A dense screenshot-free Korean onboarding panorama candidate that connects Share, zero-input Inbox capture, and retrieval through one yellow paper cord, with 156px hero copy, bold yellow support bands, and upload-ready slices.
+- A Korean three-frame UI-proof panorama candidate with one ImageGen background, real Safari Share and save-confirmation captures, a populated Korean Inbox, upload-ready slices, a contact sheet, and a reproducible generator.
+- A Korean-first ASO screenshot set with three continuous ImageGen panels, four onboarding-art plus real-simulator proof frames, varied fictional clip data, and a reproducible blank-capture rejection gate.
+- Real-simulator App Store screenshots at 1320 x 2868 without alpha (seven Korean, three English, and two Japanese), four ImageGen icon candidates, and a selected release-icon source manifest under `docs/app-store/generated/`.
+- The selected yellow-paperclip artwork as the in-app App Lock and inactive privacy mark.
 - Reserved Trash folder with restore, permanent empty, 30-day expiry notice, automatic launch cleanup, and active-list/count isolation.
 - Three-step first-run Share onboarding with generated token-matched illustrations and a reusable Settings entry point.
 - GitHub Actions coverage for XcodeGen drift, native tests, unsigned Release archive creation, embedded Share Extension, privacy manifests, localizations, and source App Group consistency.
@@ -43,6 +64,11 @@
 
 ### Changed
 
+- Replaced the card-stack and inbox-tray release mark with one simple yellow paperclip on warm ivory across the app icon, App Lock/privacy surface, Share Extension, and ASO brand lockup.
+- Korean ASO captions now use bundled Pretendard at a search-thumbnail-readable scale; real app frames are upright and omit the simulator status bar, Dynamic Island, home indicator, and fake device hardware.
+- Korean product naming now uses `클립 인박스` in the app display name and Share guide; English and Japanese continue to use `Clip Inbox`.
+- App Lock now shows the selected app artwork until the user taps `잠금 해제`; system authentication is no longer presented automatically on launch.
+- The release icon now uses the single yellow-paperclip artwork at 1024px with no alpha.
 - Settings content now clears the bottom navigation so the final delete action is never clipped; Add uses a compact one-row type selector and tighter title spacing.
 - Manual URL capture no longer performs or displays duplicate detection; repeated URLs save independently.
 - Selected menus, app notices, toasts, deletion Undo, and Share success use the same exact yellow accent and near-black foreground.
@@ -79,6 +105,8 @@
 
 ### Fixed
 
+- Selected bottom-navigation labels remain visible in dark mode by using the adaptive primary text token instead of the near-black on-yellow icon token.
+- Empty Inbox guidance now has a dedicated 16pt gap below the two-row filter grid.
 - Removed the unsupported Share-extension attempt and custom URL scheme for automatically launching the containing app; public iOS Share extensions return to their host app.
 - Clip deletion is no longer irreversible immediately after confirmation.
 - Empty production libraries no longer stop at a generic no-results message without explaining the primary Share workflow.
@@ -104,6 +132,7 @@
 
 ### Verified
 
+- The iOS 26.5 Adelie iPhone 17 Pro simulator verified Korean Share-guide naming, empty-Inbox spacing, the selected App Lock art, explicit Face ID initiation, and readable dark-mode selected navigation. Seven screenshots were normalized to an Apple-accepted 1320 x 2868 portrait size with no alpha.
 - Thirty-one native XCTest regressions pass, including Trash restore/empty/30-day expiry, duplicate manual URL capture, selected-feedback token use, and the embedded Share Extension build.
 - The complete local release gate passed: 30 tests, unsigned generic iOS Release archive, embedded `ClipInboxShare.appex`, both privacy manifests, Korean/English/Japanese resources in both bundles, expected bundle IDs, and matching source App Group entitlements. Distribution signing, owned metadata, upload, and physical-device cases remain external gates.
 - Thirty native XCTest regressions pass, including durable delete Undo and storage summary separation. The same simulator build validates the embedded Share Extension.
