@@ -1,8 +1,24 @@
 # Decisions
 
-## 2026-07-12: Generated ASO Output Stays Local
+## 2026-07-12: Release Is iPhone-Only and Uses the EiraDev Identifier Namespace
 
-`docs/app-store/generated/` is a local build-output directory and is excluded from Git. Source scripts, copy, strategy documents, and compact QA evidence remain versioned; upload PNGs and intermediate comparison candidates are regenerated from the required local captures and source inputs when needed.
+Decision: Ship the first release for iPhone only. Use `app.eiradev.ClipInbox` for the app, `app.eiradev.ClipInbox.Share` for the Share Extension, `app.eiradev.ClipInbox.Tests` for tests, and `group.app.eiradev.ClipInbox` for the shared App Group. Keep Apple Developer Team `83BB7YWQHU` unchanged.
+
+Why: The product and release QA are phone-first, so advertising iPad support would require a separate layout, screenshot, and device-validation surface. One identifier namespace also prevents signing and App Store Connect mismatches.
+
+Impact: Both production targets use `TARGETED_DEVICE_FAMILY = 1`; iPad orientations and iPad screenshot obligations leave the initial release. Any future iPad launch requires an explicit product and QA phase.
+
+## 2026-07-12: GitHub Is Backup-Only and the Release Gate Is Local
+
+Decision: Do not use GitHub Actions as a release authority. Remove the iOS workflow and keep `scripts/verify_ios_release.sh` as the repeatable local gate before Xcode archive, validation, and upload.
+
+Why: GitHub is used only as a remote code backup for this project. App Store distribution happens from the owned local Xcode/signing environment, so a hosted CI status is not part of the release decision.
+
+Impact: Release documentation no longer treats a GitHub check as a blocker. Local tests, archive inspection, signed validation, App Store Connect state, and physical-device evidence remain the real gates.
+
+## 2026-07-12: Final ASO Output Is Versioned
+
+`docs/app-store/generated/` remains excluded by default, but `docs/app-store/generated/final-aso/` and `final-aso-raw/` are committed as the release upload set and its final simulator sources. Intermediate candidates stay local; the final Korean, English, and Japanese screenshots travel with the release source.
 
 ## 2026-07-12: ASO Sample Imagery Is Unique by Visible Clip
 
@@ -178,7 +194,7 @@ Impact: Inbox clips, folders, search results, Sort Later, settings, share action
 
 ## 2026-07-10: Share Extension Uses an App Group File Queue
 
-Decision: Embed a `com.apple.share-services` extension (`ClipInboxShare.appex`) and pass each URL, text, or image capture to the containing app as one atomic JSON file under `group.app.clipinbox.ClipInbox`. Shared Photos images are normalized to bounded JPEGs in the same App Group and referenced by a validated UUID filename.
+Decision: Embed a `com.apple.share-services` extension (`ClipInboxShare.appex`) and pass each URL, text, or image capture to the containing app as one atomic JSON file under `group.app.eiradev.ClipInbox`. Shared Photos images are normalized to bounded JPEGs in the same App Group and referenced by a validated UUID filename.
 
 Why: The extension and app run in separate processes and private containers. Per-item atomic files avoid a shared mutable JSON database, allow the extension to finish while the app is closed, and prevent concurrent writers from corrupting the existing version-2 app snapshot.
 

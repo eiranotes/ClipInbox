@@ -14,7 +14,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEVICE_ID="${DEVICE_ID:-64C7804C-355B-4444-90EE-C8ED0D9355CF}"
-BUNDLE_ID="app.clipinbox.ClipInbox"
+BUNDLE_ID="app.eiradev.ClipInbox"
 APP_PATH="${APP_PATH:?Set APP_PATH to a Debug-iphonesimulator ClipInbox.app}"
 OUTPUT="$ROOT/docs/app-store/generated/final-aso"
 RAW="$ROOT/docs/app-store/generated/final-aso-raw"

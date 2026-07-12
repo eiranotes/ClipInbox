@@ -233,7 +233,7 @@ struct SharedImageAsset: Equatable {
 }
 
 enum SharedClipQueue {
-    static let appGroupIdentifier = "group.app.clipinbox.ClipInbox"
+    static let appGroupIdentifier = "group.app.eiradev.ClipInbox"
     static let maxPendingItemCount = 200
     static let maxPendingBytes: Int64 = 250 * 1_024 * 1_024
     static let maxPendingAge: TimeInterval = 30 * 24 * 60 * 60

@@ -1,6 +1,6 @@
 # Release Validation Runbook
 
-## Local and CI gate
+## Local release gate
 
 Run from the repository root:
 
@@ -16,13 +16,13 @@ The script regenerates the Xcode project, rejects project drift, runs the native
 - app and extension `PrivacyInfo.xcprivacy` files;
 - Korean, English, and Japanese resources in both bundles.
 
-DerivedData and the archive default to the local user Library, not the external repository volume. CI runs the same command from `.github/workflows/ios-ci.yml`.
+DerivedData and the archive default to the local user Library, not the external repository volume. GitHub is a backup remote only; this local gate is the repository-owned release check.
 
 ## Distribution-signed gate
 
 Run in an Apple Developer account environment with distribution certificates and provisioning profiles available:
 
-1. Register the app ID, extension ID, and `group.app.clipinbox.ClipInbox` in the same team.
+1. Register the app ID, extension ID, and `group.app.eiradev.ClipInbox` in the same team.
 2. Confirm both distribution profiles contain the App Group.
 3. Create a Release archive without `CODE_SIGNING_ALLOWED=NO`.
 4. Inspect or export the archive, then run:
@@ -57,9 +57,8 @@ Record pass/fail, device, OS, app build, and evidence for each case:
 
 Repository verification cannot supply or approve:
 
-- an owned HTTPS Privacy Policy URL and Support URL;
-- an owned monitored support email;
+- published HTTPS Privacy Policy and Support URLs based on the prepared Notion copy;
 - App Store Connect metadata, privacy answers, screenshots, and account agreements;
 - distribution signing, Xcode validation/upload, and physical-device evidence.
 
-Do not mark the release green until these items and the local/CI gate all pass for the same version and build.
+Do not mark the release green until these items and the local gate all pass for the same version and build.

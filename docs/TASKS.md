@@ -2,6 +2,9 @@
 
 ## Done
 
+- [x] Make the first release iPhone-only, migrate all signing/App Group identifiers to the `app.eiradev.ClipInbox` namespace, and keep Team `83BB7YWQHU` unchanged.
+- [x] Replace the support contact with `eiradev000@gmail.com` and prepare trilingual Notion-ready Terms, Support, and Privacy pages.
+- [x] Remove the unused GitHub Actions workflow, keep the release gate local, and version only `final-aso/` plus `final-aso-raw/` from generated output.
 - [x] Replace repeated ASO sample thumbnails with distinct ImageGen food, hanok, and creative-studio photos; keep the beach image on one clip only and regenerate all seven ko-KR/en-US/ja-JP frames.
 - [x] Add four real-simulator ASO proof frames per locale (save, note, link preview/open, folders) with phone chrome cropped, seeded notes/links, and live locale-language link summaries; refresh store descriptions with the link-preview feature.
 - [x] Localize metadata presentation strings (types, statuses, durations, section labels, dates) to English and Japanese via a language-aware `PresentationBuilder`, and hide the open-link action on URL-less clips instead of showing a disabled placeholder.
@@ -125,7 +128,7 @@
 - [x] Phase 1: implement the data-safe repository, recovery, version, and rollback contract.
 - [x] Phase 2: harden Share capture and App Lock, then replace the demo Add flow.
 - [x] Phase 3: add trust states, Undo, storage/export disclosure, and accessibility variants.
-- [x] Phase 4 repository gate: add shared local/CI validation, unsigned Release archive inspection, and recovery/Share/release runbooks.
+- [x] Phase 4 repository gate: add local validation, unsigned Release archive inspection, and recovery/Share/release runbooks.
 - [ ] Phase 4 distribution gate: verify an owned-metadata, distribution-signed archive and complete the physical-device/App Store Connect matrix.
 
 ## Deferred
@@ -134,7 +137,7 @@
 - [ ] Date-based clip timestamps with a relative formatter.
 - [ ] Interactive Face ID unlock verification on an enrolled device.
 - [ ] Physical-device App Group/signing verification with the release Apple Developer team.
-- [ ] Replace the placeholder support email and publish owned HTTPS support/privacy URLs before App Store submission.
+- [ ] Publish the prepared Notion Terms, Support, and Privacy pages and enter their final HTTPS URLs before App Store submission.
 - [ ] Complete App Store Connect metadata, screenshots, privacy answers, signed archive validation, and physical-device release checks.
 - [ ] Production bundling/minification, cache headers, and alternate responsive image encoding if the static prototype becomes a deployed web app.
 - [ ] Re-run Open Design agent refinement when model usage credits are available.

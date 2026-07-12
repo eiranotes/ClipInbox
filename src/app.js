@@ -1472,7 +1472,7 @@ async function handleAction(action) {
       state.actionNotice = "백업을 가져왔습니다";
       state.screen = "settings";
     } else if (action === "copy-contact") {
-      await writeClipboard("support@clipinbox.local");
+      await writeClipboard("eiradev000@gmail.com");
       state.actionNotice = "문의 이메일을 복사했습니다";
     } else if (action.startsWith("move-folder:")) {
       state.moveDestination = decodeURIComponent(action.slice("move-folder:".length));

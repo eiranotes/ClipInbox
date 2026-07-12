@@ -227,7 +227,7 @@ await page.locator("[data-nav='settings']").click();
 await page.locator("[data-action='setting:contact']").click();
 await page.locator("[data-action='copy-contact']").click();
 const copiedContact = await page.evaluate(() => navigator.clipboard.readText());
-if (copiedContact !== "support@clipinbox.local") throw new Error("Contact email was not copied");
+if (copiedContact !== "eiradev000@gmail.com") throw new Error("Contact email was not copied");
 await page.getByRole("button", { name: "뒤로", exact: true }).click();
 await page.locator("[data-nav='inbox']").click();
 

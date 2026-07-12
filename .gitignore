@@ -7,4 +7,8 @@ ios/build/
 ios/DerivedData/
 xcuserdata/
 .clipinbox-metadata-backup/
-docs/app-store/generated/
+docs/app-store/generated/*
+!docs/app-store/generated/final-aso/
+!docs/app-store/generated/final-aso/**
+!docs/app-store/generated/final-aso-raw/
+!docs/app-store/generated/final-aso-raw/**

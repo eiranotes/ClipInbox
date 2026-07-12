@@ -182,5 +182,6 @@ App Lock is off by default. If enabled, it uses the system device-owner authenti
 - Privacy Policy URL: `<HTTPS_PRIVACY_POLICY_URL_REQUIRED>`
 - Support URL: `<HTTPS_SUPPORT_URL_REQUIRED>`
 - Marketing URL: optional, `<HTTPS_MARKETING_URL>`
-- Support email in the app: replace `support@clipinbox.local` with an owned, monitored address before submission.
+- Support email in the app: `eiradev000@gmail.com`.
+- Notion-ready Terms, Support, and Privacy page copy is under `docs/app-store/notion/`; replace the URL placeholders after publishing those pages.
 - App ownership, seller name, copyright, price, availability, age-rating questionnaire, and export-compliance answers must be completed by the account holder.

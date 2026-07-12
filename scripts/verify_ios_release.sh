@@ -10,9 +10,9 @@ RUN_TESTS="${RUN_TESTS:-1}"
 RUN_UNSIGNED_ARCHIVE="${RUN_UNSIGNED_ARCHIVE:-1}"
 REQUIRE_SIGNED_ARCHIVE="${REQUIRE_SIGNED_ARCHIVE:-0}"
 REQUIRE_OWNED_METADATA="${REQUIRE_OWNED_METADATA:-0}"
-EXPECTED_APP_ID="app.clipinbox.ClipInbox"
-EXPECTED_EXTENSION_ID="app.clipinbox.ClipInbox.Share"
-EXPECTED_APP_GROUP="group.app.clipinbox.ClipInbox"
+EXPECTED_APP_ID="app.eiradev.ClipInbox"
+EXPECTED_EXTENSION_ID="app.eiradev.ClipInbox.Share"
+EXPECTED_APP_GROUP="group.app.eiradev.ClipInbox"
 
 log() {
   printf '[release-gate] %s\n' "$*"
@@ -150,9 +150,9 @@ if [[ -n "$placeholder_matches" ]]; then
     printf '%s\n' "$placeholder_matches" >&2
     fail "owned support/privacy metadata is required but placeholders remain"
   fi
-  log "external gate pending: owned support email and HTTPS policy/support URLs"
+  log "external gate pending: published HTTPS policy/support URLs"
 fi
 
 log "local release gate passed"
 log "archive: $ARCHIVE_PATH"
-log "remaining external gates: signed validation/upload, physical-device Share/App Lock checks, owned metadata"
+log "remaining external gates: signed validation/upload, physical-device Share/App Lock checks, published HTTPS metadata URLs"

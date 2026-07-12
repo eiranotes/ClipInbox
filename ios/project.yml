@@ -1,7 +1,7 @@
 name: ClipInbox
 options:
   minimumXcodeGenVersion: "2.45.4"
-  bundleIdPrefix: app.clipinbox
+  bundleIdPrefix: app.eiradev
   xcodeVersion: "26.5"
   projectFormat: xcode16_3
   deploymentTarget:
@@ -16,7 +16,6 @@ settings:
     INFOPLIST_KEY_CFBundleDisplayName: "Clip Inbox"
     INFOPLIST_KEY_UILaunchScreen_Generation: YES
     INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
-    INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
     INFOPLIST_KEY_NSFaceIDUsageDescription: "앱 잠금이 켜져 있을 때 클립을 보호하기 위해 Face ID를 사용합니다."
 targets:
   ClipInbox:
@@ -38,11 +37,6 @@ targets:
           - Pretendard-Bold.otf
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        UISupportedInterfaceOrientations~ipad:
-          - UIInterfaceOrientationPortrait
-          - UIInterfaceOrientationPortraitUpsideDown
-          - UIInterfaceOrientationLandscapeLeft
-          - UIInterfaceOrientationLandscapeRight
     sources:
       - path: ClipInbox
     dependencies:
@@ -50,8 +44,8 @@ targets:
         embed: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.clipinbox.ClipInbox
-        TARGETED_DEVICE_FAMILY: "1,2"
+        PRODUCT_BUNDLE_IDENTIFIER: app.eiradev.ClipInbox
+        TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CODE_SIGN_ENTITLEMENTS: ClipInbox/ClipInbox.entitlements
@@ -65,9 +59,9 @@ targets:
       - path: ClipInbox/Fonts/Pretendard-Regular.otf
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.clipinbox.ClipInbox.Share
+        PRODUCT_BUNDLE_IDENTIFIER: app.eiradev.ClipInbox.Share
         PRODUCT_NAME: ClipInboxShare
-        TARGETED_DEVICE_FAMILY: "1,2"
+        TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: ClipShareExtension/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: ShareExtensionIcon
@@ -83,8 +77,9 @@ targets:
       - target: ClipInbox
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.clipinbox.ClipInboxTests
+        PRODUCT_BUNDLE_IDENTIFIER: app.eiradev.ClipInbox.Tests
         GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"
 
 schemes:
   ClipInbox:

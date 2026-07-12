@@ -31,7 +31,7 @@ Apply the 2026-07-11 A-to-Z audit without changing Clip Inbox into a general-pur
 - Add storage totals, largest originals, and cleanup previews before any automatic retention policy.
 - Start duplicate handling with exact/canonical URL matches; defer fuzzy text and perceptual image matching.
 - Measure the current snapshot backend before considering SQLite or SwiftData.
-- Keep iPad support, but change navigation structure only when split-view QA proves a concrete problem.
+- Ship iPhone-only for 1.0; defer iPad layout, screenshots, and device QA to a later product phase.
 
 ## Explicitly deferred or rejected for 1.0
 
@@ -82,7 +82,7 @@ Exit: core flows pass in Korean, English, and Japanese across light/dark and acc
 
 Status: repository gate complete on 2026-07-11; distribution exit pending external ownership and device access.
 
-- Add one repeatable local/CI gate for project regeneration, simulator tests, unsigned Release archive, embedded extension, privacy manifests, localization, and source App Group checks.
+- Keep one repeatable local gate for project regeneration, simulator tests, unsigned Release archive, embedded extension, privacy manifests, localization, and source App Group checks.
 - Add data-recovery, Share-queue, and release-validation runbooks.
 - Keep distribution signing, owned policy/support contact, App Store Connect metadata, upload, and physical-device evidence as explicit blocking release inputs rather than inventing repository values.
 

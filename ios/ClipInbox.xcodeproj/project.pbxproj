@@ -782,7 +782,6 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Clip Inbox";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "앱 잠금이 켜져 있을 때 클립을 보호하기 위해 Face ID를 사용합니다.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.3.0;
@@ -810,10 +809,10 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.clipinbox.ClipInbox.Share;
+				PRODUCT_BUNDLE_IDENTIFIER = app.eiradev.ClipInbox.Share;
 				PRODUCT_NAME = ClipInboxShare;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -830,9 +829,9 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.clipinbox.ClipInbox;
+				PRODUCT_BUNDLE_IDENTIFIER = app.eiradev.ClipInbox;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -850,10 +849,10 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.clipinbox.ClipInbox.Share;
+				PRODUCT_BUNDLE_IDENTIFIER = app.eiradev.ClipInbox.Share;
 				PRODUCT_NAME = ClipInboxShare;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -913,7 +912,6 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Clip Inbox";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "앱 잠금이 켜져 있을 때 클립을 보호하기 위해 Face ID를 사용합니다.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.3.0;
@@ -938,9 +936,9 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.clipinbox.ClipInboxTests;
+				PRODUCT_BUNDLE_IDENTIFIER = app.eiradev.ClipInbox.Tests;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ClipInbox.app/ClipInbox";
 			};
 			name = Debug;
@@ -958,9 +956,9 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.clipinbox.ClipInbox;
+				PRODUCT_BUNDLE_IDENTIFIER = app.eiradev.ClipInbox;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -974,9 +972,9 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.clipinbox.ClipInboxTests;
+				PRODUCT_BUNDLE_IDENTIFIER = app.eiradev.ClipInbox.Tests;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ClipInbox.app/ClipInbox";
 			};
 			name = Release;

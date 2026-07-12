@@ -400,7 +400,7 @@ struct SettingDetailView: View {
 
         case .contact:
             Button {
-                UIPasteboard.general.string = "support@clipinbox.local"
+                UIPasteboard.general.string = "eiradev000@gmail.com"
                 store.showToast("문의 이메일을 복사했습니다")
             } label: {
                 Label("문의 이메일 복사", systemImage: "questionmark.circle")
