@@ -35,6 +35,16 @@ struct RootView: View {
     @State private var showOnboarding = false
     @AppStorage("clip-inbox-onboarding-completed-v1") private var onboardingCompleted = false
 
+    init() {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["CLIP_INBOX_ASO_CAPTURE"] == "1",
+           let rawTab = ProcessInfo.processInfo.environment["CLIP_INBOX_ASO_TAB"],
+           let tab = AppTab(rawValue: rawTab) {
+            _selectedTab = State(initialValue: tab)
+        }
+        #endif
+    }
+
     var body: some View {
         Group {
             if store.bootstrapState.blocksLibrary {
@@ -249,14 +259,16 @@ private struct BottomNavBar: View {
                     VStack(spacing: 4) {
                         Image(systemName: tab.systemImage)
                             .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(selected == tab ? Tokens.onAccent : Tokens.textSecondary)
                             .frame(width: 34, height: 30)
                             .background(
                                 RoundedRectangle(cornerRadius: Tokens.radiusChip, style: .continuous)
                                     .fill(selected == tab ? Tokens.accentYellow : .clear)
                             )
-                        Text(L10n.text(tab.label, locale: locale)).font(Tokens.nav)
+                        Text(L10n.text(tab.label, locale: locale))
+                            .font(Tokens.nav)
+                            .foregroundStyle(selected == tab ? Tokens.textPrimary : Tokens.textSecondary)
                     }
-                    .foregroundStyle(selected == tab ? Tokens.onAccent : Tokens.textSecondary)
                     .frame(maxWidth: .infinity, minHeight: Tokens.actionTarget)
                 }
                 .buttonStyle(.plain)
@@ -320,9 +332,22 @@ struct ScreenHeader<Trailing: View>: View {
 
 struct InboxTab: View {
     @Binding var selectedTab: AppTab
+    @State private var path: [Route] = []
+
+    init(selectedTab: Binding<AppTab>) {
+        _selectedTab = selectedTab
+        #if DEBUG
+        // ASO/검증 캡처 전용: 지정한 클립 상세를 초기 화면으로 연다.
+        if ProcessInfo.processInfo.environment["CLIP_INBOX_ASO_CAPTURE"] == "1",
+           let rawID = ProcessInfo.processInfo.environment["CLIP_INBOX_ASO_DETAIL_CLIP_ID"],
+           let clipID = Int(rawID) {
+            _path = State(initialValue: [.detail(clipID)])
+        }
+        #endif
+    }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             InboxView(selectedTab: $selectedTab)
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: Route.self) { route in

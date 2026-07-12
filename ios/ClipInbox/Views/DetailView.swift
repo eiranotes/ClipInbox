@@ -2,6 +2,8 @@ import SwiftUI
 
 struct DetailView: View {
     @Environment(AppStore.self) private var store
+    // CLIPINBOX_URL_METADATA_ENGINE_V1
+    @Environment(URLMetadataCoordinator.self) private var metadata
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @Environment(\.locale) private var locale
@@ -42,7 +44,7 @@ struct DetailView: View {
                         TokenBadge(tone: .type(clip.type))
                         if let state = clip.state { TokenBadge(tone: .state(state)) }
                     }
-                    Text(L10n.text(clip.title, locale: locale))
+                    Text(L10n.text(metadata.cardPresentation(for: clip)?.title ?? clip.title, locale: locale))
                         .font(Tokens.sectionTitle)
                         .foregroundStyle(Tokens.textPrimary)
                         .lineSpacing(Tokens.titleLineSpacing)
@@ -50,7 +52,7 @@ struct DetailView: View {
                     HStack(spacing: Tokens.rowGap) {
                         HStack(spacing: 5) {
                             Image(systemName: "globe").font(.system(size: 12, weight: .bold))
-                            Text(L10n.text(clip.source, locale: locale))
+                            Text(L10n.text(metadata.cardPresentation(for: clip)?.subtitle ?? clip.source, locale: locale))
                         }
                         Spacer()
                         Text(L10n.text(clip.time, locale: locale))
@@ -71,9 +73,17 @@ struct DetailView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("이미지 크게 보기")
+                    } else if let thumbnailURL = metadata.cardPresentation(for: clip)?.thumbnailURL.flatMap(URL.init(string:)) {
+                        MetadataRemoteImage(url: thumbnailURL, contentMode: .fit)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: dynamicTypeSize.isAccessibilitySize
+                                ? Tokens.detailImageHeight * 1.6
+                                : Tokens.detailImageHeight)
                     }
 
-                    if !clip.description.isEmpty {
+                    // 링크 메타데이터가 있으면 아래 "링크 정보" 섹션이 요약을 담당하므로
+                    // 같은 설명이 두 번 보이지 않게 한다.
+                    if !clip.description.isEmpty, metadata.result(for: clip.id) == nil {
                         Text(L10n.text(clip.description, locale: locale))
                             .font(Tokens.body)
                             .foregroundStyle(Tokens.textPrimary)
@@ -81,6 +91,19 @@ struct DetailView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+
+                MetadataDetailSectionsView(clip: clip)
+
+                // 링크 열기는 첫 뷰포트에서 스크롤 없이 보이도록 링크 정보 바로 아래에 둔다.
+                Button {
+                    openLink(clip)
+                } label: {
+                    Label(clip.url.isEmpty ? "열 수 있는 링크 없음" : "링크 열기",
+                          systemImage: "arrow.up.right.square")
+                }
+                .buttonStyle(PrimaryBoxButtonStyle())
+                .disabled(clip.url.isEmpty)
+                .opacity(clip.url.isEmpty ? 0.5 : 1)
 
                 VStack(alignment: .leading, spacing: Tokens.rowGap) {
                     HStack {
@@ -140,16 +163,6 @@ struct DetailView: View {
                 }
 
                 VStack(spacing: Tokens.cardGap) {
-                    Button {
-                        openLink(clip)
-                    } label: {
-                        Label(clip.url.isEmpty ? "열 수 있는 링크 없음" : "링크 열기",
-                              systemImage: "arrow.up.right.square")
-                    }
-                    .buttonStyle(PrimaryBoxButtonStyle())
-                    .disabled(clip.url.isEmpty)
-                    .opacity(clip.url.isEmpty ? 0.5 : 1)
-
                     if dynamicTypeSize.isAccessibilitySize {
                         VStack(spacing: Tokens.rowGap) {
                             quietAction(label: "이동", systemImage: "folder") { showMove = true }
@@ -199,6 +212,11 @@ struct DetailView: View {
                 Button("취소", role: .cancel) {}
             } message: {
                 Text("이 클립은 휴지통으로 이동하며 5초 동안 바로 되돌릴 수 있습니다.")
+            }
+            .task(id: clip.url) {
+                if metadata.result(for: clip.id) == nil {
+                    await metadata.analyze(clip: clip, store: store, forceRefresh: false)
+                }
             }
             .onAppear {
                 noteDraft = clip.memo ?? ""

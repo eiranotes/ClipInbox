@@ -290,11 +290,11 @@
 "이 기기에서 잠금 인증을 사용할 수 없습니다. 기기 암호를 설정한 뒤 다시 시도하세요." = "Authentication is unavailable. Set a device passcode, then try again.";
 "이 기기에서 앱 잠금을 사용할 수 없습니다. 기기 암호를 먼저 설정하세요." = "App Lock is unavailable on this device. Set a device passcode first.";
 "Clip Inbox 개인정보 보호 화면" = "Clip Inbox privacy screen";
+"노란 종이클립 아이콘" = "Yellow paperclip icon";
 "클립 유형" = "Clip type";
 "텍스트" = "Text";
 "제목 (선택)" = "Title (optional)";
 "비워 두면 내용에서 자동으로 만듭니다" = "Leave blank to create one from the content";
-"메모 (선택)" = "Note (optional)";
 "보관 이유나 다음 할 일을 적어 두세요" = "Add why you saved it or what to do next";
 "메모 내용" = "Memo";
 "기억해 둘 내용을 입력하세요" = "Enter something to remember";
@@ -371,3 +371,33 @@
 "format.auto_deleted_trash" = "Removed %ld expired clips from Trash";
 "이 클립은 휴지통으로 이동하며 5초 동안 바로 되돌릴 수 있습니다." = "This clip moves to Trash, with five seconds to undo immediately.";
 "이미지는 원본 형식과 바이트를 유지합니다. 삭제한 클립은 휴지통에서 복원할 수 있으며 30일 후 원본 이미지와 함께 자동 삭제됩니다." = "Images keep their original format and bytes. Deleted clips can be restored from Trash and are removed with their original images after 30 days.";
+
+// Link metadata (URLMetadataEngine)
+"링크 정보" = "Link Info";
+"자세히 보기" = "Show More";
+"접기" = "Collapse";
+"링크 정보를 접습니다" = "Collapses the link info";
+"링크 정보를 더 보여 줍니다" = "Shows more link info";
+"링크 대표 이미지" = "Link preview image";
+"링크 정보를 분석하는 중입니다" = "Analyzing link info";
+"링크 정보 분석" = "Analyze Link Info";
+"링크 정보 다시 분석" = "Re-analyze Link Info";
+"정보" = "Overview";
+"핵심 정보" = "Key Details";
+"원문" = "Original";
+"추가 정보" = "More Details";
+"링크와 수집" = "Link & Collection";
+"요약" = "Summary";
+"작성자" = "Author";
+"채널·작성자" = "Channel / Author";
+"사이트" = "Site";
+"발행" = "Published";
+"수정" = "Updated";
+"유형" = "Type";
+"길이" = "Duration";
+"읽기" = "Reading";
+"원문 설명" = "Original Description";
+"원본 태그" = "Original Tags";
+"앱 분류" = "App Topics";
+"수집 상태" = "Collection Status";
+"형식" = "Format";

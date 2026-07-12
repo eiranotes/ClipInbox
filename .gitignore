@@ -6,3 +6,4 @@ dist/
 ios/build/
 ios/DerivedData/
 xcuserdata/
+.clipinbox-metadata-backup/

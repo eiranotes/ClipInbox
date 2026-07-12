@@ -4,6 +4,8 @@ import SwiftUI
 struct ClipInboxApp: App {
     @State private var store = AppStore()
     @State private var lock = AppLockController()
+    // CLIPINBOX_URL_METADATA_ENGINE_V1
+    @State private var metadata = URLMetadataCoordinator()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -11,6 +13,7 @@ struct ClipInboxApp: App {
             RootView()
                 .environment(store)
                 .environment(lock)
+                .environment(metadata)
                 .environment(\.locale, Locale(identifier: store.preferences.appLanguage.localeIdentifier))
                 .font(Tokens.body)
                 .preferredColorScheme(preferredColorScheme)
@@ -22,6 +25,7 @@ struct ClipInboxApp: App {
                 .onAppear {
                     lock.configure(enabled: store.preferences.appLock == "켬", lockImmediately: true)
                     store.importSharedClips()
+                    metadata.synchronize(store: store)
                 }
                 .onChange(of: store.preferences.appLock) { _, newValue in
                     // 설정 저장 중 인증 UI를 겹쳐 띄우지 않는다. 새 잠금은 다음
@@ -30,7 +34,10 @@ struct ClipInboxApp: App {
                 }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .background { lock.lockIfNeeded() }
-                    if phase == .active { store.importSharedClips() }
+                    if phase == .active {
+                        store.importSharedClips()
+                        metadata.synchronize(store: store)
+                    }
                 }
         }
     }

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <title>HTML 제목은 후순위</title>
+  <meta name="description" content="메타 설명은 구조화 데이터 설명보다 후순위입니다.">
+  <meta property="og:title" content="OG 제목은 두 번째 후보">
+  <meta property="og:description" content="OG 설명은 실제 공개 페이지에 포함된 설명입니다.">
+  <meta property="og:image" content="/images/article-cover.jpg">
+  <meta property="og:site_name" content="테크 데일리">
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2026-07-01T09:00:00+09:00">
+  <meta property="article:tag" content="Swift">
+  <link rel="canonical" href="https://example.com/articles/url-metadata">
+  <link rel="icon" href="/favicon.ico">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "mainEntityOfPage": "https://example.com/articles/url-metadata",
+    "headline": "URL 하나로 만드는 안전한 메타데이터 엔진",
+    "description": "공개 HTML과 구조화 데이터만 사용해 링크 제목, 작성자, 날짜와 대표 이미지를 수집하는 방법을 설명합니다. 외부 플랫폼 API 없이도 일반 웹페이지를 안정적으로 처리합니다.",
+    "author": {"@type":"Person", "name":"김개발"},
+    "publisher": {"@type":"Organization", "name":"테크 데일리"},
+    "datePublished": "2026-07-01T09:00:00+09:00",
+    "dateModified": "2026-07-02T10:30:00+09:00",
+    "image": "https://cdn.example.com/metadata.jpg",
+    "keywords": ["Swift", "iOS", "메타데이터"],
+    "articleSection": "개발",
+    "wordCount": 1100
+  }
+  </script>
+</head>
+<body>
+<header>메뉴</header>
+<article>
+  <h1>화면에 보이는 제목</h1>
+  <p class="byline">김개발</p>
+  <p>URL만 전달받은 앱이 공개 페이지에서 검증 가능한 정보만 읽고, 출처와 신뢰도를 함께 기록하는 전체 과정을 소개합니다.</p>
+  <p>파서는 사이트별 선택자보다 Open Graph와 JSON-LD 같은 공통 표준을 먼저 사용해야 구조 변경에 덜 취약합니다.</p>
+</article>
+<footer>Copyright</footer>
+</body>
+</html>
