@@ -71,6 +71,7 @@ enum Tokens {
     static let screenX: CGFloat = 16
     static let panelPad: CGFloat = 16
     static let sectionGap: CGFloat = 24
+    static let emptyGuideTop: CGFloat = 16
     static let formSectionGap: CGFloat = 16
     static let screenTop: CGFloat = 12
     static let bottomSafe: CGFloat = 24
@@ -103,6 +104,8 @@ enum Tokens {
     static let detailImageHeight: CGFloat = 140
     static let noteEditorMinHeight: CGFloat = 72
     static let onboardingImageHeight: CGFloat = 300
+    static let lockIllustration: CGFloat = 228
+    static let privacyMark: CGFloat = 88
     static let sheetDetentCompact: CGFloat = 0.58
     static let sheetDetentStandard: CGFloat = 0.76
     static let contentMax: CGFloat = 720

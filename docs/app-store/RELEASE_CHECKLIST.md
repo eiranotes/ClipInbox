@@ -6,6 +6,7 @@
 - App and extension bundle IDs are declared under Apple Developer Team `83BB7YWQHU`.
 - App Group entitlement `group.app.clipinbox.ClipInbox` matches both targets.
 - App icon asset exists at 1024 px.
+- Share Extension icon is compiled from the same yellow paperclip mark and is visible in the iOS share sheet.
 - iPhone and iPad orientation declarations are complete.
 - Korean, English, and Japanese app resources are bundled.
 - Face ID purpose text is localized.
@@ -33,19 +34,30 @@
 - Test Safari URL, plain text, and Photos image sharing on a physical device before submission.
 - Test Face ID after enabling App Lock on a physical Face ID device.
 
+## Upfront paid app at target ₩1,900
+
+- [x] Keep the binary fully usable after download with no StoreKit product, subscription, paywall, or restore-purchase UI.
+- [ ] Account Holder accepts the latest Paid Apps Agreement and completes required banking and tax information.
+- [ ] In App Store Connect, open Monetization > Pricing and Availability > Add Pricing.
+- [ ] Choose South Korea as the base country or region and confirm `₩1,900` exists as an exact current price point. If it does not, choose the nearest intentional Apple price point and update the launch plan.
+- [ ] Review Apple's automatically generated prices for other storefronts; override only regions the account holder intends to manage manually.
+- [ ] Set the tax category, public availability regions, and price start date before submitting for review.
+- [ ] Keep exact price copy out of descriptions and screenshots so future storefront/tax changes do not stale the creative.
+
 ## Metadata and creative
 
 - Paste the three localized metadata sets from `ASO_COPY.md`.
 - Verify keyword byte counts in App Store Connect; Korean and Japanese are byte-limited.
-- Upload one to ten real UI screenshots per localization. Put the strongest one to three first because they can appear in search results.
+- Upload the finalized three-frame set per localization. Put the strongest one to three first because they can appear in search results.
 - Use an accepted 6.9-inch screenshot size. Current accepted portrait sizes include 1260 x 2736, 1290 x 2796, and 1320 x 2868.
 - Do not state prices in the description.
 - Do not put search keywords into promotional text merely for ranking.
+- Final Korean, English, and Japanese upload-ready screenshots are generated locally in the Git-ignored `docs/app-store/generated/final-aso/{ko-KR,en-US,ja-JP}/`: three opaque sRGB 1320 x 2868 PNGs per locale. Earlier local sets remain under `docs/app-store/generated/` as comparison candidates only.
 
 ## Final binary checks
 
 - [x] `scripts/verify_ios_release.sh` regenerates the project and rejects Xcode project drift.
-- [x] Simulator build and all 30 unit tests pass with DerivedData on the local disk and index store disabled.
+- [x] Simulator build and all 59 unit tests pass with DerivedData on the local disk and index store disabled.
 - [x] Unsigned generic iPhoneOS Release archive passes and contains the embedded `ClipInboxShare.appex`.
 - [x] Both `PrivacyInfo.xcprivacy` files are valid and present in the archived bundle.
 - [x] Korean, English, and Japanese `Localizable.strings` are present in both app and extension bundles.

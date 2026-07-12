@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "preferences": {"app-lock":"끔","theme":"라이트","language":"한국어","default-folder":"인박스","share-mode":"quick"},
+  "folders": [
+    {"icon":"archive","label":"전체"},
+    {"icon":"inbox","label":"인박스"},
+    {"icon":"bookmark","label":"읽을거리"},
+    {"icon":"note","label":"아이디어"},
+    {"icon":"globe","label":"여행"},
+    {"icon":"file","label":"레시피"},
+    {"icon":"trash","label":"휴지통"}
+  ],
+  "clips": [
+    {"id":101,"type":"link","state":"new","title":"레몬 버터 파스타, 20분 레시피","source":"Kitchen Notes","url":"https://kitchen.example/lemon-pasta","time":"12분 전","folder":"레시피","tags":["레시피","저녁"],"folderSuggestions":["레시피","인박스"],"image":"/public/images/clip-pasta.png","description":"평일 저녁에 바로 만들 수 있는 간단한 파스타.","memo":"장보기 전에 레몬과 파르미지아노 확인.","bookmarked":true},
+    {"id":102,"type":"link","title":"북촌에서 조용히 걷기 좋은 길","source":"Seoul Weekend","url":"https://cityguide.example/bukchon-walk","time":"38분 전","folder":"여행","tags":["여행","서울"],"folderSuggestions":["여행","읽을거리"],"image":"/public/images/clip-hanok.png","description":"주말 오전에 걷기 좋은 골목과 작은 서점 코스.","memo":"비 오지 않는 날 10시 전에 출발.","bookmarked":false},
+    {"id":103,"type":"image","state":"unsorted","title":"작업실 책상 조명 레퍼런스","source":"Studio Journal","url":"https://studio.example/desk-light","time":"오늘","folder":"아이디어","tags":["인테리어","레퍼런스"],"folderSuggestions":["아이디어","인박스"],"image":"/public/images/clip-creative-studio.png","description":"간접 조명과 밝은 목재를 함께 쓴 작업 공간.","memo":"책상 뒤 벽면의 여백 참고.","bookmarked":true},
+    {"id":104,"type":"memo","title":"다음 주 여행 준비 체크리스트","source":"나의 메모","url":"","time":"어제","folder":"여행","tags":["여행","체크리스트"],"folderSuggestions":["여행"],"description":"여권, 보조 배터리, 얇은 재킷, 오프라인 지도.","memo":"금요일 저녁에 한 번 더 확인.","bookmarked":false},
+    {"id":105,"type":"screenshot","title":"전시 포스터 타이포그래피","source":"Design Archive","url":"https://design.example/exhibition-type","time":"어제","folder":"아이디어","tags":["디자인","타이포그래피"],"folderSuggestions":["아이디어","읽을거리"],"image":"/public/images/clip-dashboard.png","description":"큰 제목과 작은 캡션 사이의 대비가 좋은 포스터.","memo":"다음 발표 자료 표지에 응용.","bookmarked":false},
+    {"id":106,"type":"image","title":"해 질 무렵의 작은 해변","source":"Photo Journal","url":"","time":"2일 전","folder":"여행","tags":["여행","사진"],"folderSuggestions":["여행"],"image":"/public/images/clip-beach.png","description":"여름 여행 후보지의 노을과 산책로.","memo":"숙소에서 걸어서 갈 수 있는지 확인.","bookmarked":true},
+    {"id":107,"type":"link","title":"앱 온보딩 첫 문장 모음","source":"Product Notes","url":"https://product.example/onboarding-copy","time":"3일 전","folder":"읽을거리","tags":["디자인","카피"],"folderSuggestions":["읽을거리","아이디어"],"image":"/public/images/clip-lightbulb.png","description":"기능보다 사용 순간을 먼저 보여주는 짧은 문장 사례.","memo":"첫 화면은 한 문장만 남기기.","bookmarked":false},
+    {"id":108,"type":"link","title":"7월 읽을거리, 집중과 휴식","source":"Sunday Reader","url":"https://reader.example/focus-rest","time":"지난주","folder":"읽을거리","tags":["읽을거리","업무"],"folderSuggestions":["읽을거리"],"description":"오래 집중하기보다 리듬을 설계하는 방법.","memo":"주간 회고 전에 다시 읽기.","bookmarked":true},
+    {"id":109,"type":"memo","title":"주간 회고 질문 5가지","source":"나의 메모","url":"","time":"지난주","folder":"아이디어","tags":["업무","아이디어"],"folderSuggestions":["아이디어"],"description":"이번 주에 계속할 것, 멈출 것, 새로 시도할 것.","memo":"금요일 오후 캘린더에 추가.","bookmarked":false},
+    {"id":110,"type":"image","title":"작은 거실 수납 아이디어","source":"Home Edit","url":"https://home.example/small-living-room","time":"2주 전","folder":"아이디어","tags":["인테리어","레퍼런스"],"folderSuggestions":["아이디어"],"image":"/public/images/clip-living-room.png","description":"낮은 선반과 밝은 패브릭으로 답답함을 줄인 거실.","memo":"창가 수납 높이 참고.","bookmarked":false}
+  ]
+}

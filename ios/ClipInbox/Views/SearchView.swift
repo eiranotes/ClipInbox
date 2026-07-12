@@ -10,6 +10,16 @@ struct SearchView: View {
     private let filters = ["전체", "링크", "메모", "이미지", "스크린샷", "태그"]
         + DefaultData.filterTags
 
+    init() {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["CLIP_INBOX_ASO_CAPTURE"] == "1",
+           let initialQuery = ProcessInfo.processInfo.environment["CLIP_INBOX_ASO_SEARCH_QUERY"] {
+            _query = State(initialValue: initialQuery)
+            _settledQuery = State(initialValue: initialQuery)
+        }
+        #endif
+    }
+
     var body: some View {
         NavigationStack {
             content

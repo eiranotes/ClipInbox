@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "preferences": {"app-lock":"끔","theme":"라이트","language":"日本語","default-folder":"受信トレイ","share-mode":"quick"},
+  "folders": [
+    {"icon":"archive","label":"すべて"},
+    {"icon":"inbox","label":"受信トレイ"},
+    {"icon":"bookmark","label":"読みもの"},
+    {"icon":"note","label":"アイデア"},
+    {"icon":"globe","label":"旅行"},
+    {"icon":"file","label":"レシピ"},
+    {"icon":"trash","label":"ゴミ箱"}
+  ],
+  "clips": [
+    {"id":301,"type":"link","state":"new","title":"レモンバターパスタ、20分レシピ","source":"Kitchen Notes","url":"https://kitchen.example/lemon-pasta","time":"12分前","folder":"レシピ","tags":["レシピ","夕食"],"folderSuggestions":["レシピ","受信トレイ"],"image":"/public/images/clip-pasta.png","description":"平日の夜にすぐ作れるシンプルなパスタ。","memo":"買い物前にレモンとチーズを確認。","bookmarked":true},
+    {"id":302,"type":"link","title":"古い街を静かに歩く週末コース","source":"City Weekend","url":"https://cityguide.example/quiet-walk","time":"38分前","folder":"旅行","tags":["旅行","週末"],"folderSuggestions":["旅行","読みもの"],"image":"/public/images/clip-hanok.png","description":"小さな書店とコーヒー店を巡る朝の散歩。","memo":"晴れた日は10時前に出発。","bookmarked":false},
+    {"id":303,"type":"image","state":"unsorted","title":"小さな仕事部屋の照明アイデア","source":"Studio Journal","url":"https://studio.example/desk-light","time":"今日","folder":"アイデア","tags":["インテリア","デザイン"],"folderSuggestions":["アイデア","受信トレイ"],"image":"/public/images/clip-creative-studio.png","description":"やわらかな間接照明と明るい木材の組み合わせ。","memo":"机の後ろの余白を参考にする。","bookmarked":true},
+    {"id":304,"type":"memo","title":"来週の旅行チェックリスト","source":"自分のメモ","url":"","time":"昨日","folder":"旅行","tags":["旅行","チェックリスト"],"folderSuggestions":["旅行"],"description":"パスポート、モバイルバッテリー、薄手の上着、オフライン地図。","memo":"金曜の夜にもう一度確認。","bookmarked":false},
+    {"id":305,"type":"screenshot","title":"展覧会ポスターのタイポグラフィ","source":"Design Archive","url":"https://design.example/exhibition-type","time":"昨日","folder":"アイデア","tags":["デザイン","文字"],"folderSuggestions":["アイデア","読みもの"],"image":"/public/images/clip-dashboard.png","description":"大きなタイトルと小さな説明文の対比が美しい。","memo":"次のプレゼン表紙に応用する。","bookmarked":false},
+    {"id":306,"type":"image","title":"夕暮れ前の小さな海辺","source":"Photo Journal","url":"","time":"2日前","folder":"旅行","tags":["旅行","写真"],"folderSuggestions":["旅行"],"image":"/public/images/clip-beach.png","description":"静かな散歩道がある夏の旅行候補。","memo":"ホテルから歩けるか確認。","bookmarked":true},
+    {"id":307,"type":"link","title":"オンボーディングの短い書き出し","source":"Product Notes","url":"https://product.example/onboarding-copy","time":"3日前","folder":"読みもの","tags":["デザイン","文章"],"folderSuggestions":["読みもの","アイデア"],"image":"/public/images/clip-lightbulb.png","description":"機能ではなく使う瞬間から始める短い文章例。","memo":"最初の画面は一文だけにする。","bookmarked":false},
+    {"id":308,"type":"link","title":"7月の読みもの、集中と休息","source":"Sunday Reader","url":"https://reader.example/focus-rest","time":"先週","folder":"読みもの","tags":["読書","仕事"],"folderSuggestions":["読みもの"],"description":"長く頑張るより、続けられるリズムを設計する。","memo":"週次レビューの前に読み返す。","bookmarked":true},
+    {"id":309,"type":"memo","title":"週次レビューのための5つの質問","source":"自分のメモ","url":"","time":"先週","folder":"アイデア","tags":["仕事","アイデア"],"folderSuggestions":["アイデア"],"description":"続けること、やめること、次に試すこと。","memo":"金曜午後の予定に追加。","bookmarked":false},
+    {"id":310,"type":"image","title":"小さなリビングの収納アイデア","source":"Home Edit","url":"https://home.example/small-living-room","time":"2週間前","folder":"アイデア","tags":["インテリア","デザイン"],"folderSuggestions":["アイデア"],"image":"/public/images/clip-living-room.png","description":"低い棚と明るい布で部屋を広く見せる。","memo":"窓辺の棚の高さを参考にする。","bookmarked":false}
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "preferences": {"app-lock":"끔","theme":"라이트","language":"English","default-folder":"Inbox","share-mode":"quick"},
+  "folders": [
+    {"icon":"archive","label":"All Clips"},
+    {"icon":"inbox","label":"Inbox"},
+    {"icon":"bookmark","label":"Reading"},
+    {"icon":"note","label":"Ideas"},
+    {"icon":"globe","label":"Trips"},
+    {"icon":"file","label":"Recipes"},
+    {"icon":"trash","label":"Trash"}
+  ],
+  "clips": [
+    {"id":201,"type":"link","state":"new","title":"Lemon butter pasta in 20 minutes","source":"Kitchen Notes","url":"https://kitchen.example/lemon-pasta","time":"12 min ago","folder":"Recipes","tags":["recipe","dinner"],"folderSuggestions":["Recipes","Inbox"],"image":"/public/images/clip-pasta.png","description":"A simple weeknight pasta with lemon and parmesan.","memo":"Check lemons and parmesan before shopping.","bookmarked":true},
+    {"id":202,"type":"link","title":"A quiet Saturday walk through the old town","source":"City Weekend","url":"https://cityguide.example/quiet-walk","time":"38 min ago","folder":"Trips","tags":["travel","weekend"],"folderSuggestions":["Trips","Reading"],"image":"/public/images/clip-hanok.png","description":"A morning route with small bookstores and coffee stops.","memo":"Start before ten if the weather stays clear.","bookmarked":false},
+    {"id":203,"type":"image","state":"unsorted","title":"Warm desk lighting for a small studio","source":"Studio Journal","url":"https://studio.example/desk-light","time":"Today","folder":"Ideas","tags":["interior","design"],"folderSuggestions":["Ideas","Inbox"],"image":"/public/images/clip-creative-studio.png","description":"Soft indirect light paired with pale wood and open space.","memo":"Keep the wall behind the desk uncluttered.","bookmarked":true},
+    {"id":204,"type":"memo","title":"Packing list for next week","source":"My Note","url":"","time":"Yesterday","folder":"Trips","tags":["travel","checklist"],"folderSuggestions":["Trips"],"description":"Passport, power bank, light jacket, offline map.","memo":"Review once more on Friday evening.","bookmarked":false},
+    {"id":205,"type":"screenshot","title":"Exhibition poster typography","source":"Design Archive","url":"https://design.example/exhibition-type","time":"Yesterday","folder":"Ideas","tags":["design","typography"],"folderSuggestions":["Ideas","Reading"],"image":"/public/images/clip-dashboard.png","description":"Strong contrast between the display title and small captions.","memo":"Try this rhythm on the next presentation cover.","bookmarked":false},
+    {"id":206,"type":"image","title":"A small beach just before sunset","source":"Photo Journal","url":"","time":"2 days ago","folder":"Trips","tags":["travel","photo"],"folderSuggestions":["Trips"],"image":"/public/images/clip-beach.png","description":"A possible summer stop with a quiet shoreline walk.","memo":"Check if it is walkable from the hotel.","bookmarked":true},
+    {"id":207,"type":"link","title":"Great opening lines for onboarding","source":"Product Notes","url":"https://product.example/onboarding-copy","time":"3 days ago","folder":"Reading","tags":["design","writing"],"folderSuggestions":["Reading","Ideas"],"image":"/public/images/clip-lightbulb.png","description":"Short examples that begin with the user moment, not a feature list.","memo":"Keep the first screen to one sentence.","bookmarked":false},
+    {"id":208,"type":"link","title":"July reading, focus and rest","source":"Sunday Reader","url":"https://reader.example/focus-rest","time":"Last week","folder":"Reading","tags":["reading","work"],"folderSuggestions":["Reading"],"description":"Designing a sustainable rhythm instead of forcing longer focus.","memo":"Read again before the weekly review.","bookmarked":true},
+    {"id":209,"type":"memo","title":"Five questions for a weekly review","source":"My Note","url":"","time":"Last week","folder":"Ideas","tags":["work","ideas"],"folderSuggestions":["Ideas"],"description":"What to continue, stop, and try next week.","memo":"Add to the Friday afternoon calendar.","bookmarked":false},
+    {"id":210,"type":"image","title":"Storage ideas for a small living room","source":"Home Edit","url":"https://home.example/small-living-room","time":"2 weeks ago","folder":"Ideas","tags":["interior","design"],"folderSuggestions":["Ideas"],"image":"/public/images/clip-living-room.png","description":"Low shelving and light textiles keep the room open.","memo":"Note the shelf height beside the window.","bookmarked":false}
+  ]
+}

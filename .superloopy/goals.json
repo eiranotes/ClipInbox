@@ -2,7 +2,7 @@
   "version": 1,
   "mode": "strict",
   "createdAt": "2026-07-09T12:28:56.858Z",
-  "updatedAt": "2026-07-11T11:48:59.647Z",
+  "updatedAt": "2026-07-12T06:53:24.182Z",
   "briefPath": ".superloopy/brief.md",
   "evidencePath": ".superloopy/evidence",
   "goalsPath": ".superloopy/goals.json",
@@ -15,7 +15,7 @@
       "status": "complete",
       "attempt": 1,
       "createdAt": "2026-07-09T12:28:56.858Z",
-      "updatedAt": "2026-07-11T11:48:59.647Z",
+      "updatedAt": "2026-07-12T06:53:24.182Z",
       "criteria": [
         {
           "id": "C001",
@@ -23,9 +23,9 @@
           "scenario": "Happy path works from the real user-facing surface.",
           "essential": true,
           "status": "pass",
-          "artifact": ".superloopy/evidence/frontend/20260711-trash-onboarding/VISUAL_QA.md",
-          "capturedAt": "2026-07-11T11:48:58.732Z",
-          "notes": "Simulator UI and real Safari Share success verified."
+          "artifact": ".superloopy/evidence/frontend/20260712-aso-icon-filter-final/VISUAL_QA.md",
+          "capturedAt": "2026-07-12T06:53:24.182Z",
+          "notes": "Finalized trilingual ASO, stronger app and extension icon, standalone transparent lock mark, and independent Inbox folder and tag scroll views; simulator build and 59 tests pass."
         },
         {
           "id": "C002",

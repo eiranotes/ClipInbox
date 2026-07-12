@@ -2,6 +2,7 @@
 
 ## Done
 
+- [x] Replace repeated ASO sample thumbnails with distinct ImageGen food, hanok, and creative-studio photos; keep the beach image on one clip only and regenerate all seven ko-KR/en-US/ja-JP frames.
 - [x] Add four real-simulator ASO proof frames per locale (save, note, link preview/open, folders) with phone chrome cropped, seeded notes/links, and live locale-language link summaries; refresh store descriptions with the link-preview feature.
 - [x] Localize metadata presentation strings (types, statuses, durations, section labels, dates) to English and Japanese via a language-aware `PresentationBuilder`, and hide the open-link action on URL-less clips instead of showing a disabled placeholder.
 - [x] Remove the black Review Share background, center the folder-and-memo panel on a transparent host, and reduce its typography and control density.

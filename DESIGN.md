@@ -64,6 +64,7 @@ Base unit: 4px. Component spacing follows the product spec through named tokens.
 | space.screenX | `--space-screen-x` | 16px | Screen side inset |
 | space.panelPadding | `--space-panel-pad` | 16px | Focused form surface padding only |
 | space.sectionGap | `--space-section` | 24px | Screen section gap |
+| space.emptyGuideTop | native only | 16px | Breathing room between the inbox filter grid and first-capture guidance |
 | space.formSectionGap | native only | 16px | Compact form rhythm between adjacent input sections |
 | space.screenTop | `--space-screen-start` | 12px | Top offset below status bar |
 | space.bottomSafe | `--space-bottom-safe` | 24px | Content breathing room; nav uses safe-area inset |
@@ -104,10 +105,23 @@ Responsive and control-size tokens:
 | size.shareReviewPanelMaxWidth | native only | 360px | Centered folder-and-memo review panel maximum width |
 | size.shareReviewMemoHeight | native only | 64px | Compact optional memo editor height in Share review |
 | size.onboardingImageHeight | native only | 300px | Generated onboarding illustration maximum height |
+| size.lockIllustration | native only | 228px | Friendly lock-screen illustration footprint |
+| size.privacyMark | native only | 88px | Compact privacy mark shown while the app is inactive |
 | layout.appMax | `--layout-app-max` | 960px | Wide application-shell maximum |
 | layout.contentMax | `--layout-content-max` | 720px | Readable secondary-workflow measure |
 | layout.gridBreakpoint | `--layout-grid-breakpoint` | 760px | Two-column workbench threshold |
 | layout.desktopBreakpoint | `--layout-desktop-breakpoint` | 860px | Framed desktop-shell threshold |
+| size.asoCanvasWidth | artifact only | 1320px | App Store 6.9-inch portrait composition width |
+| size.asoCanvasHeight | artifact only | 2868px | App Store 6.9-inch portrait composition height |
+| space.asoCanvasX | artifact only | 110px | Marketing headline and screenshot side inset |
+| space.asoCanvasTop | artifact only | 180px | Marketing headline top inset |
+| size.asoTriptychWidth | artifact only | 3960px | Three continuous 1320px App Store panels before slicing |
+| size.asoHeadline | artifact only | 128px | Korean and English two-line store headline; Japanese uses 112px for glyph density |
+| size.asoBody | artifact only | 50px | One-line supporting store copy |
+| size.asoHeroHeadlineDense | artifact only | 156px | Korean first-three hero headline optimized for search-result scale |
+| size.asoSupportDense | artifact only | 68px | Two-line semibold supporting statement on the yellow paper band |
+| space.asoIllustrationTop | artifact only | 1068px | Top edge of the dense continuous onboarding panorama artwork |
+| size.asoIllustrationHeight | artifact only | 1800px | Height of the vertically expanded onboarding panorama artwork |
 
 ## 5. Components
 
@@ -127,7 +141,7 @@ Share Extension modes: quick save uses only one centered compact status card on 
 
 Clip row: full-width navigation target with 12px vertical padding and a soft bottom divider. The inbox hierarchy is title first, source second, then an optional 80x64 thumbnail. Type, state, time, and tags are detail-only metadata. The menu remains an independent 44px trailing target. There is no outer row card or shadow.
 
-Badge and filter: type/state metadata is plain text with an optional semantic mark and appears only in focused/detail contexts. Inbox and search filters show five equal-width cells per row across two visible rows, with an 8px gap, a 44px touch target, and a 2px yellow active underline. The first ten options fill the visible 5x2 grid; additional options continue horizontally in the same two-row grid. Label length never changes cell width. There is no per-filter box or duplicate filter modal.
+Badge and filter: type/state metadata is plain text with an optional semantic mark and appears only in focused/detail contexts. Inbox and search filters show five equal-width cells per row across two visible rows, with an 8px gap, a 44px touch target, and a 2px yellow active underline. In the Inbox, the top folder row and bottom tag row own separate horizontal scroll positions; other selectors keep the shared 5x2 grid. The first ten options fill the visible grid; additional options continue horizontally. Label length never changes cell width. There is no per-filter box or duplicate filter modal.
 
 Tags: tags appear in detail inside the organize group, and the tag row opens the tag editor directly so tags can be changed without entering full clip edit. Editing screens show the selected value in one summary row, and tag selection uses the same two-row, five-column, equal-width underline grid as the main filter. Custom tags can grow beyond the first ten options through horizontal continuation. Tags never render as pill collections or irregular boxes.
 
@@ -137,7 +151,7 @@ Secondary button: transparent or white fill, near-black text, soft 1px border, 1
 
 Utility icon button and row menu: square 44px hit target with no visible container in the default state. Only a selected state may use a compact yellow 8px-radius fill. Use a simple near-black icon and no heavy border.
 
-Bottom navigation: white/card-muted surface, top separator, five stable tabs, yellow selected icon fill.
+Bottom navigation: white/card-muted surface, top separator, five stable tabs, yellow selected icon fill. Selected icon glyphs use `color.text.onAccent`; selected labels use `color.text.primary` so they remain visible in dark mode.
 
 Workflow sheet: short action menus open at 58%, medium selectors at 76%, and destination/move/edit flows open at the large detent. Every sheet can expand when its content may grow. Content receives 20px top and bottom insets inside the sheet so the header does not crowd the grabber and the final action never touches or disappears below the sheet edge.
 
@@ -147,9 +161,13 @@ Link opening: Settings offers `바로 열기` and `열기 전 확인`. Direct op
 
 Feedback surfaces: app toasts, recovery notices, shared-item notices, deletion Undo, and Share Extension success use the same `color.accent.yellow` fill. Green remains available only for compact saved-state metadata, never for a modal, banner, toast, or selected menu.
 
+App Lock: one standalone bold golden paperclip with a transparent background appears at `size.lockIllustration` above a compact title/body stack and at `size.privacyMark` on the inactive privacy shield. It does not reuse the square app-icon field. Authentication copy and the unlock action remain native text and controls. The mark contains no text, device frame, tray, cards, or fake biometric UI. The screen uses the existing warm canvas, yellow accent, typography, button, and motion tokens.
+
 Trash: the folder list ends with a fixed trash destination that cannot receive moved clips. Deleting a clip records its original folder and deletion time, hides it from every active list/search/count, and shows it in Trash with Restore and Empty Trash actions. A yellow information panel states that items are permanently removed after 30 days.
 
 Onboarding: first launch uses three generated editorial illustrations in 4:3 frames. Each page has one image, one short heading, one supporting sentence, a restrained three-step underline indicator, and one yellow primary action. All instructional text remains native SwiftUI text; generated assets contain no text or fake branded screenshots. The same guide is available again from Settings.
+
+App Store screenshots: every localized set uses a 1320 x 2868 warm-ivory canvas. The current Korean first-three direction follows the supplied large-copy reference set: centered Clip Inbox branding, a two-line benefit headline, one yellow underline, real current UI, and a restrained three-point footer. Frame one layers a real Safari Share sheet behind the current Inbox; frames two and three show the current Folder and Search screens. Simulator status bars, Dynamic Islands, and home indicators are cropped away, and screenshots use no fake device frame or perspective transform. Screenshot-only sample libraries use varied fictional data that looks plausible but contains no personal information, live account data, price claims, or endorsements. Visible sample thumbnails alternate subject and color family, do not reuse one image for unrelated clips, and avoid repeating the same hero image across Inbox and detail proof frames. Exact copy is composited deterministically with bundled Pretendard rather than generated inside a bitmap model.
 
 Tag management: Settings exposes one flat tag list with explicit edit and delete icon targets. Renaming updates every clip and folder-default reference; deleting removes the tag from those references. Destructive affordances use danger text and never rely on swipe-only discovery.
 

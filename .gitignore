@@ -7,3 +7,4 @@ ios/build/
 ios/DerivedData/
 xcuserdata/
 .clipinbox-metadata-backup/
+docs/app-store/generated/

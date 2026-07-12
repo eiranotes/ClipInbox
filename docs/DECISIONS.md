@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-07-12: Generated ASO Output Stays Local
+
+`docs/app-store/generated/` is a local build-output directory and is excluded from Git. Source scripts, copy, strategy documents, and compact QA evidence remain versioned; upload PNGs and intermediate comparison candidates are regenerated from the required local captures and source inputs when needed.
+
+## 2026-07-12: ASO Sample Imagery Is Unique by Visible Clip
+
+The localized App Store sample libraries keep fictional data, but their first visible rows must alternate subject and color family instead of reusing one generic thumbnail for unrelated clips. Food, city, workspace, memo, and exhibition content now use distinct assets, and a hero image shown in the Inbox proof is not repeated as a different subject in the detail proof. This makes the real SwiftUI screens feel populated without changing production defaults or inventing product behavior.
+
 ## 2026-07-12: Link Metadata Lives in a Sidecar, Not the Clip JSON
 
 Decision: Adopt the audited URL-only metadata engine (`docs/Audit/ClipInbox-URLMetadataEngine-implementation.zip`) as in-app source under `ios/ClipInbox/MetadataEngine/`. Full extraction results are stored in an Application Support sidecar (`link-metadata-v1.json`) keyed by clip ID and source URL; the version-2 clip JSON keeps its schema, and clip title/source/description are updated only when empty or a known placeholder. Analysis runs after save and never blocks or fails a capture.
@@ -471,6 +479,14 @@ Decision: Make the new Korean first-three candidate follow the supplied screensh
 Why: The references have a clear App Store reading order, but their product UI no longer matches the native list-first app. A shared simple mark is also more legible in the iOS share sheet than the detailed card-tray illustration.
 
 Impact: `scripts/generate_aso_reference_refresh.sh` produces three 1320 x 2868 Korean assets. The first uses a real Safari Share sheet plus current Inbox, the next two use current Folder and Search captures, and the same mark appears on the Home screen, App Lock/privacy shield, and compiled Share Extension tile.
+
+## 2026-07-12: Finalize One Localized ASO Story and Separate the Lock Mark
+
+Decision: Ship the supplied three-frame visual grammar in Korean, English, and Japanese with one shared order: find quickly, save instantly, organize later. Keep the app and Share Extension on an opaque warm-ivory icon with a larger, thicker deep-golden paperclip, but render App Lock and the inactive privacy shield from a separate transparent paperclip-only asset. The Inbox folder and tag rows keep one visual rhythm while owning independent horizontal scroll positions.
+
+Why: The supplied drafts already establish a clear localized marketing system, while exact upload sizing and field-budget checks turn them into release artifacts. A heavier, darker paperclip survives Home-screen and Share-sheet reduction better than the pale mark. Reusing the opaque square on the lock screen reads as an app tile rather than a privacy symbol, and coupling folder/tag offsets makes two different taxonomies feel like one control.
+
+Impact: `scripts/finalize_aso.sh` produces nine opaque sRGB 1320 x 2868 PNGs under `docs/app-store/generated/final-aso/`. `ASO_COPY.md` is the finalized metadata source. App and extension icons share the strong opaque master, `lock-clip` contains alpha with transparent corners, and `TwoRowHorizontalSelection(topRow:bottomRow:)` builds two sibling horizontal scroll views.
 
 ## 2026-07-12: Review Share Uses a Transparent Centered Panel
 

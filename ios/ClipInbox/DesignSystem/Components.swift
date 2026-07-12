@@ -71,19 +71,6 @@ struct TwoRowHorizontalSelection: View {
     }
 
     private var gridSlots: [SelectionSlot] {
-        if let pairedRows {
-            // 열마다 위줄·아랫줄 항목을 하나씩 배치하고, 짧은 줄은 빈 칸으로 채운다.
-            let columns = max(pairedRows.top.count, pairedRows.bottom.count)
-            var slots: [SelectionSlot] = []
-            for column in 0..<columns {
-                slots.append(SelectionSlot(id: slots.count,
-                                           item: column < pairedRows.top.count ? pairedRows.top[column] : nil))
-                slots.append(SelectionSlot(id: slots.count,
-                                           item: column < pairedRows.bottom.count ? pairedRows.bottom[column] : nil))
-            }
-            return slots
-        }
-
         let columnCount = Tokens.selectionColumnCount
         let pageSize = columnCount * rowCount
         var slots: [SelectionSlot] = []
@@ -121,29 +108,62 @@ struct TwoRowHorizontalSelection: View {
                 Tokens.touchTarget,
                 (geometry.size.width - gaps) / CGFloat(Tokens.selectionColumnCount)
             )
-            let rows = Array(
-                repeating: GridItem(.fixed(Tokens.touchTarget), spacing: Tokens.chipGap),
-                count: rowCount
-            )
+            if let pairedRows {
+                VStack(spacing: Tokens.chipGap) {
+                    independentSelectionRow(
+                        pairedRows.top,
+                        columnWidth: columnWidth,
+                        minimumWidth: geometry.size.width
+                    )
+                    independentSelectionRow(
+                        pairedRows.bottom,
+                        columnWidth: columnWidth,
+                        minimumWidth: geometry.size.width
+                    )
+                }
+            } else {
+                let rows = Array(
+                    repeating: GridItem(.fixed(Tokens.touchTarget), spacing: Tokens.chipGap),
+                    count: rowCount
+                )
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHGrid(rows: rows, spacing: Tokens.chipGap) {
-                    ForEach(gridSlots) { slot in
-                        if let item = slot.item {
-                            selectionButton(item)
-                                .frame(width: columnWidth, height: Tokens.touchTarget)
-                        } else {
-                            Color.clear
-                                .frame(width: columnWidth, height: Tokens.touchTarget)
-                                .accessibilityHidden(true)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHGrid(rows: rows, spacing: Tokens.chipGap) {
+                        ForEach(gridSlots) { slot in
+                            if let item = slot.item {
+                                selectionButton(item)
+                                    .frame(width: columnWidth, height: Tokens.touchTarget)
+                            } else {
+                                Color.clear
+                                    .frame(width: columnWidth, height: Tokens.touchTarget)
+                                    .accessibilityHidden(true)
+                            }
                         }
                     }
+                    .frame(minWidth: geometry.size.width, alignment: .leading)
                 }
-                .frame(minWidth: geometry.size.width, alignment: .leading)
             }
         }
         .frame(height: Tokens.touchTarget * CGFloat(rowCount)
             + Tokens.chipGap * CGFloat(rowCount - 1))
+    }
+
+    /// 의미가 다른 두 줄은 각각 별도 ScrollView를 가져 스크롤 위치를 공유하지 않는다.
+    private func independentSelectionRow(
+        _ rowItems: [SelectionItem],
+        columnWidth: CGFloat,
+        minimumWidth: CGFloat
+    ) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: Tokens.chipGap) {
+                ForEach(Array(rowItems.enumerated()), id: \.offset) { _, item in
+                    selectionButton(item)
+                        .frame(width: columnWidth, height: Tokens.touchTarget)
+                }
+            }
+            .frame(minWidth: minimumWidth, alignment: .leading)
+        }
+        .frame(height: Tokens.touchTarget)
     }
 
     private var accessibilitySelection: some View {
