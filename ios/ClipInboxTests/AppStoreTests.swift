@@ -335,6 +335,12 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(reloaded.preferences.sharedSaveMode, .review)
         XCTAssertEqual(L10n.text("설정", language: .english), "Settings")
         XCTAssertEqual(L10n.text("설정", language: .japanese), "設定")
+        XCTAssertEqual(L10n.text("클립 인박스", language: .korean), "클립 인박스")
+        XCTAssertEqual(L10n.text("클립 인박스", language: .english), "Clip Inbox")
+        XCTAssertEqual(L10n.text("클립 인박스", language: .japanese), "Clip Inbox")
+        XCTAssertEqual(L10n.text("Clip Inbox를 선택해요", language: .korean), "클립 인박스를 선택해요")
+        XCTAssertEqual(L10n.text("Clip Inbox를 선택해요", language: .english), "Choose Clip Inbox")
+        XCTAssertEqual(L10n.text("Clip Inbox를 선택해요", language: .japanese), "Clip Inboxを選択")
     }
 
     func testLinkOpeningDefaultsToDirectAndPersistsConfirmationChoice() {

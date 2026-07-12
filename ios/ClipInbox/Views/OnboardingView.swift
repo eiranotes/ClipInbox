@@ -44,7 +44,7 @@ struct OnboardingView: View {
 
     var body: some View {
         VStack(spacing: Tokens.formSectionGap) {
-            ScreenHeader("Clip Inbox", onBack: isFirstRun ? nil : { dismiss() }, trailing: {
+            ScreenHeader("클립 인박스", onBack: isFirstRun ? nil : { dismiss() }, trailing: {
                 if isFirstRun {
                     Button("건너뛰기", action: finish)
                         .font(Tokens.bodySemibold)
