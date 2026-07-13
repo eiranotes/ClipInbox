@@ -8,7 +8,7 @@ Implemented screens:
 
 - Inbox with a two-row, five-column equal-width filter grid (top row folders, bottom row in-use tags) whose rows scroll horizontally and independently, full-row clip navigation, optional thumbnails (local first, then remote link-metadata images), a metadata short-summary secondary line, and text-only rows that keep the same height as media rows.
 - Share Extension with two user-selectable behaviors: immediate save shows one compact localized checkmark card before returning, while review mode presents only a centered compact folder-and-memo panel on a transparent host with no black dimming canvas.
-- Detail view with a 16pt content rhythm that fits one viewport through the 링크 열기 action (140pt aspect-fit preview, 72pt note editor), a zoomable full-screen image viewer, directly editable note and tags, flat organization rows, and actions kept above the bottom navigation. Link clips add a remote metadata preview image and a collapsed-by-default 링크 정보 section (4-line summary, 자세히 보기 expansion with per-value 5-line caps, explicit re-analysis).
+- Detail view with a 16pt content rhythm, a zoomable full-screen image viewer, directly editable note and tags, flat organization rows, type-aware `복사하기` (URL for links, original raster for image/screenshots), and enough bottom scroll clearance to keep 이동/편집/삭제 above the bottom navigation even with long content. Link clips add a remote metadata preview image and a collapsed-by-default 링크 정보 section (4-line summary, 자세히 보기 expansion with per-value 5-line caps, explicit re-analysis).
 - Folder list with flat rows and active-only counts, using `전체`, second-row `기본 폴더`, rename-oriented `폴더 1` through `폴더 5`, and a reserved `휴지통`. Deleted clips can be restored or permanently emptied; items older than 30 days are purged on launch.
 - Search with the shared 5x2 category selector, persisted real recent searches, results, and empty state. The keyboard opens only from a direct field tap and dismisses on outside taps or tab switches; synthetic launch-time prewarming was removed after runtime log diagnosis.
 - Sort Later classification flow without scores or percentages.
@@ -18,6 +18,7 @@ Implemented screens:
 
 ## Completed Work
 
+- Added type-aware detail copy, long-content bottom clearance, and standard bottom-tab reselection behavior that pops only the current tab's navigation path to its root. Audited interactive SwiftUI surfaces for nested/overlapping targets and retained the sibling card/menu layout plus 44pt-or-larger control contract.
 - Set the first public App Store version to `1.0.0 (1)` and made the Settings version label read `CFBundleShortVersionString` from the built bundle.
 - Connected the published Notion Support, Privacy Policy, and Terms of Use pages to localized rows in Settings and replaced the release-metadata URL placeholders with their final HTTPS values.
 - Locked the first release to iPhone, migrated the app/extension/test/App Group namespace to `app.eiradev.ClipInbox`, replaced the support contact with `eiradev000@gmail.com`, prepared trilingual Notion copy for Terms, Support, and Privacy, versioned only the final ASO output and raw simulator sources, and retired the unused GitHub Actions workflow while preserving the local release gate.

@@ -27,22 +27,49 @@ enum AppTab: String, CaseIterable, Identifiable {
     }
 }
 
+struct TabNavigationState: Equatable {
+    var inbox: [Route] = []
+    var folders: [Route] = []
+    var search: [Route] = []
+    var settings: [Route] = []
+
+    mutating func reset(_ tab: AppTab) {
+        switch tab {
+        case .inbox: inbox.removeAll()
+        case .folders: folders.removeAll()
+        case .search: search.removeAll()
+        case .settings: settings.removeAll()
+        case .add: break
+        }
+    }
+}
+
 struct RootView: View {
     @Environment(AppStore.self) private var store
     @Environment(AppLockController.self) private var lock
     @State private var selectedTab: AppTab = .inbox
+    @State private var navigation = TabNavigationState()
     @State private var keyboardVisible = false
     @State private var showOnboarding = false
     @AppStorage("clip-inbox-onboarding-completed-v1") private var onboardingCompleted = false
 
     init() {
+        var initialTab = AppTab.inbox
+        var initialNavigation = TabNavigationState()
         #if DEBUG
         if ProcessInfo.processInfo.environment["CLIP_INBOX_ASO_CAPTURE"] == "1",
            let rawTab = ProcessInfo.processInfo.environment["CLIP_INBOX_ASO_TAB"],
            let tab = AppTab(rawValue: rawTab) {
-            _selectedTab = State(initialValue: tab)
+            initialTab = tab
+        }
+        if ProcessInfo.processInfo.environment["CLIP_INBOX_ASO_CAPTURE"] == "1",
+           let rawID = ProcessInfo.processInfo.environment["CLIP_INBOX_ASO_DETAIL_CLIP_ID"],
+           let clipID = Int(rawID) {
+            initialNavigation.inbox = [.detail(clipID)]
         }
         #endif
+        _selectedTab = State(initialValue: initialTab)
+        _navigation = State(initialValue: initialNavigation)
     }
 
     var body: some View {
@@ -51,18 +78,18 @@ struct RootView: View {
                 LibraryBootstrapGate(state: store.bootstrapState)
             } else {
                 switch selectedTab {
-                case .inbox: InboxTab(selectedTab: $selectedTab)
-                case .folders: FoldersTab()
+                case .inbox: InboxTab(selectedTab: $selectedTab, path: $navigation.inbox)
+                case .folders: FoldersTab(path: $navigation.folders)
                 case .add: AddClipView()
-                case .search: SearchView()
-                case .settings: SettingsTab()
+                case .search: SearchView(path: $navigation.search)
+                case .settings: SettingsTab(path: $navigation.settings)
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !keyboardVisible && !store.bootstrapState.blocksLibrary {
-                BottomNavBar(selected: $selectedTab)
+                BottomNavBar(selected: selectedTab, onSelect: selectTab)
                     .transition(.identity)
             }
         }
@@ -131,6 +158,15 @@ struct RootView: View {
         }
         .onAppear {
             if !onboardingCompleted { showOnboarding = true }
+        }
+    }
+
+    private func selectTab(_ tab: AppTab) {
+        Keyboard.dismiss()
+        if selectedTab == tab {
+            navigation.reset(tab)
+        } else {
+            selectedTab = tab
         }
     }
 }
@@ -245,16 +281,14 @@ private struct LibraryBootstrapGate: View {
 
 private struct BottomNavBar: View {
     @Environment(\.locale) private var locale
-    @Binding var selected: AppTab
+    let selected: AppTab
+    let onSelect: (AppTab) -> Void
 
     var body: some View {
         HStack(spacing: 0) {
             ForEach(AppTab.allCases) { tab in
                 Button {
-                    guard selected != tab else { return }
-                    // 키보드는 입력 필드를 직접 탭했을 때만 올라온다. 탭 전환은 항상 내린다.
-                    Keyboard.dismiss()
-                    selected = tab
+                    onSelect(tab)
                 } label: {
                     VStack(spacing: 4) {
                         Image(systemName: tab.systemImage)
@@ -332,19 +366,7 @@ struct ScreenHeader<Trailing: View>: View {
 
 struct InboxTab: View {
     @Binding var selectedTab: AppTab
-    @State private var path: [Route] = []
-
-    init(selectedTab: Binding<AppTab>) {
-        _selectedTab = selectedTab
-        #if DEBUG
-        // ASO/검증 캡처 전용: 지정한 클립 상세를 초기 화면으로 연다.
-        if ProcessInfo.processInfo.environment["CLIP_INBOX_ASO_CAPTURE"] == "1",
-           let rawID = ProcessInfo.processInfo.environment["CLIP_INBOX_ASO_DETAIL_CLIP_ID"],
-           let clipID = Int(rawID) {
-            _path = State(initialValue: [.detail(clipID)])
-        }
-        #endif
-    }
+    @Binding var path: [Route]
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -360,8 +382,10 @@ struct InboxTab: View {
 }
 
 struct FoldersTab: View {
+    @Binding var path: [Route]
+
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             FoldersView()
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: Route.self) { route in
@@ -374,8 +398,10 @@ struct FoldersTab: View {
 }
 
 struct SettingsTab: View {
+    @Binding var path: [Route]
+
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             SettingsView()
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: Route.self) { route in

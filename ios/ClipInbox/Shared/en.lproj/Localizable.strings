@@ -105,6 +105,7 @@
 "이 클립에 대한 메모를 입력하세요" = "Add a note about this clip";
 "정리" = "Organize";
 "링크 열기" = "Open link";
+"복사하기" = "Copy";
 "링크 열기 방식" = "Open links";
 "바로 열기" = "Open immediately";
 "열기 전 확인" = "Ask before opening";
@@ -210,6 +211,8 @@
 "노트를 저장했습니다" = "Saved the note";
 "로컬 데이터를 삭제했습니다" = "Deleted local data";
 "링크를 복사했습니다" = "Copied the link";
+"이미지를 복사했습니다" = "Copied the image";
+"이미지를 복사할 수 없습니다" = "Couldn't copy the image";
 "문의 이메일을 복사했습니다" = "Copied the support email";
 "백업 파일은 5MB 이하여야 합니다." = "The backup file must be 5 MB or smaller.";
 "백업 파일을 만들지 못했습니다." = "Couldn't create the backup file.";

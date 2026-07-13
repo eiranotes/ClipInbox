@@ -1,4 +1,19 @@
 import SwiftUI
+import UIKit
+
+enum ClipDetailCopyKind: Equatable {
+    case link
+    case image
+
+    static func resolve(for clip: Clip) -> Self? {
+        switch clip.type {
+        case .image, .screenshot:
+            return clip.hasImageReference ? .image : nil
+        case .link, .memo:
+            return clip.url.isEmpty ? nil : .link
+        }
+    }
+}
 
 struct DetailView: View {
     @Environment(AppStore.self) private var store
@@ -24,7 +39,7 @@ struct DetailView: View {
 
     var body: some View {
         if let clip = store.clip(id: clipID) {
-            ScreenScaffold {
+            ScreenScaffold(additionalBottomPadding: Tokens.bottomNavigationClearance) {
                 ScreenHeader("클립 상세", onBack: { dismiss() }) {
                     UtilityIconButton(label: "북마크", systemImage: clip.bookmarked ? "bookmark.fill" : "bookmark",
                                       isOn: clip.bookmarked) {
@@ -94,15 +109,28 @@ struct DetailView: View {
 
                 MetadataDetailSectionsView(clip: clip)
 
-                // 링크 열기는 첫 뷰포트에서 스크롤 없이 보이도록 링크 정보 바로 아래에 두고,
-                // URL이 없는 클립에서는 비활성 자리표시자 대신 아예 표시하지 않는다.
-                if !clip.url.isEmpty {
-                    Button {
-                        openLink(clip)
-                    } label: {
-                        Label("링크 열기", systemImage: "arrow.up.right.square")
+                // 원본으로 이동하거나 클립 유형에 맞는 내용을 복사하는 핵심 액션.
+                // 링크 썸네일은 이미지 클립으로 취급하지 않고 URL을 복사한다.
+                if !clip.url.isEmpty || ClipDetailCopyKind.resolve(for: clip) != nil {
+                    VStack(spacing: Tokens.rowGap) {
+                        if !clip.url.isEmpty {
+                            Button {
+                                openLink(clip)
+                            } label: {
+                                Label("링크 열기", systemImage: "arrow.up.right.square")
+                            }
+                            .buttonStyle(PrimaryBoxButtonStyle())
+                        }
+
+                        if let copyKind = ClipDetailCopyKind.resolve(for: clip) {
+                            Button {
+                                copy(clip, as: copyKind)
+                            } label: {
+                                Label("복사하기", systemImage: "doc.on.doc")
+                            }
+                            .buttonStyle(SecondaryBoxButtonStyle())
+                        }
                     }
-                    .buttonStyle(PrimaryBoxButtonStyle())
                 }
 
                 VStack(alignment: .leading, spacing: Tokens.rowGap) {
@@ -118,30 +146,29 @@ struct DetailView: View {
                             .disabled(!noteDirty)
                     }
 
-                    ZStack(alignment: .topLeading) {
-                        TextEditor(text: $noteDraft)
-                            .font(Tokens.body)
-                            .lineSpacing(Tokens.bodyLineSpacing)
-                            .scrollContentBackground(.hidden)
-                            .padding(Tokens.rowGap)
-                            .frame(minHeight: dynamicTypeSize.isAccessibilitySize
-                                   ? Tokens.noteEditorMinHeight * 2
-                                   : Tokens.noteEditorMinHeight)
-                            .background(Tokens.bgCard)
-                            .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusInput, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: Tokens.radiusInput, style: .continuous)
-                                    .strokeBorder(Tokens.borderSoft, lineWidth: Tokens.borderChipWidth)
-                            )
-                        if noteDraft.isEmpty {
-                            Text("이 클립에 대한 메모를 입력하세요")
-                                .font(Tokens.body)
-                                .foregroundStyle(Tokens.textTertiary)
-                                .padding(.horizontal, Tokens.panelPad)
-                                .padding(.vertical, Tokens.cardPad + Tokens.space1)
-                                .allowsHitTesting(false)
-                        }
-                    }
+                    TextField(
+                        "",
+                        text: $noteDraft,
+                        prompt: Text(L10n.text("이 클립에 대한 메모를 입력하세요", locale: locale))
+                            .foregroundStyle(Tokens.textTertiary),
+                        axis: .vertical
+                    )
+                    .font(Tokens.body)
+                    .lineSpacing(Tokens.bodyLineSpacing)
+                    .lineLimit(3...)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(Tokens.rowGap)
+                    .frame(maxWidth: .infinity,
+                           minHeight: dynamicTypeSize.isAccessibilitySize
+                               ? Tokens.noteEditorMinHeight * 2
+                               : Tokens.noteEditorMinHeight,
+                           alignment: .topLeading)
+                    .background(Tokens.bgCard)
+                    .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusInput, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Tokens.radiusInput, style: .continuous)
+                            .strokeBorder(Tokens.borderSoft, lineWidth: Tokens.borderChipWidth)
+                    )
                 }
 
                 VStack(alignment: .leading, spacing: 0) {
@@ -246,6 +273,21 @@ struct DetailView: View {
         } else {
             openURL(url)
             store.showToast("브라우저에서 원본 열기를 요청했습니다")
+        }
+    }
+
+    private func copy(_ clip: Clip, as kind: ClipDetailCopyKind) {
+        switch kind {
+        case .link:
+            UIPasteboard.general.string = clip.url
+            store.showToast("링크를 복사했습니다")
+        case .image:
+            guard let image = ClipImageResolver.originalImage(for: clip) else {
+                store.showToast("이미지를 복사할 수 없습니다")
+                return
+            }
+            UIPasteboard.general.image = image
+            store.showToast("이미지를 복사했습니다")
         }
     }
 

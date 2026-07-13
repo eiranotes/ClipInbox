@@ -517,14 +517,18 @@ struct ClipThumbnail: View {
 }
 
 enum ClipImageResolver {
-    static func image(for clip: Clip) -> UIImage {
+    static func originalImage(for clip: Clip) -> UIImage? {
         if let url = clip.sharedImageURL, let uiImage = SharedImageCache.image(at: url) {
             return uiImage
         }
         if let asset = clip.imageAssetName, let uiImage = UIImage(named: asset) {
             return uiImage
         }
-        return UIImage(named: "clip-image-fallback") ?? UIImage()
+        return nil
+    }
+
+    static func image(for clip: Clip) -> UIImage {
+        originalImage(for: clip) ?? UIImage(named: "clip-image-fallback") ?? UIImage()
     }
 }
 

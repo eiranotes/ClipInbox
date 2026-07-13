@@ -511,3 +511,11 @@ Decision: Present both Quick and Review Share modes with `.overFullScreen` and c
 Why: The form-sheet presentation added an unrelated black canvas behind the folder selector and made the extension feel like a full-screen destination. Share review is a short capture checkpoint, so the host app should remain visible and only the actionable panel should occupy attention.
 
 Impact: Folder selection stays in the middle of the screen, the optional memo editor is 64pt high, primary controls are 44pt high, and visible copy uses the existing 12–16pt token scale. Quick save behavior and queue semantics are unchanged.
+
+## 2026-07-13: Detail Copy Follows Clip Type and Tab Reselection Pops to Root
+
+Decision: Show one `복사하기` action in detail. Link clips copy their URL even when they display a representative thumbnail; image and screenshot clips copy the locally stored original raster. Keep one navigation path per bottom tab and clear only the current path when its already-selected tab is tapped again.
+
+Why: A metadata thumbnail does not change a link clip into an image payload, and users expect an already-selected tab to act as a predictable shortcut back to that section's main screen. Keeping the paths separate prevents one tab's reset from changing another tab's navigation state.
+
+Impact: Long detail content gets explicit bottom-navigation clearance, and the note input grows with its text instead of owning a nested vertical scroll region that can capture the parent screen's swipe. All new actions retain the shared 52pt button style, and the existing sibling clip-row/menu hit regions remain unchanged. Broken image references report a copy failure instead of placing the generated fallback artwork on the pasteboard.

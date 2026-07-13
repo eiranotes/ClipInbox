@@ -2,6 +2,7 @@
 
 ## Done
 
+- [x] Add detail `복사하기` for URL/image payloads, guarantee bottom-action scroll clearance, pop a reselected bottom tab to its root, and audit interactive targets for overlap risk.
 - [x] Set the first public release to `MARKETING_VERSION 1.0.0` with build `1`, and derive the Settings version label from the app bundle.
 - [x] Publish the Notion Terms, Support, and Privacy pages, replace metadata placeholders with their final HTTPS URLs, and expose all three links in the localized Settings screen.
 - [x] Make the first release iPhone-only, migrate all signing/App Group identifiers to the `app.eiradev.ClipInbox` namespace, and keep Team `83BB7YWQHU` unchanged.

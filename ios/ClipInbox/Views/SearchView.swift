@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SearchView: View {
     @Environment(AppStore.self) private var store
+    @Binding private var path: [Route]
     @State private var query = ""
     @State private var settledQuery = ""
     @State private var searchFilter = "전체"
@@ -10,7 +11,8 @@ struct SearchView: View {
     private let filters = ["전체", "링크", "메모", "이미지", "스크린샷", "태그"]
         + DefaultData.filterTags
 
-    init() {
+    init(path: Binding<[Route]>) {
+        _path = path
         #if DEBUG
         if ProcessInfo.processInfo.environment["CLIP_INBOX_ASO_CAPTURE"] == "1",
            let initialQuery = ProcessInfo.processInfo.environment["CLIP_INBOX_ASO_SEARCH_QUERY"] {
@@ -21,7 +23,7 @@ struct SearchView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             content
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: Route.self) { route in

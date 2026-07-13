@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased - 2026-07-13
+
+### Added
+
+- Clip detail now shows `복사하기`: link clips copy the saved URL, while image and screenshot clips copy the locally stored original image. Copy success and failure feedback is localized in Korean, English, and Japanese.
+
+### Changed
+
+- Tapping the already-selected bottom tab now returns that tab to its main screen without resetting another tab's navigation state.
+
+### Fixed
+
+- Long detail content can scroll past the 이동/편집/삭제 row with explicit bottom-navigation clearance, and its growing multiline note field no longer traps the parent screen's vertical swipe.
+- Audited SwiftUI touch regions keep card navigation and quick menus as sibling controls, full-row selectors use a rectangular content shape, and interactive controls retain a minimum 44pt target.
+
 ## Unreleased - 2026-07-12
 
 ### Added

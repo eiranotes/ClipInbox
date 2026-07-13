@@ -355,6 +355,43 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(reloaded.linkOpenMode, .confirm)
     }
 
+    func testDetailCopyKindUsesClipTypeInsteadOfThumbnailPresence() {
+        let linkWithThumbnail = Clip(
+            id: 101, type: .link, title: "Link", source: "example.com",
+            url: "https://example.com", time: "now", folder: "기본 폴더",
+            image: "/public/images/clip-beach.png"
+        )
+        let image = Clip(
+            id: 102, type: .image, title: "Image", source: "사진",
+            url: "", time: "now", folder: "기본 폴더",
+            image: "/public/images/clip-beach.png"
+        )
+        let missingImage = Clip(
+            id: 103, type: .screenshot, title: "Missing", source: "사진",
+            url: "", time: "now", folder: "기본 폴더"
+        )
+
+        XCTAssertEqual(ClipDetailCopyKind.resolve(for: linkWithThumbnail), .link)
+        XCTAssertEqual(ClipDetailCopyKind.resolve(for: image), .image)
+        XCTAssertNil(ClipDetailCopyKind.resolve(for: missingImage))
+    }
+
+    func testTabNavigationResetOnlyPopsSelectedTabToRoot() {
+        var navigation = TabNavigationState(
+            inbox: [.detail(1)],
+            folders: [.folderDetail("읽을거리")],
+            search: [.detail(2)],
+            settings: [.settingDetail(.about)]
+        )
+
+        navigation.reset(.folders)
+
+        XCTAssertEqual(navigation.inbox, [.detail(1)])
+        XCTAssertTrue(navigation.folders.isEmpty)
+        XCTAssertEqual(navigation.search, [.detail(2)])
+        XCTAssertEqual(navigation.settings, [.settingDetail(.about)])
+    }
+
     func testSharedImageAssetPreservesOriginalBytesFormatAndDimensions() throws {
         let sourceSize = CGSize(width: 2_400, height: 1_800)
         let format = UIGraphicsImageRendererFormat()
