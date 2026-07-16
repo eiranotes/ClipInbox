@@ -5,11 +5,8 @@ struct SearchView: View {
     @Binding private var path: [Route]
     @State private var query = ""
     @State private var settledQuery = ""
-    @State private var searchFilter = "전체"
+    @State private var searchFilter: InboxFilter = .all
     @FocusState private var searchFieldFocused: Bool
-
-    private let filters = ["전체", "링크", "메모", "이미지", "스크린샷", "태그"]
-        + DefaultData.filterTags
 
     init(path: Binding<[Route]>) {
         _path = path
@@ -55,9 +52,15 @@ struct SearchView: View {
             .frame(minHeight: Tokens.actionTarget)
             .tokenSurface(radius: Tokens.radiusInput)
 
-            TwoRowHorizontalSelection(items: filters.map { label in
-                (label, searchFilter == label, { searchFilter = label })
-            })
+            // 메인과 같은 정보 구조: 윗줄은 폴더, 아랫줄은 태그이며 각각 독립 스크롤한다.
+            TwoRowHorizontalSelection(
+                topRow: store.inboxFolderFilters.map { item in
+                    (store.filterLabel(item), searchFilter == item, { searchFilter = item })
+                },
+                bottomRow: store.inboxTagFilters.map { item in
+                    (store.filterLabel(item), searchFilter == item, { searchFilter = item })
+                }
+            )
 
             VStack(alignment: .leading, spacing: Tokens.rowGap) {
                 Text("최근 검색")
@@ -100,7 +103,6 @@ struct SearchView: View {
                 }
             }
 
-            Spacer(minLength: Tokens.bottomSafe - Tokens.sectionGap * 2)
         }
         .task(id: query) {
             guard query != settledQuery else { return }

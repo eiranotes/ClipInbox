@@ -37,6 +37,7 @@ final class PlatformAdapterTests: XCTestCase {
         XCTAssertTrue(result.summaryDetail?.value.contains("private-first iOS link inbox") == true)
 
         let card = PresentationBuilder().mainCard(from: result)
+        XCTAssertEqual(card.title, "eiranotes/ClipInbox")
         XCTAssertEqual(card.contentTypeLabel, "GitHub 저장소")
         XCTAssertTrue(card.subtitle.contains("Swift"))
         let details = PresentationBuilder().detailSections(from: result).flatMap(\.items)

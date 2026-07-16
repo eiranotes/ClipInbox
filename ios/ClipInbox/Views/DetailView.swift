@@ -59,7 +59,7 @@ struct DetailView: View {
                         TokenBadge(tone: .type(clip.type))
                         if let state = clip.state { TokenBadge(tone: .state(state)) }
                     }
-                    Text(L10n.text(metadata.cardPresentation(for: clip, locale: locale)?.title ?? clip.title, locale: locale))
+                    Text(L10n.text(metadata.cardTitle(for: clip, locale: locale), locale: locale))
                         .font(Tokens.sectionTitle)
                         .foregroundStyle(Tokens.textPrimary)
                         .lineSpacing(Tokens.titleLineSpacing)

@@ -53,10 +53,16 @@ final class URLMetadataCoordinator {
     func cardPresentation(for clip: Clip, locale: Locale = Locale(identifier: "ko")) -> MainCardPresentation? {
         guard let result = results[clip.id] else { return nil }
         var card = PresentationBuilder(language: .presentation(for: locale)).mainCard(from: result)
-        if !AppStore.isMetadataPlaceholderTitle(clip.title, url: clip.url) {
+        if let repository = AppStore.githubRepositoryTitle(for: clip.url) {
+            card.title = repository
+        } else if !AppStore.isMetadataPlaceholderTitle(clip.title, url: clip.url) {
             card.title = clip.title
         }
         return card
+    }
+
+    func cardTitle(for clip: Clip, locale: Locale = Locale(identifier: "ko")) -> String {
+        cardPresentation(for: clip, locale: locale)?.title ?? clip.presentationTitle
     }
 
     /// 메인 카드 보조 줄: 결정적 짧은 요약을 우선하고, 없으면 카드 부제로 대체한다.

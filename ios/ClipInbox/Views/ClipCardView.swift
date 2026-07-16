@@ -16,7 +16,7 @@ struct ClipCardView: View {
                 navigationContent
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(L10n.format("format.clip_detail_accessibility", L10n.text(metadata.cardPresentation(for: clip, locale: locale)?.title ?? clip.title, locale: locale)))
+            .accessibilityLabel(L10n.format("format.clip_detail_accessibility", L10n.text(metadata.cardTitle(for: clip, locale: locale), locale: locale)))
 
             Button(action: onMenu) {
                 Image(systemName: "ellipsis")
@@ -26,7 +26,7 @@ struct ClipCardView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(L10n.format("format.clip_menu_accessibility", L10n.text(metadata.cardPresentation(for: clip, locale: locale)?.title ?? clip.title, locale: locale)))
+            .accessibilityLabel(L10n.format("format.clip_menu_accessibility", L10n.text(metadata.cardTitle(for: clip, locale: locale), locale: locale)))
         }
         .padding(.vertical, Tokens.cardPad)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -38,7 +38,7 @@ struct ClipCardView: View {
     private var navigationContent: some View {
         HStack(alignment: .center, spacing: Tokens.cardGap) {
             VStack(alignment: .leading, spacing: Tokens.space1) {
-                Text(L10n.text(metadata.cardPresentation(for: clip, locale: locale)?.title ?? clip.title, locale: locale))
+                Text(L10n.text(metadata.cardTitle(for: clip, locale: locale), locale: locale))
                     .font(Tokens.cardTitle)
                     .foregroundStyle(Tokens.textPrimary)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
@@ -56,6 +56,10 @@ struct ClipCardView: View {
                     .fixedSize()
             } else if let thumbnailURL = metadata.cardPresentation(for: clip, locale: locale)?.thumbnailURL.flatMap(URL.init(string:)) {
                 MetadataRemoteImage(url: thumbnailURL)
+                    .frame(width: Tokens.clipThumbnailWidth, height: Tokens.clipThumbnailHeight)
+                    .fixedSize()
+            } else if clip.type == .link, metadata.result(for: clip.id) == nil {
+                MetadataThumbnailPlaceholder(isLoading: metadata.isAnalyzing(clip.id))
                     .frame(width: Tokens.clipThumbnailWidth, height: Tokens.clipThumbnailHeight)
                     .fixedSize()
             }
@@ -82,7 +86,7 @@ struct CompactResultRow: View {
         NavigationLink(value: Route.detail(clip.id)) {
             HStack(alignment: .center, spacing: Tokens.cardGap) {
                 VStack(alignment: .leading, spacing: Tokens.space1) {
-                    Text(L10n.text(metadata.cardPresentation(for: clip, locale: locale)?.title ?? clip.title, locale: locale))
+                    Text(L10n.text(metadata.cardTitle(for: clip, locale: locale), locale: locale))
                         .font(Tokens.bodySemibold)
                         .foregroundStyle(Tokens.textPrimary)
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
@@ -97,6 +101,9 @@ struct CompactResultRow: View {
                         .frame(width: Tokens.resultThumbnailWidth, height: Tokens.resultThumbnailHeight)
                 } else if let thumbnailURL = metadata.cardPresentation(for: clip, locale: locale)?.thumbnailURL.flatMap(URL.init(string:)) {
                     MetadataRemoteImage(url: thumbnailURL)
+                        .frame(width: Tokens.resultThumbnailWidth, height: Tokens.resultThumbnailHeight)
+                } else if clip.type == .link, metadata.result(for: clip.id) == nil {
+                    MetadataThumbnailPlaceholder(isLoading: metadata.isAnalyzing(clip.id))
                         .frame(width: Tokens.resultThumbnailWidth, height: Tokens.resultThumbnailHeight)
                 }
             }

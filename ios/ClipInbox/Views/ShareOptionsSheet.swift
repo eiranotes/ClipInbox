@@ -22,7 +22,7 @@ struct ShareOptionsSheet: View {
                                 .frame(width: Tokens.resultThumbnailWidth, height: Tokens.resultThumbnailHeight)
                         }
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(L10n.text(clip.title, locale: locale))
+                            Text(L10n.text(clip.presentationTitle, locale: locale))
                                 .font(Tokens.bodyBold)
                                 .foregroundStyle(Tokens.textPrimary)
                                 .lineLimit(2)
@@ -51,7 +51,7 @@ struct ShareOptionsSheet: View {
 
                         if let cardImage {
                             ShareLink(item: cardImage,
-                                      preview: SharePreview(clip.title, image: cardImage)) {
+                                      preview: SharePreview(clip.presentationTitle, image: cardImage)) {
                                 shareRowLabel(systemImage: "photo", label: "이미지 카드 공유",
                                               value: "썸네일 포함 PNG 카드 전송")
                             }
@@ -77,7 +77,7 @@ struct ShareOptionsSheet: View {
     }
 
     private func shareText(_ clip: Clip) -> String {
-        [clip.title, clip.memo ?? clip.description, clip.url]
+        [clip.presentationTitle, clip.memo ?? clip.description, clip.url]
             .filter { !$0.isEmpty }
             .joined(separator: "\n")
     }
@@ -127,7 +127,7 @@ struct ShareCardView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
                     .tokenSurface(fill: Tokens.accentYellow, radius: Tokens.radiusChip)
-                Text(clip.title)
+                Text(clip.presentationTitle)
                     .font(Tokens.previewTitle)
                     .foregroundStyle(Tokens.textPrimary)
                     .lineLimit(3)

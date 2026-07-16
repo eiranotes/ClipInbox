@@ -57,7 +57,7 @@ struct SortView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: Tokens.detailImageHeight)
             }
-            Text(L10n.text(clip.title, locale: locale))
+            Text(L10n.text(clip.presentationTitle, locale: locale))
                 .font(Tokens.sectionTitle)
                 .foregroundStyle(Tokens.textPrimary)
                 .lineSpacing(Tokens.titleLineSpacing)

@@ -250,7 +250,7 @@ final class AppStore {
                         case .image: return .image
                         }
                     }(),
-                    state: .new,
+                    state: .unsorted,
                     title: Self.cleanText(payload.title, fallback: titleFallback),
                     source: source,
                     url: safeURL,
@@ -354,14 +354,17 @@ final class AppStore {
             clip.title = cleanText(clip.title, fallback: "제목 없는 클립")
             clip.source = cleanText(clip.source, fallback: "출처 없음", maxLength: 120)
             clip.url = safeExternalURL(clip.url)
-            clip.folder = cleanText(clip.folder, fallback: "기본 폴더", maxLength: 40)
+            if let repository = githubRepositoryTitle(for: clip.url) {
+                clip.title = repository
+            }
+            clip.folder = cleanText(clip.folder, fallback: "인박스", maxLength: 40)
             clip.time = cleanText(clip.time, fallback: "저장됨", maxLength: 40)
             clip.description = cleanText(clip.description, maxLength: 500)
             clip.memo = clip.memo.map { cleanText($0, maxLength: 1000) }
             clip.image = safeImagePath(clip.image)
             clip.sharedImageName = safeSharedImageName(clip.sharedImageName)
             clip.tags = Array(clip.tags.map { cleanText($0, maxLength: 50) }.filter { !$0.isEmpty }.prefix(12))
-            clip.folderSuggestions = Array(clip.folderSuggestions.map { cleanText($0, maxLength: 40) }.filter { !$0.isEmpty }.prefix(8))
+            clip.folderSuggestions = normalizeFolderSuggestions(clip.folderSuggestions)
             safeClips.append(clip)
         }
 
@@ -394,10 +397,53 @@ final class AppStore {
         if !safeFolders.contains(where: { $0.icon == "archive" }) {
             safeFolders.insert(Folder(icon: "archive", label: "전체"), at: 0)
         }
-        if !safeFolders.contains(where: { $0.icon == "inbox" }) {
-            safeFolders.insert(Folder(icon: "inbox", label: "기본 폴더"), at: min(1, safeFolders.count))
+        var migratedLegacyInbox = false
+        var renamedInboxConflict: (original: String, replacement: String)?
+        if let legacyInboxIndex = safeFolders.firstIndex(where: {
+            $0.icon == "inbox" && $0.label == "기본 폴더"
+        }) {
+            if let conflictIndex = safeFolders.indices.first(where: {
+                $0 != legacyInboxIndex
+                    && safeFolders[$0].label.caseInsensitiveCompare("인박스") == .orderedSame
+            }) {
+                let original = safeFolders[conflictIndex].label
+                var replacement = "인박스 보관함"
+                var suffix = 2
+                while safeFolders.contains(where: {
+                    $0.label.caseInsensitiveCompare(replacement) == .orderedSame
+                }) {
+                    replacement = "인박스 보관함 \(suffix)"
+                    suffix += 1
+                }
+                safeFolders[conflictIndex].label = replacement
+                renamedInboxConflict = (original, replacement)
+                for index in safeClips.indices {
+                    if safeClips[index].folder.caseInsensitiveCompare(original) == .orderedSame {
+                        safeClips[index].folder = replacement
+                    }
+                    safeClips[index].folderSuggestions = normalizeFolderSuggestions(
+                        safeClips[index].folderSuggestions.map {
+                            $0.caseInsensitiveCompare(original) == .orderedSame ? replacement : $0
+                        }
+                    )
+                }
+            }
+            safeFolders[legacyInboxIndex].label = "인박스"
+            migratedLegacyInbox = true
+            for index in safeClips.indices {
+                if safeClips[index].folder == "기본 폴더" {
+                    safeClips[index].folder = "인박스"
+                    safeClips[index].state = .unsorted
+                }
+                safeClips[index].folderSuggestions = normalizeFolderSuggestions(
+                    safeClips[index].folderSuggestions.map { $0 == "기본 폴더" ? "인박스" : $0 }
+                )
+            }
         }
-        let inboxLabel = safeFolders.first(where: { $0.icon == "inbox" })?.label ?? "기본 폴더"
+        if !safeFolders.contains(where: { $0.icon == "inbox" }) {
+            safeFolders.insert(Folder(icon: "inbox", label: "인박스"), at: min(1, safeFolders.count))
+        }
+        let inboxLabel = safeFolders.first(where: { $0.icon == "inbox" })?.label ?? "인박스"
         let aggregateLabels = Set(
             safeFolders.filter { $0.icon == "archive" }.map { $0.label.lowercased() }
         )
@@ -414,6 +460,13 @@ final class AppStore {
         safeFolders.append(Folder(icon: "trash", label: "휴지통"))
 
         var preferences = input.preferences
+        if let renamedInboxConflict,
+           preferences.defaultFolder.caseInsensitiveCompare(renamedInboxConflict.original) == .orderedSame {
+            preferences.defaultFolder = renamedInboxConflict.replacement
+        }
+        if migratedLegacyInbox, preferences.defaultFolder == "기본 폴더" {
+            preferences.defaultFolder = inboxLabel
+        }
         if !["켬", "끔"].contains(preferences.appLock) { preferences.appLock = Preferences.standard.appLock }
         if !["라이트", "다크", "시스템 설정"].contains(preferences.theme) { preferences.theme = Preferences.standard.theme }
         if !AppLanguage.allCases.map(\.rawValue).contains(preferences.language) {
@@ -503,19 +556,24 @@ final class AppStore {
 
     var unsortedClips: [Clip] { activeClips.filter { $0.state == .unsorted } }
 
-    func searchResults(query: String, filter: String) -> [Clip] {
+    func searchResults(query: String, filter: InboxFilter) -> [Clip] {
         let term = query.trimmingCharacters(in: .whitespaces).lowercased()
-        let base: [Clip] = term.isEmpty
-            ? Array(activeClips.prefix(3))
+        let matches = term.isEmpty
+            ? activeClips
             : activeClips.filter { clip in
                 [clip.title, clip.source, clip.tags.joined(separator: " "), clip.description, clip.memo ?? ""]
                     .joined(separator: " ").lowercased().contains(term)
             }
-        if filter == "전체" { return base }
-        if filter == "태그" {
-            return term.isEmpty ? base : base.filter { $0.tags.joined(separator: " ").lowercased().contains(term) }
+        let scoped: [Clip]
+        switch filter {
+        case .all:
+            scoped = matches
+        case .folder(let label):
+            scoped = matches.filter { $0.folder == label }
+        case .tag(let tag):
+            scoped = matches.filter { $0.tags.contains(tag) }
         }
-        return base.filter { $0.type.label == filter || $0.tags.contains(filter) }
+        return term.isEmpty ? Array(scoped.prefix(3)) : scoped
     }
 
     static func normalizeRecentSearches(_ values: [String]) -> [String] {
@@ -539,6 +597,19 @@ final class AppStore {
             let key = clean.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
             guard !clean.isEmpty, seen.insert(key).inserted else { continue }
             normalized.append(clean)
+        }
+        return normalized
+    }
+
+    static func normalizeFolderSuggestions(_ values: [String]) -> [String] {
+        var seen = Set<String>()
+        var normalized: [String] = []
+        for value in values {
+            let clean = cleanText(value, maxLength: 40)
+            let key = clean.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            guard !clean.isEmpty, seen.insert(key).inserted else { continue }
+            normalized.append(clean)
+            if normalized.count == 8 { break }
         }
         return normalized
     }
@@ -606,7 +677,10 @@ final class AppStore {
 
     @discardableResult
     func moveClip(id: Int, to folder: String) -> Bool {
-        guard mutate(id: id, { $0.folder = folder }) else { return false }
+        guard mutate(id: id, {
+            $0.folder = folder
+            $0.state = nil
+        }) else { return false }
         showToast(L10n.format("format.moved_to_folder", L10n.text(folder)))
         return true
     }
@@ -822,7 +896,7 @@ final class AppStore {
             imageAsset.cleanupSourceIfNeeded()
         }
 
-        let clip = Clip(id: id, type: clipType, state: .new,
+        let clip = Clip(id: id, type: clipType, state: .unsorted,
                         title: finalTitle, source: source, url: safeURL,
                         time: "방금 전", folder: cleanDestination,
                         tags: cleanTags, folderSuggestions: [cleanDestination],
@@ -944,6 +1018,37 @@ final class AppStore {
         }) else { throw StoreError.message(storageFailureMessage) }
         showToast("폴더 이름을 변경했습니다")
         return clean
+    }
+
+    /// 폴더 관리에서 일반 폴더를 제거한다. 안의 클립과 기본 폴더 설정은 인박스로 안전하게 되돌린다.
+    @discardableResult
+    func deleteFolder(_ label: String) throws -> Bool {
+        guard let folder = folders.first(where: { $0.label == label }) else {
+            throw StoreError.message("폴더를 찾을 수 없습니다.")
+        }
+        guard folder.icon != "archive", folder.icon != "inbox", folder.icon != "trash" else {
+            throw StoreError.message("기본 폴더는 삭제할 수 없습니다.")
+        }
+        let inboxLabel = folders.first(where: { $0.icon == "inbox" })?.label ?? "인박스"
+        guard commitMutation({
+            folders.removeAll { $0.label == label }
+            for index in clips.indices {
+                if clips[index].folder == label {
+                    clips[index].folder = inboxLabel
+                    clips[index].state = .unsorted
+                }
+                clips[index].folderSuggestions = Self.normalizeFolderSuggestions(
+                    clips[index].folderSuggestions.map { $0 == label ? inboxLabel : $0 }
+                )
+            }
+            if preferences.defaultFolder == label {
+                preferences.defaultFolder = inboxLabel
+            }
+        }) else {
+            throw StoreError.message(storageFailureMessage)
+        }
+        showToast("폴더를 삭제했습니다")
+        return true
     }
 
     /// 분류하기: 첫 미정리 클립을 지정 폴더로 옮기고 state를 해제한다.

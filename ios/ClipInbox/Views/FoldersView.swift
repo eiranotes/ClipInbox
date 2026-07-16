@@ -105,7 +105,7 @@ private struct TrashClipRow: View {
                            height: Tokens.resultThumbnailHeight)
             }
             VStack(alignment: .leading, spacing: Tokens.space1) {
-                Text(clip.title)
+                Text(clip.presentationTitle)
                     .font(Tokens.bodySemibold)
                     .foregroundStyle(Tokens.textPrimary)
                     .lineLimit(1)

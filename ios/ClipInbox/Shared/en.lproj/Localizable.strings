@@ -406,3 +406,10 @@
 "앱 분류" = "App Topics";
 "수집 상태" = "Collection Status";
 "형식" = "Format";
+"폴더 관리" = "Manage Folders";
+"폴더 추가" = "Add folder";
+"폴더 목록" = "Folders";
+"폴더 삭제" = "Delete folder";
+"폴더를 삭제했습니다" = "Folder deleted";
+"기본 폴더는 삭제할 수 없습니다." = "The Inbox folder cannot be deleted.";
+"이 폴더의 클립은 인박스로 이동하고 미정리 상태가 됩니다." = "Clips in this folder will move to Inbox and become unsorted.";

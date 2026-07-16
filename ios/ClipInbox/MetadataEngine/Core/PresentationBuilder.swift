@@ -16,7 +16,10 @@ public struct PresentationBuilder: Sendable {
     }
 
     public func mainCard(from result: LinkMetadataResult) -> MainCardPresentation {
-        let title = result.title?.value ?? URL(string: result.bestOpenURL).map(HTMLTools.domainDisplayName) ?? result.bestOpenURL
+        let title = githubRepositoryTitle(result)
+            ?? result.title?.value
+            ?? URL(string: result.bestOpenURL).map(HTMLTools.domainDisplayName)
+            ?? result.bestOpenURL
         let typeLabel = localizedType(result.contentType, subtype: result.contentSubtype)
         var components: [String] = []
         if let creator = result.creator?.value { components.append(creator) }
@@ -121,6 +124,22 @@ public struct PresentationBuilder: Sendable {
         if let duration = result.durationSeconds?.value { return formatDuration(duration) }
         if let reading = result.readingMinutes?.value { return formatMinutes(reading) }
         return nil
+    }
+
+    /// GitHub 저장소 페이지는 문서 설명이 붙은 HTML 제목 대신 스캔하기 쉬운 owner/repository만 쓴다.
+    private func githubRepositoryTitle(_ result: LinkMetadataResult) -> String? {
+        guard result.platform.caseInsensitiveCompare("GitHub") == .orderedSame,
+              result.contentSubtype?.caseInsensitiveCompare("repository") == .orderedSame else {
+            return nil
+        }
+        if let fullName = display(result.attributes["repositoryFullName"]?.value) {
+            return fullName.replacingOccurrences(of: " / ", with: "/")
+        }
+        guard let owner = display(result.attributes["owner"]?.value),
+              let repository = display(result.attributes["repository"]?.value) else {
+            return nil
+        }
+        return "\(owner)/\(repository)"
     }
 
     private func localizedType(_ type: String, subtype: String?) -> String {

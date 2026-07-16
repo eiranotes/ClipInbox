@@ -2,7 +2,9 @@
 
 ## Done
 
+- [x] Rename the system default folder to `인박스`, preserve unorganized capture state until an explicit move, add Settings folder management, split Search into independent folder/tag rows, clean GitHub repository titles, reserve async thumbnail geometry, and restore Inbox bottom clearance.
 - [x] Add detail `복사하기` for URL/image payloads, guarantee bottom-action scroll clearance, pop a reselected bottom tab to its root, and audit interactive targets for overlap risk.
+- [x] Normalize all 21 localized `final-aso` upload PNGs to opaque 8-bit sRGB 1284 x 2778, keep QA contact sheets outside the upload directory, and lock both ASO generators to that size.
 - [x] Set the first public release to `MARKETING_VERSION 1.0.0` with build `1`, and derive the Settings version label from the app bundle.
 - [x] Publish the Notion Terms, Support, and Privacy pages, replace metadata placeholders with their final HTTPS URLs, and expose all three links in the localized Settings screen.
 - [x] Make the first release iPhone-only, migrate all signing/App Group identifiers to the `app.eiradev.ClipInbox` namespace, and keep Team `83BB7YWQHU` unchanged.
@@ -12,7 +14,7 @@
 - [x] Add four real-simulator ASO proof frames per locale (save, note, link preview/open, folders) with phone chrome cropped, seeded notes/links, and live locale-language link summaries; refresh store descriptions with the link-preview feature.
 - [x] Localize metadata presentation strings (types, statuses, durations, section labels, dates) to English and Japanese via a language-aware `PresentationBuilder`, and hide the open-link action on URL-less clips instead of showing a disabled placeholder.
 - [x] Remove the black Review Share background, center the folder-and-memo panel on a transparent host, and reduce its typography and control density.
-- [x] Finalize the supplied ko-KR, en-US, and ja-JP ASO drafts as nine opaque sRGB 1320 x 2868 upload assets and validate localized metadata field budgets.
+- [x] Finalize the supplied ko-KR, en-US, and ja-JP ASO drafts as nine opaque sRGB upload assets and validate localized metadata field budgets.
 - [x] Redraw the app and Share Extension mark as a larger, thicker, deeper golden paperclip and generate a separate transparent paperclip-only lock/privacy asset.
 - [x] Give the Inbox folder row and tag row separate horizontal `ScrollView` state while preserving the shared five-column rhythm.
 - [x] Pass the simulator build and all 59 tests, then capture final Inbox, lock, icon, and multilingual ASO evidence.

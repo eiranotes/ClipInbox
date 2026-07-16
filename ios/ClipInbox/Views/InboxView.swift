@@ -11,7 +11,7 @@ struct InboxView: View {
     private var list: [Clip] { store.filteredClips(filter) }
 
     var body: some View {
-        ScreenScaffold {
+        ScreenScaffold(additionalBottomPadding: Tokens.bottomNavigationClearance) {
             ScreenHeader("클립 인박스", trailing: {
                 UtilityIconButton(label: "분류하기", systemImage: "arrow.up.arrow.down") {
                     showSortFlow = true
@@ -54,7 +54,6 @@ struct InboxView: View {
                 }
             }
 
-            Spacer(minLength: Tokens.bottomSafe - Tokens.sectionGap * 2)
         }
         .fullScreenCover(isPresented: $showSortFlow) {
             SortView()
@@ -129,7 +128,7 @@ struct CardActionsSheet: View {
                 ScreenHeader("카드 메뉴", onBack: { dismiss() })
 
                 BoardSection(title: "선택한 클립") {
-                    StatePanel(systemImage: clip.type.systemImage, title: clip.title, message: clip.source)
+                    StatePanel(systemImage: clip.type.systemImage, title: clip.presentationTitle, message: clip.source)
                 }
 
                 BoardSection(title: "클립 작업") {

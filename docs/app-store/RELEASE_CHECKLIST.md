@@ -55,10 +55,10 @@
 - Paste the three localized metadata sets from `ASO_COPY.md`.
 - Verify keyword byte counts in App Store Connect; Korean and Japanese are byte-limited.
 - Upload the finalized seven-frame set per localization. Put the strongest one to three first because they can appear in search results.
-- Use an accepted 6.9-inch screenshot size. Current accepted portrait sizes include 1260 x 2736, 1290 x 2796, and 1320 x 2868.
+- Use one of the release-approved portrait sizes: 1242 x 2688 or 1284 x 2778. This release uses 1284 x 2778.
 - Do not state prices in the description.
 - Do not put search keywords into promotional text merely for ranking.
-- Final Korean, English, and Japanese upload-ready screenshots are versioned in `docs/app-store/generated/final-aso/{ko-KR,en-US,ja-JP}/`: seven opaque sRGB 1320 x 2868 PNGs per locale. Their final simulator sources live in `final-aso-raw/`; intermediate generated candidates remain ignored.
+- Final Korean, English, and Japanese upload-ready screenshots are versioned in `docs/app-store/generated/final-aso/{ko-KR,en-US,ja-JP}/`: seven opaque 8-bit sRGB 1284 x 2778 PNGs per locale. Their final simulator sources live in `final-aso-raw/`; intermediate generated candidates and contact sheets remain outside the upload directory.
 
 ## Final binary checks
 

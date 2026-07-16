@@ -18,7 +18,10 @@ BUNDLE_ID="app.eiradev.ClipInbox"
 APP_PATH="${APP_PATH:?Set APP_PATH to a Debug-iphonesimulator ClipInbox.app}"
 OUTPUT="$ROOT/docs/app-store/generated/final-aso"
 RAW="$ROOT/docs/app-store/generated/final-aso-raw"
+CONTACT_SHEETS="$ROOT/docs/app-store/generated/final-aso-contact-sheets"
 LOCAL_CACHE="${LOCAL_CACHE:-$HOME/Library/Caches/ClipInbox-ASO-Features}"
+TARGET_WIDTH=1284
+TARGET_HEIGHT=2778
 
 # 시안(docs/app-store/ASO)에서 추출한 배경/잉크/포인트 색.
 BG="srgb(249,240,230)"
@@ -27,7 +30,8 @@ SUB="#3D3B36"
 LINE="#D8D1C4"
 YELLOW="#FFD900"
 
-mkdir -p "$RAW" "$LOCAL_CACHE"
+mkdir -p "$RAW" "$LOCAL_CACHE" "$CONTACT_SHEETS"
+rm -f "$OUTPUT"/contact-sheet-*.png
 
 if [[ ! -d "$APP_PATH" ]]; then
   echo "Missing simulator app at $APP_PATH" >&2
@@ -214,7 +218,11 @@ compose_frame() {
     -gravity none -fill "$YELLOW" -draw 'roundrectangle 450,640 870,660 10,10' \
     "$LOCAL_CACHE/body.png" -gravity north -geometry +0+716 -composite \
     -gravity none "$LOCAL_CACHE/screen-shadow.png" -geometry +86+940 -composite \
-    -alpha off -colorspace sRGB -strip "$out"
+    -alpha off -colorspace sRGB "$LOCAL_CACHE/frame-master.png"
+  magick "$LOCAL_CACHE/frame-master.png" \
+    -resize "${TARGET_WIDTH}x${TARGET_HEIGHT}^" \
+    -gravity center -extent "${TARGET_WIDTH}x${TARGET_HEIGHT}" \
+    -alpha off -colorspace sRGB -depth 8 -strip "$out"
 }
 
 compose_locale() {
@@ -226,7 +234,7 @@ compose_locale() {
 
   magick montage "$OUTPUT/$locale"/*.png -thumbnail 264x574 -tile 7x1 -geometry +12+12 \
     -font '/System/Library/Fonts/Helvetica.ttc' -label '' \
-    -background "$BG" "$OUTPUT/contact-sheet-$locale.png"
+    -background "$BG" "$CONTACT_SHEETS/contact-sheet-$locale.png"
 }
 
 run_locale() {
@@ -244,7 +252,7 @@ run_locale ja-JP 304 302
 for file in "$OUTPUT"/*/0[4-7]-*.png; do
   dimensions="$(sips -g pixelWidth -g pixelHeight "$file" | awk '/pixelWidth|pixelHeight/{print $2}' | paste -sdx -)"
   alpha="$(sips -g hasAlpha "$file" | awk '/hasAlpha/{print $2}')"
-  if [[ "$dimensions" != "1320x2868" || "$alpha" != "no" ]]; then
+  if [[ "$dimensions" != "${TARGET_WIDTH}x${TARGET_HEIGHT}" || "$alpha" != "no" ]]; then
     echo "Invalid upload asset: $file ($dimensions, alpha=$alpha)" >&2
     exit 1
   fi

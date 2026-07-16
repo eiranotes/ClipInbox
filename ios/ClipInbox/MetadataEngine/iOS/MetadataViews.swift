@@ -44,6 +44,31 @@ struct MetadataRemoteImage: View {
     }
 }
 
+/// 메타데이터 분석 전에도 썸네일 열을 예약해 제목 폭이 로딩 뒤 갑자기 줄지 않게 한다.
+struct MetadataThumbnailPlaceholder: View {
+    var isLoading = false
+
+    var body: some View {
+        ZStack {
+            Tokens.bgCardMuted
+            Image(systemName: "link")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Tokens.textTertiary)
+            if isLoading {
+                ProgressView()
+                    .controlSize(.small)
+                    .offset(x: Tokens.cardGap, y: Tokens.cardGap)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusThumbnail, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Tokens.radiusThumbnail, style: .continuous)
+                .strokeBorder(Tokens.borderSoft, lineWidth: Tokens.borderChipWidth)
+        )
+        .accessibilityHidden(true)
+    }
+}
+
 /// 링크 메타데이터 상세 표시. 기본은 요약 몇 줄만 접힌 상태로 보여 주고,
 /// "자세히 보기"를 눌렀을 때만 추출된 섹션 전체를 펼친다.
 struct MetadataDetailSectionsView: View {

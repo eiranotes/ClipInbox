@@ -19,6 +19,7 @@ enum SettingKey: String, Hashable, CaseIterable {
     case theme
     case language
     case defaultFolder = "default-folder"
+    case folders
     case tags
     case shareMode = "share-mode"
     case linkOpening = "link-opening"
@@ -34,6 +35,7 @@ enum SettingKey: String, Hashable, CaseIterable {
         case .theme: return "테마"
         case .language: return "언어"
         case .defaultFolder: return "기본 폴더"
+        case .folders: return "폴더 관리"
         case .tags: return "태그 관리"
         case .shareMode: return "공유 저장 방식"
         case .linkOpening: return "링크 열기 방식"
@@ -51,6 +53,7 @@ enum SettingKey: String, Hashable, CaseIterable {
         case .theme: return "paintpalette"
         case .language: return "character.bubble"
         case .defaultFolder: return "folder"
+        case .folders: return "folder.badge.gearshape"
         case .tags: return "tag"
         case .shareMode: return "square.and.arrow.down"
         case .linkOpening: return "safari"
@@ -78,6 +81,7 @@ struct SettingsView: View {
                 (.theme, store.preferences.theme),
                 (.language, store.preferences.language),
                 (.defaultFolder, store.preferences.defaultFolder),
+                (.folders, "\(store.destinationFolders.count)"),
                 (.tags, "\(store.availableTags.count)"),
                 (.shareMode, shareModeLabel(store.preferences.sharedSaveMode)),
                 (.linkOpening, linkOpenModeLabel(store.linkOpenMode))
@@ -204,6 +208,9 @@ struct SettingDetailView: View {
     @State private var newTag = ""
     @State private var editingTag: TagEditTarget?
     @State private var deletingTag: String?
+    @State private var newFolder = ""
+    @State private var editingFolder: FolderEditTarget?
+    @State private var deletingFolder: String?
     @State private var storageSummary: AppStorageSummary?
 
     var body: some View {
@@ -239,6 +246,10 @@ struct SettingDetailView: View {
             RenameTagSheet(originalTag: target.tag)
                 .workflowSheet(.compact)
         }
+        .sheet(item: $editingFolder) { target in
+            RenameFolderSheet(originalLabel: target.label) { _ in }
+                .workflowSheet(.compact)
+        }
         .alert("태그 삭제", isPresented: Binding(
             get: { deletingTag != nil },
             set: { if !$0 { deletingTag = nil } }
@@ -250,6 +261,24 @@ struct SettingDetailView: View {
             Button("취소", role: .cancel) { deletingTag = nil }
         } message: {
             Text("이 태그는 모든 클립과 폴더 기본 태그에서 제거됩니다.")
+        }
+        .alert("폴더 삭제", isPresented: Binding(
+            get: { deletingFolder != nil },
+            set: { if !$0 { deletingFolder = nil } }
+        )) {
+            Button("삭제 확인", role: .destructive) {
+                guard let deletingFolder else { return }
+                do {
+                    try store.deleteFolder(deletingFolder)
+                    errorMessage = nil
+                } catch {
+                    errorMessage = error.localizedDescription
+                }
+                self.deletingFolder = nil
+            }
+            Button("취소", role: .cancel) { deletingFolder = nil }
+        } message: {
+            Text("이 폴더의 클립은 인박스로 이동하고 미정리 상태가 됩니다.")
         }
     }
 
@@ -297,6 +326,71 @@ struct SettingDetailView: View {
                 Label("설정 저장", systemImage: "checkmark")
             }
             .buttonStyle(PrimaryBoxButtonStyle())
+
+        case .folders:
+            BoardSection(title: "새 폴더") {
+                HStack(spacing: Tokens.rowGap) {
+                    TextField("폴더 이름", text: $newFolder)
+                        .font(Tokens.body)
+                        .padding(.horizontal, Tokens.cardPad)
+                        .frame(minHeight: Tokens.actionTarget)
+                        .tokenSurface(radius: Tokens.radiusInput)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .onSubmit(addFolder)
+                    Button(action: addFolder) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(Tokens.onAccent)
+                            .frame(width: Tokens.actionTarget, height: Tokens.actionTarget)
+                            .tokenSurface(fill: Tokens.accentYellow, radius: Tokens.radiusButton)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("폴더 추가")
+                }
+            }
+
+            BoardSection(title: "폴더 목록", count: store.destinationFolders.count) {
+                VStack(spacing: 0) {
+                    ForEach(Array(store.destinationFolders.enumerated()), id: \.element.id) { index, folder in
+                        HStack(spacing: Tokens.rowGap) {
+                            Image(systemName: folder.systemImage)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Tokens.textSecondary)
+                                .frame(width: Tokens.iconColumn)
+                            Text(L10n.text(folder.label))
+                                .font(Tokens.bodySemibold)
+                                .foregroundStyle(Tokens.textPrimary)
+                                .lineLimit(1)
+                            Spacer(minLength: Tokens.rowGap)
+                            UtilityIconButton(label: "폴더 이름 편집", systemImage: "pencil") {
+                                editingFolder = FolderEditTarget(label: folder.label)
+                            }
+                            if folder.icon != "inbox" {
+                                Button {
+                                    deletingFolder = folder.label
+                                } label: {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundStyle(Tokens.danger)
+                                        .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(L10n.text("폴더 삭제"))
+                            } else {
+                                Color.clear
+                                    .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
+                                    .accessibilityHidden(true)
+                            }
+                        }
+                        .frame(minHeight: Tokens.actionTarget)
+                        if index < store.destinationFolders.count - 1 {
+                            RowDivider()
+                        }
+                    }
+                }
+            }
 
         case .tags:
             BoardSection(title: "새 태그") {
@@ -466,7 +560,7 @@ struct SettingDetailView: View {
 
     private var detailTopInset: CGFloat {
         switch key {
-        case .defaultFolder, .tags: return 0
+        case .defaultFolder, .folders, .tags: return 0
         case .appLock, .theme, .language, .shareMode, .linkOpening:
             return Tokens.settingChoiceTop
         case .storage: return 0
@@ -478,6 +572,17 @@ struct SettingDetailView: View {
         do {
             _ = try store.addTag(newTag)
             newTag = ""
+            errorMessage = nil
+            Keyboard.dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func addFolder() {
+        do {
+            _ = try store.createFolder(name: newFolder, defaultTag: "")
+            newFolder = ""
             errorMessage = nil
             Keyboard.dismiss()
         } catch {
@@ -540,6 +645,11 @@ struct SettingDetailView: View {
 private struct TagEditTarget: Identifiable {
     let tag: String
     var id: String { tag }
+}
+
+private struct FolderEditTarget: Identifiable {
+    let label: String
+    var id: String { label }
 }
 
 private struct RenameTagSheet: View {

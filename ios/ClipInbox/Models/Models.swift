@@ -90,7 +90,7 @@ struct Clip: Identifiable, Codable, Equatable {
         source = (try? container.decodeIfPresent(String.self, forKey: .source)) ?? "출처 없음"
         url = (try? container.decodeIfPresent(String.self, forKey: .url)) ?? ""
         time = (try? container.decodeIfPresent(String.self, forKey: .time)) ?? "저장됨"
-        folder = (try? container.decodeIfPresent(String.self, forKey: .folder)) ?? "기본 폴더"
+        folder = (try? container.decodeIfPresent(String.self, forKey: .folder)) ?? "인박스"
         tags = (try? container.decodeIfPresent([String].self, forKey: .tags)) ?? []
         folderSuggestions = (try? container.decodeIfPresent([String].self, forKey: .folderSuggestions)) ?? []
         image = try? container.decodeIfPresent(String.self, forKey: .image)
@@ -160,7 +160,7 @@ struct Preferences: Codable, Equatable {
     }
 
     static let standard = Preferences(appLock: "끔", theme: "라이트", language: "한국어",
-                                      defaultFolder: "기본 폴더", shareMode: SharedSaveMode.quick.rawValue)
+                                      defaultFolder: "인박스", shareMode: SharedSaveMode.quick.rawValue)
 
     init(appLock: String, theme: String, language: String, defaultFolder: String,
          shareMode: String = SharedSaveMode.quick.rawValue) {
@@ -243,7 +243,7 @@ enum DefaultData {
 
     static let folders: [Folder] = [
         Folder(icon: "archive", label: "전체"),
-        Folder(icon: "inbox", label: "기본 폴더"),
+        Folder(icon: "inbox", label: "인박스"),
         Folder(icon: "folder", label: "폴더 1"),
         Folder(icon: "folder", label: "폴더 2"),
         Folder(icon: "folder", label: "폴더 3"),

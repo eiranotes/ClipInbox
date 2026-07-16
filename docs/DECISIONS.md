@@ -1,5 +1,21 @@
 # Decisions
 
+## 2026-07-15: Inbox Is the Capture Bucket, and Organization Requires an Explicit Move
+
+Decision: Rename the system `기본 폴더` to `인박스`. Every manual or Share capture starts in the `미정리` state, even when the selected save destination is not Inbox; only an explicit folder move or Sort Later classification clears that state. Legacy `기본 폴더` clips migrate to `인박스` and `미정리`; an existing user-created `인박스` is preserved under a unique `인박스 보관함` name. Deleting a user folder returns its clips to Inbox as unorganized.
+
+Why: A storage destination chosen as a capture default is not proof that the user intentionally organized the clip. Separating physical location from organization state keeps the “미정리 클립” queue trustworthy.
+
+Impact: Settings gains centralized folder add/rename/delete management beside tag management. Search and Inbox share the same independently scrolling folder-over-tag selector model. GitHub root repository links present only `owner/repository`, and link rows reserve thumbnail geometry during asynchronous metadata loading so title width no longer jumps.
+
+## 2026-07-12: Final ASO Upload Size Is 1284 x 2778
+
+Decision: Normalize every localized upload PNG under `docs/app-store/generated/final-aso/<locale>/` to opaque 8-bit sRGB 1284 x 2778. Keep contact sheets outside `final-aso/` so every image in the release directory is directly uploadable. The alternate approved size is 1242 x 2688.
+
+Why: The previous 1320 x 2868 output did not match the release's required screenshot-size pair. 1284 x 2778 is closer to the existing masters, so it requires less scaling and preserves more detail.
+
+Impact: `scripts/finalize_aso.sh` and `scripts/generate_aso_feature_frames.sh` now enforce 1284 x 2778, opaque 8-bit sRGB output. Regeneration cannot silently restore the invalid dimensions.
+
 ## 2026-07-12: Release Is iPhone-Only and Uses the EiraDev Identifier Namespace
 
 Decision: Ship the first release for iPhone only. Use `app.eiradev.ClipInbox` for the app, `app.eiradev.ClipInbox.Share` for the Share Extension, `app.eiradev.ClipInbox.Tests` for tests, and `group.app.eiradev.ClipInbox` for the shared App Group. Keep Apple Developer Team `83BB7YWQHU` unchanged.
@@ -502,7 +518,7 @@ Decision: Ship the supplied three-frame visual grammar in Korean, English, and J
 
 Why: The supplied drafts already establish a clear localized marketing system, while exact upload sizing and field-budget checks turn them into release artifacts. A heavier, darker paperclip survives Home-screen and Share-sheet reduction better than the pale mark. Reusing the opaque square on the lock screen reads as an app tile rather than a privacy symbol, and coupling folder/tag offsets makes two different taxonomies feel like one control.
 
-Impact: `scripts/finalize_aso.sh` produces nine opaque sRGB 1320 x 2868 PNGs under `docs/app-store/generated/final-aso/`. `ASO_COPY.md` is the finalized metadata source. App and extension icons share the strong opaque master, `lock-clip` contains alpha with transparent corners, and `TwoRowHorizontalSelection(topRow:bottomRow:)` builds two sibling horizontal scroll views.
+Impact: `scripts/finalize_aso.sh` produces nine opaque 8-bit sRGB 1284 x 2778 PNGs under `docs/app-store/generated/final-aso/`. `ASO_COPY.md` is the finalized metadata source. App and extension icons share the strong opaque master, `lock-clip` contains alpha with transparent corners, and `TwoRowHorizontalSelection(topRow:bottomRow:)` builds two sibling horizontal scroll views.
 
 ## 2026-07-12: Review Share Uses a Transparent Centered Panel
 

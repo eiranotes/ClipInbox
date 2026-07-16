@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased - 2026-07-15
+
+### Added
+
+- Settings now includes `폴더 관리` for centralized folder creation, renaming, and deletion; deleting a user folder safely returns its clips to Inbox as unorganized.
+- Search now presents folders on the upper row and tags on the lower row, with independent horizontal scrolling matching the Inbox selector.
+
+### Changed
+
+- The system `기본 폴더` is now `인박스`. New manual and Share captures remain `미정리` until the user explicitly moves or classifies them, and legacy libraries migrate without discarding an existing custom Inbox folder.
+- GitHub root repository clips display only `owner/repository`; asynchronously loaded remote thumbnails keep a reserved column so titles do not expand and contract while images arrive.
+
+### Fixed
+
+- Inbox content now has explicit bottom-navigation clearance so the final clip row can scroll fully into view.
+
 ## Unreleased - 2026-07-13
 
 ### Added
@@ -35,6 +51,7 @@
 
 ### Changed
 
+- Normalized all 21 localized App Store upload screenshots to opaque 8-bit sRGB 1284 x 2778. `final-aso/` now contains upload assets only; reproducible contact sheets are generated outside it.
 - Set the first App Store release version to `1.0.0 (1)` and made Settings read the displayed marketing version from the app bundle instead of duplicating it in Swift source.
 - Replaced the App Store metadata URL placeholders with the published Notion Privacy Policy, Support, and Terms of Use URLs.
 - The release is iPhone-only, and app, extension, test, and App Group identifiers now share the `app.eiradev.ClipInbox` namespace while retaining Team `83BB7YWQHU`.

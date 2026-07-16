@@ -108,8 +108,8 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(store.filteredClips(.tag("여행")).map(\.id), [4])
         XCTAssertEqual(store.filteredClips(.folder("폴더 2")).map(\.id), [1])
         XCTAssertEqual(store.filteredClips(.all).count, store.activeClips.count)
-        XCTAssertEqual(store.searchResults(query: "대시보드", filter: "레퍼런스").map(\.id), [2])
-        XCTAssertEqual(store.searchResults(query: "아이디어", filter: "태그").map(\.id), [3])
+        XCTAssertEqual(store.searchResults(query: "대시보드", filter: .tag("레퍼런스")).map(\.id), [2])
+        XCTAssertEqual(store.searchResults(query: "아이디어", filter: .tag("아이디어")).map(\.id), [3])
     }
 
     func testPrimaryMutationsPersistAcrossReload() throws {
@@ -206,15 +206,15 @@ final class AppStoreTests: XCTestCase {
         try seedDefaultLibrary()
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
 
-        store.moveClip(id: 5, to: "기본 폴더")
-        store.updatePreference(key: .defaultFolder, value: "기본 폴더")
-        XCTAssertEqual(try store.renameFolder(from: "기본 폴더", to: "받은 클립"), "받은 클립")
+        store.moveClip(id: 5, to: "인박스")
+        store.updatePreference(key: .defaultFolder, value: "인박스")
+        XCTAssertEqual(try store.renameFolder(from: "인박스", to: "받은 클립"), "받은 클립")
         XCTAssertEqual(try store.renameFolder(from: "전체", to: "모든 클립"), "모든 클립")
 
         let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
         XCTAssertTrue(reloaded.folders.contains { $0.label == "받은 클립" && $0.icon == "inbox" })
         XCTAssertTrue(reloaded.folders.contains { $0.label == "모든 클립" && $0.icon == "archive" })
-        XCTAssertFalse(reloaded.folders.contains { $0.label == "기본 폴더" })
+        XCTAssertFalse(reloaded.folders.contains { $0.label == "인박스" })
         XCTAssertFalse(reloaded.folders.contains { $0.label == "전체" })
         XCTAssertEqual(reloaded.preferences.defaultFolder, "받은 클립")
         XCTAssertEqual(reloaded.clip(id: 5)?.folder, "받은 클립")
@@ -225,8 +225,8 @@ final class AppStoreTests: XCTestCase {
         try seedDefaultLibrary()
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
 
-        XCTAssertThrowsError(try store.renameFolder(from: "기본 폴더", to: "폴더 1"))
-        XCTAssertTrue(store.folders.contains { $0.label == "기본 폴더" })
+        XCTAssertThrowsError(try store.renameFolder(from: "인박스", to: "폴더 1"))
+        XCTAssertTrue(store.folders.contains { $0.label == "인박스" })
         XCTAssertEqual(store.clip(id: 5)?.folder, "폴더 1")
     }
 
@@ -256,13 +256,118 @@ final class AppStoreTests: XCTestCase {
         XCTAssertTrue(store.clips.isEmpty)
         XCTAssertEqual(store.bootstrapState, .firstRun)
         XCTAssertEqual(store.folders.map(\.label), [
-            "전체", "기본 폴더", "폴더 1", "폴더 2", "폴더 3", "폴더 4", "폴더 5", "휴지통"
+            "전체", "인박스", "폴더 1", "폴더 2", "폴더 3", "폴더 4", "폴더 5", "휴지통"
         ])
         XCTAssertFalse(store.destinationFolders.contains { $0.icon == "trash" })
         store.updatePreference(key: .theme, value: "다크")
 
         let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
         XCTAssertEqual(reloaded.preferences.theme, "다크")
+    }
+
+    func testLegacyDefaultFolderMigratesToInboxAndBecomesUnsorted() {
+        let legacyClip = Clip(
+            id: 901, type: .link, state: .new,
+            title: "Legacy", source: "example.com", url: "https://example.com",
+            time: "now", folder: "기본 폴더"
+        )
+        let legacy = DataSnapshot(
+            version: 2,
+            clips: [legacyClip],
+            folders: [
+                Folder(icon: "archive", label: "전체"),
+                Folder(icon: "inbox", label: "기본 폴더"),
+                Folder(icon: "folder", label: "업무"),
+                Folder(icon: "trash", label: "휴지통")
+            ],
+            preferences: Preferences(
+                appLock: "끔", theme: "라이트", language: "한국어",
+                defaultFolder: "기본 폴더"
+            )
+        )
+        let repository = TestClipRepository(bootstrapHandler: { .loaded(legacy) })
+
+        let store = AppStore(userDefaults: defaults, repository: repository)
+
+        XCTAssertEqual(store.folders.first(where: { $0.icon == "inbox" })?.label, "인박스")
+        XCTAssertEqual(store.preferences.defaultFolder, "인박스")
+        XCTAssertEqual(store.clip(id: legacyClip.id)?.folder, "인박스")
+        XCTAssertEqual(store.unsortedClips.map(\.id), [legacyClip.id])
+    }
+
+    func testLegacyInboxMigrationPreservesAnExistingCustomInboxFolder() {
+        let legacy = DataSnapshot(
+            version: 2,
+            clips: [
+                Clip(id: 910, type: .memo, state: .new, title: "Default", source: "memo", url: "",
+                     time: "now", folder: "기본 폴더", folderSuggestions: ["기본 폴더"]),
+                Clip(id: 911, type: .memo, title: "Custom", source: "memo", url: "",
+                     time: "now", folder: "인박스", folderSuggestions: ["인박스"])
+            ],
+            folders: [
+                Folder(icon: "archive", label: "전체"),
+                Folder(icon: "inbox", label: "기본 폴더"),
+                Folder(icon: "folder", label: "인박스")
+            ],
+            preferences: Preferences(
+                appLock: "끔", theme: "라이트", language: "한국어",
+                defaultFolder: "기본 폴더"
+            )
+        )
+        let repository = TestClipRepository(bootstrapHandler: { .loaded(legacy) })
+
+        let store = AppStore(userDefaults: defaults, repository: repository)
+
+        XCTAssertEqual(store.folders.filter { $0.label == "인박스" }.count, 1)
+        XCTAssertEqual(store.folders.first(where: { $0.icon == "inbox" })?.label, "인박스")
+        XCTAssertEqual(store.clip(id: 910)?.folder, "인박스")
+        XCTAssertEqual(store.clip(id: 910)?.state, .unsorted)
+        XCTAssertEqual(store.clip(id: 911)?.folder, "인박스 보관함")
+        XCTAssertEqual(store.clip(id: 911)?.folderSuggestions, ["인박스 보관함"])
+    }
+
+    func testNewCaptureStaysUnsortedUntilExplicitFolderMove() throws {
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+        let clip = try store.createManualClip(
+            type: .memo, title: "분류 전", url: "", text: "내용",
+            destination: "인박스", tags: [], memo: ""
+        )
+
+        XCTAssertEqual(store.clip(id: clip.id)?.state, .unsorted)
+        XCTAssertEqual(store.unsortedClips.map(\.id), [clip.id])
+
+        XCTAssertTrue(store.moveClip(id: clip.id, to: "폴더 1"))
+        XCTAssertNil(store.clip(id: clip.id)?.state)
+        XCTAssertTrue(store.unsortedClips.isEmpty)
+    }
+
+    func testFolderDeletionReturnsClipsAndDefaultToInbox() throws {
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+        let clip = try store.createManualClip(
+            type: .memo, title: "업무 메모", url: "", text: "내용",
+            destination: "폴더 1", tags: [], memo: ""
+        )
+        store.updatePreference(key: .defaultFolder, value: "폴더 1")
+
+        XCTAssertTrue(try store.deleteFolder("폴더 1"))
+
+        XCTAssertFalse(store.folders.contains { $0.label == "폴더 1" })
+        XCTAssertEqual(store.clip(id: clip.id)?.folder, "인박스")
+        XCTAssertEqual(store.clip(id: clip.id)?.state, .unsorted)
+        XCTAssertEqual(store.preferences.defaultFolder, "인박스")
+    }
+
+    func testGitHubRepositoryTitleUsesOnlyOwnerAndRepository() {
+        let clip = Clip(
+            id: 902, type: .link,
+            title: "eiranotes/ClipInbox: Private-first clip organizer for iOS",
+            source: "github.com", url: "https://github.com/eiranotes/ClipInbox",
+            time: "now", folder: "인박스"
+        )
+
+        XCTAssertEqual(AppStore.githubRepositoryTitle(for: clip.url), "eiranotes/ClipInbox")
+        XCTAssertEqual(clip.presentationTitle, "eiranotes/ClipInbox")
+        XCTAssertNil(AppStore.githubRepositoryTitle(for: "https://github.com/eiranotes/ClipInbox/issues/1"))
     }
 
     func testRoParticleFollowsFinalConsonant() {
@@ -534,15 +639,15 @@ final class AppStoreTests: XCTestCase {
 
         let link = try store.createManualClip(
             type: .link, title: "", url: "Example.com/path#section", text: "",
-            destination: "기본 폴더", tags: ["읽을거리"], memo: "확인"
+            destination: "인박스", tags: ["읽을거리"], memo: "확인"
         )
         let text = try store.createManualClip(
             type: .text, title: "", url: "", text: "첫 줄\n둘째 줄",
-            destination: "기본 폴더", tags: [], memo: ""
+            destination: "인박스", tags: [], memo: ""
         )
         let memo = try store.createManualClip(
             type: .memo, title: "", url: "", text: "기억할 내용",
-            destination: "기본 폴더", tags: [], memo: ""
+            destination: "인박스", tags: [], memo: ""
         )
 
         XCTAssertEqual(link.url, "https://example.com/path")
@@ -552,12 +657,12 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(memo.source, "나의 메모")
         let duplicate = try store.createManualClip(
             type: .link, title: "같은 링크도 저장", url: "https://EXAMPLE.com/path#other", text: "",
-            destination: "기본 폴더", tags: [], memo: ""
+            destination: "인박스", tags: [], memo: ""
         )
         XCTAssertNotEqual(duplicate.id, link.id)
         XCTAssertThrowsError(try store.createManualClip(
             type: .link, title: "", url: "javascript:alert(1)", text: "",
-            destination: "기본 폴더", tags: [], memo: ""
+            destination: "인박스", tags: [], memo: ""
         ))
     }
 
