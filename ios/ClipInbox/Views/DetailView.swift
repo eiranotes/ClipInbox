@@ -86,7 +86,7 @@ struct DetailView: View {
                                        : Tokens.detailImageHeight)
                                 .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(ResponsivePressButtonStyle())
                         .accessibilityLabel("이미지 크게 보기")
                     } else if let thumbnailURL = metadata.cardPresentation(for: clip, locale: locale)?.thumbnailURL.flatMap(URL.init(string:)) {
                         MetadataRemoteImage(url: thumbnailURL, contentMode: .fit)
@@ -317,7 +317,7 @@ struct DetailView: View {
                 Tokens.borderSoft.frame(height: Tokens.borderChipWidth)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ResponsivePressButtonStyle())
     }
 
     private func quietAction(label: String, systemImage: String, isDanger: Bool = false,
@@ -333,40 +333,25 @@ struct DetailView: View {
                 .frame(maxWidth: .infinity, minHeight: Tokens.touchTarget)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ResponsivePressButtonStyle())
     }
 }
 
 private struct ClipImageViewer: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let clip: Clip
-    @State private var scale: CGFloat = 1
-    @State private var settledScale: CGFloat = 1
 
     var body: some View {
         ZStack {
             Tokens.bgApp.ignoresSafeArea()
-            Image(uiImage: ClipImageResolver.image(for: clip))
-                .resizable()
-                .scaledToFit()
-                .scaleEffect(scale)
-                .padding(Tokens.screenX)
-                .gesture(
-                    MagnificationGesture()
-                        .onChanged { value in
-                            scale = min(max(settledScale * value, 1), 5)
-                        }
-                        .onEnded { _ in
-                            settledScale = scale
-                        }
-                )
-                .onTapGesture(count: 2) {
-                    let target: CGFloat = scale > 1 ? 1 : 2.5
-                    withAnimation(.easeOut(duration: Tokens.motionBase)) {
-                        scale = target
-                        settledScale = target
-                    }
-                }
+            ZoomableClipImage(
+                image: ClipImageResolver.image(for: clip),
+                reduceMotion: reduceMotion
+            )
+            .padding(.horizontal, Tokens.screenX)
+            .accessibilityLabel("확대 가능한 클립 이미지")
+            .accessibilityHint("두 번 탭하거나 두 손가락으로 확대하고 드래그해 이동합니다")
 
             VStack {
                 HStack {
@@ -385,6 +370,95 @@ private struct ClipImageViewer: View {
             .padding(.top, Tokens.screenTop)
         }
         .statusBarHidden(true)
+    }
+}
+
+/// UIKit의 검증된 스크롤 물리를 사용해 핀치·팬·관성·중단 가능한 줌을 함께 제공한다.
+private struct ZoomableClipImage: UIViewRepresentable {
+    let image: UIImage
+    let reduceMotion: Bool
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(image: image, reduceMotion: reduceMotion)
+    }
+
+    func makeUIView(context: Context) -> UIScrollView {
+        let scrollView = UIScrollView()
+        scrollView.backgroundColor = .clear
+        scrollView.delegate = context.coordinator
+        scrollView.minimumZoomScale = 1
+        scrollView.maximumZoomScale = 5
+        scrollView.bouncesZoom = true
+        scrollView.decelerationRate = .fast
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.contentInsetAdjustmentBehavior = .never
+
+        let imageView = context.coordinator.imageView
+        scrollView.addSubview(imageView)
+        NSLayoutConstraint.activate([
+            imageView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            imageView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            imageView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            imageView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            imageView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+            imageView.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor)
+        ])
+
+        let doubleTap = UITapGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handleDoubleTap(_:))
+        )
+        doubleTap.numberOfTapsRequired = 2
+        scrollView.addGestureRecognizer(doubleTap)
+        context.coordinator.scrollView = scrollView
+        return scrollView
+    }
+
+    func updateUIView(_ scrollView: UIScrollView, context: Context) {
+        context.coordinator.imageView.image = image
+        context.coordinator.reduceMotion = reduceMotion
+    }
+
+    final class Coordinator: NSObject, UIScrollViewDelegate {
+        let imageView: UIImageView
+        weak var scrollView: UIScrollView?
+        var reduceMotion: Bool
+
+        init(image: UIImage, reduceMotion: Bool) {
+            self.imageView = UIImageView(image: image)
+            self.reduceMotion = reduceMotion
+            super.init()
+            imageView.translatesAutoresizingMaskIntoConstraints = false
+            imageView.contentMode = .scaleAspectFit
+            imageView.isUserInteractionEnabled = true
+        }
+
+        func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+            imageView
+        }
+
+        @objc func handleDoubleTap(_ recognizer: UITapGestureRecognizer) {
+            guard let scrollView else { return }
+            if scrollView.zoomScale > scrollView.minimumZoomScale + 0.01 {
+                scrollView.setZoomScale(scrollView.minimumZoomScale, animated: !reduceMotion)
+                return
+            }
+
+            let targetScale = min(2.5, scrollView.maximumZoomScale)
+            let point = recognizer.location(in: imageView)
+            let size = CGSize(
+                width: scrollView.bounds.width / targetScale,
+                height: scrollView.bounds.height / targetScale
+            )
+            let zoomRect = CGRect(
+                x: point.x - size.width / 2,
+                y: point.y - size.height / 2,
+                width: size.width,
+                height: size.height
+            )
+            scrollView.zoom(to: zoomRect, animated: !reduceMotion)
+        }
     }
 }
 

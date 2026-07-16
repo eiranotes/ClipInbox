@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-07-16: Interaction Feedback and Accessibility Adapt Without Changing Product Density
+
+Decision: Keep the existing warm, list-first visual identity, but make every interactive surface acknowledge touch immediately through a shared press style. Use system accessibility preferences as input: Pretendard scales relative to Dynamic Type, Increased Contrast selects stronger semantic colors, Reduce Motion removes scale and movement, and accessibility text sizes replace the dense folder/tag rails with two native menus. Use `UIScrollView` physics for the full-screen image viewer and a finger-tracking leading-edge back gesture for direct manipulation.
+
+Why: The previous interface was visually coherent but many flat rows and icon buttons gave no visible press state, the custom font stayed at fixed point sizes, and the image viewer enlarged content without allowing panning. The standard 5-column filter rhythm also became an entire-screen list at accessibility sizes. These were interaction and accessibility gaps rather than reasons for a visual redesign.
+
+Impact: Normal-size layouts retain the same information density, now with visible `폴더` and `태그` row context. Add keeps its save action above the persistent tab bar, empty Search explicitly presents recent clips, and app/extension feedback follows system motion and contrast settings. Evidence is under `.superloopy/evidence/ios/20260716-ui-polish/`.
+
 ## 2026-07-15: Inbox Is the Capture Bucket, and Organization Requires an Explicit Move
 
 Decision: Rename the system `기본 폴더` to `인박스`. Every manual or Share capture starts in the `미정리` state, even when the selected save destination is not Inbox; only an explicit folder move or Sort Later classification clears that state. Legacy `기본 폴더` clips migrate to `인박스` and `미정리`; an existing user-created `인박스` is preserved under a unique `인박스 보관함` name. Deleting a user folder returns its clips to Inbox as unorganized.

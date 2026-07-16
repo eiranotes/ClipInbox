@@ -56,7 +56,12 @@ struct TwoRowHorizontalSelection: View {
     let rowCount: Int
     /// 윗줄과 아랫줄이 서로 다른 의미를 가질 때(예: 인박스의 폴더/태그 필터)
     /// 각 줄을 독립적으로 유지한 채 같은 5열 리듬으로 배치한다.
-    private let pairedRows: (top: [SelectionItem], bottom: [SelectionItem])?
+    private let pairedRows: (
+        top: [SelectionItem],
+        bottom: [SelectionItem],
+        topLabel: String,
+        bottomLabel: String
+    )?
 
     init(items: [SelectionItem], rowCount: Int = Tokens.selectionRowCount) {
         self.items = items
@@ -64,10 +69,15 @@ struct TwoRowHorizontalSelection: View {
         self.pairedRows = nil
     }
 
-    init(topRow: [SelectionItem], bottomRow: [SelectionItem]) {
+    init(
+        topRow: [SelectionItem],
+        bottomRow: [SelectionItem],
+        topLabel: String = "폴더",
+        bottomLabel: String = "태그"
+    ) {
         self.items = topRow + bottomRow
         self.rowCount = 2
-        self.pairedRows = (topRow, bottomRow)
+        self.pairedRows = (topRow, bottomRow, topLabel, bottomLabel)
     }
 
     private var gridSlots: [SelectionSlot] {
@@ -103,22 +113,25 @@ struct TwoRowHorizontalSelection: View {
 
     private var standardSelection: some View {
         GeometryReader { geometry in
+            let rowLabelWidth: CGFloat = pairedRows == nil ? 0 : 32
+            let rowLabelGap: CGFloat = pairedRows == nil ? 0 : Tokens.rowGap
+            let selectionWidth = max(0, geometry.size.width - rowLabelWidth - rowLabelGap)
             let gaps = Tokens.chipGap * CGFloat(Tokens.selectionColumnCount - 1)
             let columnWidth = max(
                 Tokens.touchTarget,
-                (geometry.size.width - gaps) / CGFloat(Tokens.selectionColumnCount)
+                (selectionWidth - gaps) / CGFloat(Tokens.selectionColumnCount)
             )
             if let pairedRows {
                 VStack(spacing: Tokens.chipGap) {
-                    independentSelectionRow(
-                        pairedRows.top,
-                        columnWidth: columnWidth,
-                        minimumWidth: geometry.size.width
+                    labeledSelectionRow(
+                        pairedRows.top, label: pairedRows.topLabel,
+                        columnWidth: columnWidth, minimumWidth: selectionWidth,
+                        labelWidth: rowLabelWidth
                     )
-                    independentSelectionRow(
-                        pairedRows.bottom,
-                        columnWidth: columnWidth,
-                        minimumWidth: geometry.size.width
+                    labeledSelectionRow(
+                        pairedRows.bottom, label: pairedRows.bottomLabel,
+                        columnWidth: columnWidth, minimumWidth: selectionWidth,
+                        labelWidth: rowLabelWidth
                     )
                 }
             } else {
@@ -148,16 +161,39 @@ struct TwoRowHorizontalSelection: View {
             + Tokens.chipGap * CGFloat(rowCount - 1))
     }
 
+    private func labeledSelectionRow(
+        _ rowItems: [SelectionItem],
+        label: String,
+        columnWidth: CGFloat,
+        minimumWidth: CGFloat,
+        labelWidth: CGFloat
+    ) -> some View {
+        HStack(spacing: Tokens.rowGap) {
+            Text(L10n.text(label, locale: locale))
+                .font(Tokens.nav)
+                .foregroundStyle(Tokens.textSecondary)
+                .frame(width: labelWidth, alignment: .leading)
+                .accessibilityHidden(true)
+            independentSelectionRow(
+                rowItems,
+                columnWidth: columnWidth,
+                minimumWidth: minimumWidth,
+                accessibilityContext: label
+            )
+        }
+    }
+
     /// 의미가 다른 두 줄은 각각 별도 ScrollView를 가져 스크롤 위치를 공유하지 않는다.
     private func independentSelectionRow(
         _ rowItems: [SelectionItem],
         columnWidth: CGFloat,
-        minimumWidth: CGFloat
+        minimumWidth: CGFloat,
+        accessibilityContext: String? = nil
     ) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(spacing: Tokens.chipGap) {
                 ForEach(Array(rowItems.enumerated()), id: \.offset) { _, item in
-                    selectionButton(item)
+                    selectionButton(item, accessibilityContext: accessibilityContext)
                         .frame(width: columnWidth, height: Tokens.touchTarget)
                 }
             }
@@ -167,8 +203,63 @@ struct TwoRowHorizontalSelection: View {
     }
 
     private var accessibilitySelection: some View {
-        VStack(spacing: 0) {
+        Group {
+            if let pairedRows {
+                VStack(spacing: 0) {
+                    accessibilitySelectionMenu(label: pairedRows.topLabel, items: pairedRows.top)
+                    accessibilitySelectionMenu(label: pairedRows.bottomLabel, items: pairedRows.bottom)
+                }
+            } else {
+                accessibilitySelectionRows(items, context: nil)
+            }
+        }
+    }
+
+    private func accessibilitySelectionMenu(
+        label: String,
+        items: [SelectionItem]
+    ) -> some View {
+        let activeLabel = items.first(where: { $0.active })?.label ?? items.first?.label ?? "없음"
+        return Menu {
             ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                Button(action: item.action) {
+                    if item.active {
+                        Label(L10n.text(item.label, locale: locale), systemImage: "checkmark")
+                    } else {
+                        Text(L10n.text(item.label, locale: locale))
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: Tokens.cardGap) {
+                Text(L10n.text(label, locale: locale))
+                    .font(Tokens.bodyBold)
+                    .foregroundStyle(Tokens.textPrimary)
+                Spacer(minLength: Tokens.rowGap)
+                Text(L10n.text(activeLabel, locale: locale))
+                    .font(Tokens.bodySemibold)
+                    .foregroundStyle(Tokens.textSecondary)
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(Tokens.textTertiary)
+            }
+            .frame(maxWidth: .infinity, minHeight: Tokens.actionTarget)
+            .contentShape(Rectangle())
+            .overlay(alignment: .bottom) {
+                Tokens.borderSoft.frame(height: Tokens.borderChipWidth)
+            }
+        }
+        .buttonStyle(ResponsivePressButtonStyle())
+        .accessibilityLabel("\(L10n.text(label, locale: locale)): \(L10n.text(activeLabel, locale: locale))")
+    }
+
+    private func accessibilitySelectionRows(
+        _ rowItems: [SelectionItem],
+        context: String?
+    ) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(rowItems.enumerated()), id: \.offset) { _, item in
                 Button(action: item.action) {
                     HStack(spacing: Tokens.cardGap) {
                         Text(L10n.text(item.label, locale: locale))
@@ -187,13 +278,17 @@ struct TwoRowHorizontalSelection: View {
                         Tokens.borderSoft.frame(height: Tokens.borderChipWidth)
                     }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(ResponsivePressButtonStyle())
                 .accessibilityAddTraits(item.active ? .isSelected : [])
+                .accessibilityLabel(accessibilityLabel(for: item, context: context))
             }
         }
     }
 
-    private func selectionButton(_ item: SelectionItem) -> some View {
+    private func selectionButton(
+        _ item: SelectionItem,
+        accessibilityContext: String? = nil
+    ) -> some View {
         Button(action: item.action) {
             Text(L10n.text(item.label, locale: locale))
                 .font(Tokens.chip)
@@ -210,8 +305,15 @@ struct TwoRowHorizontalSelection: View {
                         .frame(height: item.active ? Tokens.selectionIndicator : Tokens.borderChipWidth)
                 }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ResponsivePressButtonStyle())
         .accessibilityAddTraits(item.active ? .isSelected : [])
+        .accessibilityLabel(accessibilityLabel(for: item, context: accessibilityContext))
+    }
+
+    private func accessibilityLabel(for item: SelectionItem, context: String?) -> String {
+        let itemLabel = L10n.text(item.label, locale: locale)
+        guard let context else { return itemLabel }
+        return "\(L10n.text(context, locale: locale)): \(itemLabel)"
     }
 }
 
@@ -240,7 +342,7 @@ struct PlainSelectionRow: View {
                 Tokens.borderSoft.frame(height: Tokens.borderChipWidth)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ResponsivePressButtonStyle())
     }
 }
 
@@ -290,6 +392,7 @@ struct DestinationRow: View {
 // MARK: - 버튼
 
 struct PrimaryBoxButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var isDanger = false
 
     func makeBody(configuration: Configuration) -> some View {
@@ -303,12 +406,13 @@ struct PrimaryBoxButtonStyle: ButtonStyle {
             )
             .contentShape(RoundedRectangle(cornerRadius: Tokens.radiusButton, style: .continuous))
             .opacity(configuration.isPressed ? 0.85 : 1)
-            .scaleEffect(configuration.isPressed ? 0.99 : 1)
-            .animation(.easeOut(duration: Tokens.motionFast), value: configuration.isPressed)
+            .scaleEffect(reduceMotion ? 1 : configuration.isPressed ? 0.98 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: Tokens.motionFast), value: configuration.isPressed)
     }
 }
 
 struct SecondaryBoxButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var isDanger = false
 
     func makeBody(configuration: Configuration) -> some View {
@@ -319,7 +423,22 @@ struct SecondaryBoxButtonStyle: ButtonStyle {
             .tokenSurface(fill: Tokens.bgCard, radius: Tokens.radiusButton,
                           border: Tokens.borderSoft, borderWidth: Tokens.borderChipWidth)
             .opacity(configuration.isPressed ? 0.85 : 1)
-            .animation(.easeOut(duration: Tokens.motionFast), value: configuration.isPressed)
+            .scaleEffect(reduceMotion ? 1 : configuration.isPressed ? 0.98 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: Tokens.motionFast), value: configuration.isPressed)
+    }
+}
+
+/// 평면 행·아이콘·탭에도 즉시 보이는 눌림 상태를 주되 레이아웃은 바꾸지 않는다.
+struct ResponsivePressButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var pressedScale: CGFloat = 0.98
+    var pressedOpacity: CGFloat = 0.72
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? pressedOpacity : 1)
+            .scaleEffect(reduceMotion ? 1 : configuration.isPressed ? pressedScale : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: Tokens.motionFast), value: configuration.isPressed)
     }
 }
 
@@ -343,7 +462,7 @@ struct UtilityIconButton: View {
                 )
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ResponsivePressButtonStyle(pressedScale: 0.92))
         .accessibilityLabel(L10n.text(label, locale: locale))
     }
 }
@@ -419,7 +538,7 @@ struct ActionRow: View {
                 if !isSelected { Tokens.borderSoft.frame(height: Tokens.borderChipWidth) }
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ResponsivePressButtonStyle())
     }
 }
 
@@ -641,10 +760,21 @@ extension View {
 
 private struct LeadingEdgeSwipeBackModifier: ViewModifier {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var dragOffset: CGFloat = 0
 
     func body(content: Content) -> some View {
-        content.simultaneousGesture(
+        content
+            .offset(x: reduceMotion ? 0 : dragOffset)
+            .simultaneousGesture(
             DragGesture(minimumDistance: Tokens.sheetTop, coordinateSpace: .global)
+                .onChanged { value in
+                    guard !reduceMotion else { return }
+                    let isLeadingEdge = value.startLocation.x <= Tokens.sectionGap
+                    let isHorizontal = abs(value.translation.height) < abs(value.translation.width)
+                    guard isLeadingEdge, isHorizontal else { return }
+                    dragOffset = max(0, value.translation.width)
+                }
                 .onEnded { value in
                     let isLeadingEdge = value.startLocation.x <= Tokens.sectionGap
                     let isHorizontal = abs(value.translation.height) < Tokens.actionTarget
@@ -652,6 +782,10 @@ private struct LeadingEdgeSwipeBackModifier: ViewModifier {
                         || value.predictedEndTranslation.width > Tokens.touchTarget * 3
                     if isLeadingEdge, isHorizontal, reachedThreshold {
                         dismiss()
+                    } else if !reduceMotion {
+                        withAnimation(.spring(response: 0.22, dampingFraction: 0.86)) {
+                            dragOffset = 0
+                        }
                     }
                 }
         )

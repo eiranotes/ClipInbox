@@ -22,7 +22,10 @@ struct AddClipView: View {
     @State private var photoStatus: String?
 
     var body: some View {
-        ScreenScaffold(spacing: Tokens.formSectionGap) {
+        ScreenScaffold(
+            spacing: Tokens.formSectionGap,
+            additionalBottomPadding: Tokens.actionTarget + Tokens.formSectionGap
+        ) {
             ScreenHeader("추가")
 
             BoardSection(title: "클립 유형") {
@@ -67,7 +70,7 @@ struct AddClipView: View {
                     .frame(minHeight: Tokens.actionTarget)
                     .tokenSurface(radius: Tokens.radiusInput)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(ResponsivePressButtonStyle())
             }
 
             BoardSection(title: "태그") {
@@ -99,36 +102,15 @@ struct AddClipView: View {
                 }
             }
 
-            Button {
-                saveClip()
-            } label: {
-                if isSaving {
-                    ProgressView().tint(Tokens.textPrimary)
-                } else {
-                    Text(saved
-                         ? L10n.format("format.saved_in_folder", L10n.text(destination))
-                         : L10n.format("format.save_to_folder", L10n.text(destination)))
-                }
-            }
-            .buttonStyle(PrimaryBoxButtonStyle())
-            .disabled(saved || isSaving)
-            .opacity(saved || isSaving ? 0.5 : 1)
-
             if let saveError {
                 StatePanel(systemImage: "externaldrive.badge.exclamationmark",
                            title: "저장할 수 없습니다", message: saveError, isDanger: true)
             }
 
-            if saved {
-                Button {
-                    resetDraft()
-                } label: {
-                    Text("새로 저장하기")
-                }
-                .buttonStyle(SecondaryBoxButtonStyle())
-            }
-
             Spacer(minLength: Tokens.bottomSafe - Tokens.sectionGap * 2)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            saveActions
         }
         .onAppear {
             if destination.isEmpty { destination = store.preferences.defaultFolder }
@@ -143,6 +125,38 @@ struct AddClipView: View {
             guard let item else { return }
             Task { await loadPhoto(item) }
         }
+    }
+
+    private var saveActions: some View {
+        VStack(spacing: Tokens.rowGap) {
+            Button {
+                saveClip()
+            } label: {
+                if isSaving {
+                    ProgressView().tint(Tokens.textPrimary)
+                } else {
+                    Text(saved
+                         ? L10n.format("format.saved_in_folder", L10n.text(destination))
+                         : L10n.format("format.save_to_folder", L10n.text(destination)))
+                }
+            }
+            .buttonStyle(PrimaryBoxButtonStyle())
+            .disabled(saved || isSaving)
+            .opacity(saved || isSaving ? 0.56 : 1)
+
+            if saved {
+                Button("새로 저장하기", action: resetDraft)
+                    .buttonStyle(SecondaryBoxButtonStyle())
+            }
+        }
+        .padding(.horizontal, Tokens.screenX)
+        .padding(.vertical, Tokens.rowGap)
+        .background(
+            Tokens.bgCardMuted
+                .overlay(alignment: .top) {
+                    Tokens.borderSoft.frame(height: Tokens.borderChipWidth)
+                }
+        )
     }
 
     @ViewBuilder
@@ -335,7 +349,7 @@ struct TagEditorSheet: View {
                             .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
                             .tokenSurface(fill: Tokens.accentYellow, radius: Tokens.radiusButton)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(ResponsivePressButtonStyle())
                     .accessibilityLabel("태그 추가")
                 }
             }

@@ -15,7 +15,7 @@ struct ClipCardView: View {
             NavigationLink(value: Route.detail(clip.id)) {
                 navigationContent
             }
-            .buttonStyle(.plain)
+            .buttonStyle(ResponsivePressButtonStyle())
             .accessibilityLabel(L10n.format("format.clip_detail_accessibility", L10n.text(metadata.cardTitle(for: clip, locale: locale), locale: locale)))
 
             Button(action: onMenu) {
@@ -25,7 +25,7 @@ struct ClipCardView: View {
                     .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(ResponsivePressButtonStyle(pressedScale: 0.9))
             .accessibilityLabel(L10n.format("format.clip_menu_accessibility", L10n.text(metadata.cardTitle(for: clip, locale: locale), locale: locale)))
         }
         .padding(.vertical, Tokens.cardPad)
@@ -117,7 +117,7 @@ struct CompactResultRow: View {
                 Tokens.borderSoft.frame(height: Tokens.borderChipWidth)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ResponsivePressButtonStyle())
         .simultaneousGesture(TapGesture().onEnded(onOpen))
     }
 }

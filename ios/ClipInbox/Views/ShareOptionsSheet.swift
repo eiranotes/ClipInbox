@@ -47,7 +47,7 @@ struct ShareOptionsSheet: View {
                             shareRowLabel(systemImage: "square.and.arrow.up", label: "시스템 공유",
                                           value: "제목과 메모를 공유 시트로 전송")
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(ResponsivePressButtonStyle())
 
                         if let cardImage {
                             ShareLink(item: cardImage,
@@ -55,7 +55,7 @@ struct ShareOptionsSheet: View {
                                 shareRowLabel(systemImage: "photo", label: "이미지 카드 공유",
                                               value: "썸네일 포함 PNG 카드 전송")
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(ResponsivePressButtonStyle())
                         } else {
                             shareRowLabel(systemImage: "photo", label: "이미지 카드 공유", value: "카드 생성 중…")
                                 .opacity(0.5)

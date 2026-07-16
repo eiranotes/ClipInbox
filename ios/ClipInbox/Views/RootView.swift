@@ -47,6 +47,7 @@ struct TabNavigationState: Equatable {
 struct RootView: View {
     @Environment(AppStore.self) private var store
     @Environment(AppLockController.self) private var lock
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selectedTab: AppTab = .inbox
     @State private var navigation = TabNavigationState()
     @State private var keyboardVisible = false
@@ -132,24 +133,24 @@ struct RootView: View {
                     UndoDeletionBanner(title: pendingDeletion.clip.presentationTitle) {
                         store.undoDelete()
                     }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .transition(feedbackTransition)
                 }
                 if let toast = store.toast {
                     ToastView(message: toast)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .transition(feedbackTransition)
                 }
             }
             .padding(.bottom, Tokens.bottomNavigationClearance)
         }
-        .animation(.easeOut(duration: Tokens.motionBase), value: store.toast)
-        .animation(.easeOut(duration: Tokens.motionBase), value: store.pendingDeletion?.id)
+        .animation(reduceMotion ? nil : .easeOut(duration: Tokens.motionBase), value: store.toast)
+        .animation(reduceMotion ? nil : .easeOut(duration: Tokens.motionBase), value: store.pendingDeletion?.id)
         .overlay {
             if lock.isLocked {
                 AppLockView()
-                    .transition(.opacity)
+                    .transition(reduceMotion ? .identity : .opacity)
             }
         }
-        .animation(.easeOut(duration: Tokens.motionBase), value: lock.isLocked)
+        .animation(reduceMotion ? nil : .easeOut(duration: Tokens.motionBase), value: lock.isLocked)
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             keyboardVisible = true
         }
@@ -159,6 +160,10 @@ struct RootView: View {
         .onAppear {
             if !onboardingCompleted { showOnboarding = true }
         }
+    }
+
+    private var feedbackTransition: AnyTransition {
+        reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity)
     }
 
     private func selectTab(_ tab: AppTab) {
@@ -193,7 +198,7 @@ private struct PersistentTrustBanner: View {
                 Image(systemName: "xmark")
                     .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(ResponsivePressButtonStyle(pressedScale: 0.9))
             .accessibilityLabel("복구 알림 닫기")
         }
         .foregroundStyle(Tokens.onAccent)
@@ -302,10 +307,12 @@ private struct BottomNavBar: View {
                         Text(L10n.text(tab.label, locale: locale))
                             .font(Tokens.nav)
                             .foregroundStyle(selected == tab ? Tokens.textPrimary : Tokens.textSecondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.55)
                     }
                     .frame(maxWidth: .infinity, minHeight: Tokens.actionTarget)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(ResponsivePressButtonStyle(pressedScale: 0.94))
                 .accessibilityLabel(L10n.text(tab.label, locale: locale))
                 .accessibilityAddTraits(selected == tab ? .isSelected : [])
             }
@@ -346,7 +353,7 @@ struct ScreenHeader<Trailing: View>: View {
                         .foregroundStyle(Tokens.textPrimary)
                         .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(ResponsivePressButtonStyle(pressedScale: 0.94))
                 .accessibilityLabel(L10n.text(backLabel ?? "뒤로", locale: locale))
             }
             Text(L10n.text(title, locale: locale))

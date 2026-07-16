@@ -2,6 +2,7 @@
 
 ## Done
 
+- [x] Apply the Emil/Apple UI quality pass: shared press feedback, Dynamic Type and Increased Contrast tokens, Reduce Motion compliance, labeled and accessibility-adaptive filters, sticky Add save CTA, explicit recent-clip Search state, interactive leading-edge back tracking, native pan/pinch image viewing, and matching Share Extension accessibility behavior.
 - [x] Rename the system default folder to `인박스`, preserve unorganized capture state until an explicit move, add Settings folder management, split Search into independent folder/tag rows, clean GitHub repository titles, reserve async thumbnail geometry, and restore Inbox bottom clearance.
 - [x] Add detail `복사하기` for URL/image payloads, guarantee bottom-action scroll clearance, pop a reselected bottom tab to its root, and audit interactive targets for overlap risk.
 - [x] Normalize all 21 localized `final-aso` upload PNGs to opaque 8-bit sRGB 1284 x 2778, keep QA contact sheets outside the upload directory, and lock both ASO generators to that size.

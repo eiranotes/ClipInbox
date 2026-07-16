@@ -2,6 +2,7 @@
 import SwiftUI
 
 struct MetadataRemoteImage: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let url: URL
     var contentMode: ContentMode = .fill
 
@@ -10,7 +11,12 @@ struct MetadataRemoteImage: View {
         // 프레임 밖으로 번지므로, 제안 크기를 갖는 Color.clear 위에 올려 경계에서 잘라 낸다.
         Color.clear
             .overlay(
-                AsyncImage(url: url, transaction: Transaction(animation: .easeInOut(duration: 0.2))) { phase in
+                AsyncImage(
+                    url: url,
+                    transaction: Transaction(
+                        animation: reduceMotion ? nil : .easeInOut(duration: Tokens.motionBase)
+                    )
+                ) { phase in
                     switch phase {
                     case .success(let image):
                         image.resizable().aspectRatio(contentMode: contentMode)
@@ -75,6 +81,7 @@ struct MetadataDetailSectionsView: View {
     @Environment(URLMetadataCoordinator.self) private var metadata
     @Environment(AppStore.self) private var store
     @Environment(\.locale) private var locale
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let clip: Clip
 
     @State private var expanded: Bool = {
@@ -103,7 +110,7 @@ struct MetadataDetailSectionsView: View {
                         .accessibilityAddTraits(.isHeader)
                     Spacer(minLength: Tokens.rowGap)
                     Button {
-                        withAnimation(.easeOut(duration: Tokens.motionBase)) {
+                        withAnimation(reduceMotion ? nil : .easeOut(duration: Tokens.motionBase)) {
                             expanded.toggle()
                         }
                     } label: {
@@ -113,7 +120,7 @@ struct MetadataDetailSectionsView: View {
                                 .font(.system(size: 11, weight: .semibold))
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(ResponsivePressButtonStyle())
                     .font(Tokens.bodySemibold)
                     .foregroundStyle(Tokens.textPrimary)
                     .accessibilityHint(L10n.text(expanded ? "링크 정보를 접습니다" : "링크 정보를 더 보여 줍니다", locale: locale))
@@ -145,7 +152,7 @@ struct MetadataDetailSectionsView: View {
             } label: {
                 Label(L10n.text("링크 정보 분석", locale: locale), systemImage: "sparkle.magnifyingglass")
             }
-            .buttonStyle(.plain)
+            .buttonStyle(ResponsivePressButtonStyle())
             .font(Tokens.bodySemibold)
             .foregroundStyle(Tokens.textPrimary)
         }
@@ -214,7 +221,7 @@ struct MetadataDetailSectionsView: View {
             } label: {
                 Label(L10n.text("링크 정보 다시 분석", locale: locale), systemImage: "arrow.clockwise")
             }
-            .buttonStyle(.plain)
+            .buttonStyle(ResponsivePressButtonStyle())
             .font(Tokens.bodySemibold)
             .foregroundStyle(Tokens.textPrimary)
             .disabled(metadata.isAnalyzing(clip.id))

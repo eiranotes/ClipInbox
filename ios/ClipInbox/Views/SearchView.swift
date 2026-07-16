@@ -33,6 +33,7 @@ struct SearchView: View {
 
     private var content: some View {
         let results = store.searchResults(query: settledQuery, filter: searchFilter)
+        let isBrowsingRecent = settledQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         return ScreenScaffold {
             ScreenHeader("검색")
 
@@ -47,6 +48,20 @@ struct SearchView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .onSubmit(recordCurrentSearch)
+                if !query.isEmpty {
+                    Button {
+                        query = ""
+                        settledQuery = ""
+                        searchFieldFocused = true
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Tokens.textTertiary)
+                            .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
+                    }
+                    .buttonStyle(ResponsivePressButtonStyle(pressedScale: 0.9))
+                    .accessibilityLabel("검색어 지우기")
+                }
             }
             .padding(.horizontal, Tokens.cardPad)
             .frame(minHeight: Tokens.actionTarget)
@@ -62,36 +77,40 @@ struct SearchView: View {
                 }
             )
 
-            VStack(alignment: .leading, spacing: Tokens.rowGap) {
-                Text("최근 검색")
-                    .font(Tokens.sectionTitle)
-                    .foregroundStyle(Tokens.textPrimary)
-                VStack(spacing: 0) {
-                    if store.recentSearches.isEmpty {
-                        Text("아직 검색한 기록이 없습니다")
-                            .font(Tokens.meta)
-                            .foregroundStyle(Tokens.textSecondary)
-                            .frame(maxWidth: .infinity, minHeight: Tokens.actionTarget, alignment: .leading)
-                            .overlay(alignment: .bottom) {
-                                Tokens.borderSoft.frame(height: Tokens.borderChipWidth)
-                            }
-                    } else {
-                        ForEach(store.recentSearches, id: \.self) { label in
-                            PlainSelectionRow(label: label, isSelected: query == label) {
-                                query = label
-                                settledQuery = label
-                                store.recordSearch(label)
+            if isBrowsingRecent {
+                VStack(alignment: .leading, spacing: Tokens.rowGap) {
+                    Text("최근 검색")
+                        .font(Tokens.sectionTitle)
+                        .foregroundStyle(Tokens.textPrimary)
+                    VStack(spacing: 0) {
+                        if store.recentSearches.isEmpty {
+                            Text("아직 검색한 기록이 없습니다")
+                                .font(Tokens.meta)
+                                .foregroundStyle(Tokens.textSecondary)
+                                .frame(maxWidth: .infinity, minHeight: Tokens.actionTarget, alignment: .leading)
+                                .overlay(alignment: .bottom) {
+                                    Tokens.borderSoft.frame(height: Tokens.borderChipWidth)
+                                }
+                        } else {
+                            ForEach(store.recentSearches, id: \.self) { label in
+                                PlainSelectionRow(label: label, isSelected: query == label) {
+                                    query = label
+                                    settledQuery = label
+                                    store.recordSearch(label)
+                                }
                             }
                         }
                     }
                 }
             }
 
-            BoardSection(title: "검색 결과", count: results.count) {
+            BoardSection(title: isBrowsingRecent ? "최근 클립" : "검색 결과", count: results.count) {
                 if results.isEmpty {
                     EmptyStateView(systemImage: "magnifyingglass",
-                                   title: "검색 결과 없음",
-                                   message: "제목, URL, 메모, 태그를 바꿔 다시 찾아보세요.")
+                                   title: isBrowsingRecent ? "아직 저장한 클립이 없습니다" : "검색 결과 없음",
+                                   message: isBrowsingRecent
+                                       ? "공유 시트나 추가 탭에서 첫 클립을 저장해 보세요."
+                                       : "제목, URL, 메모, 태그를 바꿔 다시 찾아보세요.")
                 } else {
                     VStack(spacing: 0) {
                         ForEach(results) { clip in

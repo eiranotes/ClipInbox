@@ -11,9 +11,21 @@ extension Color {
                   blue: Double(hex & 0xFF) / 255)
     }
 
-    static func adaptive(light: UInt32, dark: UInt32) -> Color {
+    static func adaptive(
+        light: UInt32,
+        dark: UInt32,
+        highContrastLight: UInt32? = nil,
+        highContrastDark: UInt32? = nil
+    ) -> Color {
         Color(uiColor: UIColor { traits in
-            let value = traits.userInterfaceStyle == .dark ? dark : light
+            let usesDarkPalette = traits.userInterfaceStyle == .dark
+            let usesHighContrast = traits.accessibilityContrast == .high
+            let value: UInt32
+            if usesHighContrast {
+                value = usesDarkPalette ? (highContrastDark ?? dark) : (highContrastLight ?? light)
+            } else {
+                value = usesDarkPalette ? dark : light
+            }
             return UIColor(
                 red: CGFloat((value >> 16) & 0xFF) / 255,
                 green: CGFloat((value >> 8) & 0xFF) / 255,
@@ -29,32 +41,44 @@ enum Tokens {
     static let bgApp = Color.adaptive(light: 0xF3EFE7, dark: 0x171714)
     static let bgBoard = Color.adaptive(light: 0xEEE8DD, dark: 0x211F1B)
     static let bgCard = Color.adaptive(light: 0xFFFFFF, dark: 0x2B2924)
-    static let bgCardMuted = Color.adaptive(light: 0xFAF8F2, dark: 0x24221E)
+    static let bgCardMuted = Color.adaptive(
+        light: 0xFAF8F2, dark: 0x24221E,
+        highContrastLight: 0xFFFFFF, highContrastDark: 0x201E1A
+    )
     static let textPrimary = Color.adaptive(light: 0x171714, dark: 0xF4F1E9)
-    static let textSecondary = Color.adaptive(light: 0x5F6368, dark: 0xB5B1A8)
-    static let textTertiary = Color.adaptive(light: 0x9AA0A6, dark: 0x817D75)
+    static let textSecondary = Color.adaptive(
+        light: 0x5F6368, dark: 0xB5B1A8,
+        highContrastLight: 0x3F4247, highContrastDark: 0xD8D3C9
+    )
+    static let textTertiary = Color.adaptive(
+        light: 0x9AA0A6, dark: 0x817D75,
+        highContrastLight: 0x61666C, highContrastDark: 0xB1ACA2
+    )
     static let onAccent = Color(hex: 0x171714)
     static let borderStrong = Color.adaptive(light: 0x292824, dark: 0xECE8DF)
-    static let borderSoft = Color.adaptive(light: 0xD8D1C4, dark: 0x44413B)
+    static let borderSoft = Color.adaptive(
+        light: 0xD8D1C4, dark: 0x44413B,
+        highContrastLight: 0x9F978A, highContrastDark: 0x777168
+    )
     static let accentYellow = Color.adaptive(light: 0xFFD900, dark: 0xF4D21F)
     static let accentBlue = Color.adaptive(light: 0xBBD7FF, dark: 0x8FB8EE)
     static let accentGreen = Color.adaptive(light: 0x9BE7B0, dark: 0x68C982)
     static let danger = Color.adaptive(light: 0xFF4B4B, dark: 0xFF6B6B)
 
     // Typography (letter spacing 0, bundled Pretendard v1.3.9)
-    static let screenTitle = Font.custom("Pretendard-Bold", size: 26)
-    static let sectionTitle = Font.custom("Pretendard-Bold", size: 18)
-    static let cardTitle = Font.custom("Pretendard-SemiBold", size: 17)
-    static let previewTitle = Font.custom("Pretendard-Bold", size: 28)
-    static let body = Font.custom("Pretendard-Regular", size: 15)
-    static let bodySemibold = Font.custom("Pretendard-SemiBold", size: 15)
-    static let bodyBold = Font.custom("Pretendard-Bold", size: 15)
-    static let meta = Font.custom("Pretendard-Regular", size: 13)
-    static let metaSemibold = Font.custom("Pretendard-SemiBold", size: 13)
-    static let metaBold = Font.custom("Pretendard-Bold", size: 13)
-    static let chip = Font.custom("Pretendard-SemiBold", size: 12)
-    static let button = Font.custom("Pretendard-SemiBold", size: 16)
-    static let nav = Font.custom("Pretendard-SemiBold", size: 11)
+    static let screenTitle = Font.custom("Pretendard-Bold", size: 26, relativeTo: .title)
+    static let sectionTitle = Font.custom("Pretendard-Bold", size: 18, relativeTo: .title3)
+    static let cardTitle = Font.custom("Pretendard-SemiBold", size: 17, relativeTo: .headline)
+    static let previewTitle = Font.custom("Pretendard-Bold", size: 28, relativeTo: .largeTitle)
+    static let body = Font.custom("Pretendard-Regular", size: 15, relativeTo: .body)
+    static let bodySemibold = Font.custom("Pretendard-SemiBold", size: 15, relativeTo: .body)
+    static let bodyBold = Font.custom("Pretendard-Bold", size: 15, relativeTo: .body)
+    static let meta = Font.custom("Pretendard-Regular", size: 13, relativeTo: .footnote)
+    static let metaSemibold = Font.custom("Pretendard-SemiBold", size: 13, relativeTo: .footnote)
+    static let metaBold = Font.custom("Pretendard-Bold", size: 13, relativeTo: .footnote)
+    static let chip = Font.custom("Pretendard-SemiBold", size: 12, relativeTo: .caption)
+    static let button = Font.custom("Pretendard-SemiBold", size: 16, relativeTo: .headline)
+    static let nav = Font.custom("Pretendard-SemiBold", size: 11, relativeTo: .caption2)
 
     // Line spacing (DESIGN.md line-height 계약: body 1.55, meta 1.4를 lineSpacing 가산치로 구현)
     static let titleLineSpacing: CGFloat = 3

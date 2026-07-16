@@ -4,6 +4,8 @@
 
 Clip Inbox's production source of truth is now the iPhone-only native SwiftUI app under `ios/`, prepared as App Store version `1.0.0 (1)`. The dependency-free web implementation under `src/` is retained as a historical design prototype and is no longer a target for product-logic changes unless web work is explicitly requested. The native app uses a productive-minimal, list-first interface: one warm canvas, hairline-separated rows, quieter metadata, and yellow reserved for selection and primary actions.
 
+The 2026-07-16 native UI quality pass keeps that identity while closing the main interaction and accessibility gaps: shared press feedback across flat controls, relative Dynamic Type for Pretendard, stronger Increased Contrast tokens, Reduce Motion-aware transitions, labeled folder/tag rails, compact accessibility-size filter menus, a sticky Add save action, explicit recent-clip Search browsing, finger-tracking back navigation, and a native pan/pinch/momentum image viewer. The Share Extension follows the same Dynamic Type, contrast, target-size, and motion contract. Default, Add, Search, and accessibility-size/high-contrast simulator evidence is in `.superloopy/evidence/ios/20260716-ui-polish/`.
+
 Implemented screens:
 
 - Inbox with a two-row, five-column equal-width filter grid (top row folders, bottom row in-use tags) whose rows scroll horizontally and independently, full-row clip navigation, stable reserved thumbnail space while remote images load, a metadata short-summary secondary line, and enough bottom-navigation clearance to reveal the final clip completely.

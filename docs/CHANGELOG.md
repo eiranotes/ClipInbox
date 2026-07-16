@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased - 2026-07-16
+
+### Added
+
+- Flat rows, icon controls, cards, and bottom tabs now give immediate press feedback; the feedback keeps opacity-only behavior when Reduce Motion is enabled.
+- Full-screen clip images now use native pinch, pan, momentum, bounded zoom, and double-tap zoom instead of scale-only magnification.
+- Increased Contrast now strengthens secondary text, tertiary text, separators, and muted surfaces in both the app and Share Extension.
+
+### Changed
+
+- Pretendard typography now scales against the matching Dynamic Type text style. Accessibility sizes condense the Inbox/Search folder and tag filters into two native menus, while bottom-tab names remain on one line.
+- The Add save action is pinned above the bottom navigation, so it stays visible without appearing as a clipped sliver inside the scrolling form.
+- Empty Search now labels the three-item browse state as `최근 클립`; recent-search history hides once a real query is active, and the search field has a 44pt clear control.
+- Folder and tag filter rows now show compact semantic labels at standard text sizes and expose context-qualified VoiceOver labels.
+- Leading-edge back gestures track the finger interactively before completing or returning with a short spring.
+- The Share Extension review UI uses Dynamic Type, a 44pt cancel target, Increased Contrast colors, and a motion-free success transition when requested by the system.
+
 ## Unreleased - 2026-07-15
 
 ### Added

@@ -129,7 +129,7 @@ struct SettingsView: View {
                                    title: row.key.title,
                                    value: row.value)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(ResponsivePressButtonStyle())
                 if index < rows.count - 1 {
                     RowDivider()
                 }
@@ -146,7 +146,7 @@ struct SettingsView: View {
                 DestinationRow(systemImage: "rectangle.portrait.and.arrow.right",
                                title: "공유 저장 가이드")
             }
-            .buttonStyle(.plain)
+            .buttonStyle(ResponsivePressButtonStyle())
             RowDivider()
             settingsGroup([
                 (.about, AppBuildInfo.marketingVersion),
@@ -173,7 +173,7 @@ struct SettingsView: View {
                            title: title,
                            trailingSystemImage: "arrow.up.right")
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ResponsivePressButtonStyle())
     }
 }
 
@@ -345,7 +345,7 @@ struct SettingDetailView: View {
                             .frame(width: Tokens.actionTarget, height: Tokens.actionTarget)
                             .tokenSurface(fill: Tokens.accentYellow, radius: Tokens.radiusButton)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(ResponsivePressButtonStyle())
                     .accessibilityLabel("폴더 추가")
                 }
             }
@@ -376,7 +376,7 @@ struct SettingDetailView: View {
                                         .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
                                         .contentShape(Rectangle())
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(ResponsivePressButtonStyle())
                                 .accessibilityLabel(L10n.text("폴더 삭제"))
                             } else {
                                 Color.clear
@@ -408,7 +408,7 @@ struct SettingDetailView: View {
                             .frame(width: Tokens.actionTarget, height: Tokens.actionTarget)
                             .tokenSurface(fill: Tokens.accentYellow, radius: Tokens.radiusButton)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(ResponsivePressButtonStyle())
                     .accessibilityLabel("태그 추가")
                 }
             }
@@ -437,7 +437,7 @@ struct SettingDetailView: View {
                                     .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
                                     .contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(ResponsivePressButtonStyle())
                             .accessibilityLabel(L10n.text("태그 삭제"))
                         }
                         .frame(minHeight: Tokens.actionTarget)

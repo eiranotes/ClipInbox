@@ -25,7 +25,6 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         static let compactPadding: CGFloat = 12
         static let rowGap: CGFloat = 8
         static let touchTarget: CGFloat = 44
-        static let compactTarget: CGFloat = 36
         static let memoHeight: CGFloat = 64
         static let radiusPanel: CGFloat = 12
         static let radiusControl: CGFloat = 8
@@ -51,13 +50,31 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         static let bgCard = adaptive(light: 0xFFFFFF, dark: 0x2B2924)
         static let accentYellow = adaptive(light: 0xFFD900, dark: 0xF4D21F)
         static let onAccent = adaptive(light: 0x171714, dark: 0x171714)
-        static let borderSoft = adaptive(light: 0xD8D1C4, dark: 0x44413B)
+        static let borderSoft = adaptive(
+            light: 0xD8D1C4, dark: 0x44413B,
+            highContrastLight: 0x9F978A, highContrastDark: 0x777168
+        )
         static let textPrimary = adaptive(light: 0x171714, dark: 0xF4F1E9)
-        static let textSecondary = adaptive(light: 0x5F6368, dark: 0xB5B1A8)
+        static let textSecondary = adaptive(
+            light: 0x5F6368, dark: 0xB5B1A8,
+            highContrastLight: 0x3F4247, highContrastDark: 0xD8D3C9
+        )
 
-        private static func adaptive(light: UInt32, dark: UInt32) -> UIColor {
+        private static func adaptive(
+            light: UInt32,
+            dark: UInt32,
+            highContrastLight: UInt32? = nil,
+            highContrastDark: UInt32? = nil
+        ) -> UIColor {
             UIColor { traits in
-                let value = traits.userInterfaceStyle == .dark ? dark : light
+                let usesDarkPalette = traits.userInterfaceStyle == .dark
+                let usesHighContrast = traits.accessibilityContrast == .high
+                let value: UInt32
+                if usesHighContrast {
+                    value = usesDarkPalette ? (highContrastDark ?? dark) : (highContrastLight ?? light)
+                } else {
+                    value = usesDarkPalette ? dark : light
+                }
                 return UIColor(
                     red: CGFloat((value >> 16) & 0xFF) / 255,
                     green: CGFloat((value >> 8) & 0xFF) / 255,
@@ -138,9 +155,15 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         SharedL10n.text(key, language: configuration.language)
     }
 
-    private func font(size: CGFloat, semibold: Bool = false) -> UIFont {
+    private func font(
+        size: CGFloat,
+        textStyle: UIFont.TextStyle = .body,
+        semibold: Bool = false
+    ) -> UIFont {
         let name = semibold ? "Pretendard-SemiBold" : "Pretendard-Regular"
-        return UIFont(name: name, size: size) ?? .systemFont(ofSize: size, weight: semibold ? .semibold : .regular)
+        let base = UIFont(name: name, size: size)
+            ?? .systemFont(ofSize: size, weight: semibold ? .semibold : .regular)
+        return UIFontMetrics(forTextStyle: textStyle).scaledFont(for: base)
     }
 
     /// Quick mode paints only one compact card. The extension host remains transparent.
@@ -154,7 +177,8 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         statusIcon.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 18, weight: .bold)
         statusIcon.isHidden = true
         statusLabel.text = localized("Clip Inbox에 저장하는 중…")
-        statusLabel.font = font(size: 15)
+        statusLabel.font = font(size: 15, textStyle: .body)
+        statusLabel.adjustsFontForContentSizeCategory = true
         statusLabel.textColor = Palette.textPrimary
 
         let content = UIStackView(arrangedSubviews: [statusIcon, activityIndicator, statusLabel])
@@ -205,12 +229,14 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
 
         let heading = UILabel()
         heading.text = localized("폴더와 메모 확인")
-        heading.font = font(size: 16, semibold: true)
+        heading.font = font(size: 16, textStyle: .headline, semibold: true)
+        heading.adjustsFontForContentSizeCategory = true
         heading.textColor = Palette.textPrimary
 
         let clipTitle = UILabel()
         clipTitle.text = payload.title
-        clipTitle.font = font(size: 12)
+        clipTitle.font = font(size: 12, textStyle: .caption1)
+        clipTitle.adjustsFontForContentSizeCategory = true
         clipTitle.textColor = Palette.textSecondary
         clipTitle.numberOfLines = 1
         clipTitle.lineBreakMode = .byTruncatingTail
@@ -219,7 +245,8 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         configureFolderButton()
 
         let memoLabel = fieldLabel(localized("메모 (선택)"))
-        memoTextView.font = font(size: 13)
+        memoTextView.font = font(size: 13, textStyle: .body)
+        memoTextView.adjustsFontForContentSizeCategory = true
         memoTextView.textColor = Palette.textPrimary
         memoTextView.backgroundColor = Palette.bgApp
         memoTextView.layer.cornerRadius = Metrics.radiusControl
@@ -231,7 +258,7 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
 
         var saveConfiguration = UIButton.Configuration.filled()
         var saveTitle = AttributedString(localized("클립 저장"))
-        saveTitle.font = font(size: 15, semibold: true)
+        saveTitle.font = font(size: 15, textStyle: .headline, semibold: true)
         saveConfiguration.attributedTitle = saveTitle
         saveConfiguration.image = UIImage(systemName: "checkmark")
         saveConfiguration.imagePadding = 8
@@ -246,8 +273,9 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         let cancelButton = UIButton(type: .system)
         cancelButton.setTitle(localized("취소"), for: .normal)
         cancelButton.setTitleColor(Palette.textSecondary, for: .normal)
-        cancelButton.titleLabel?.font = font(size: 13)
-        cancelButton.heightAnchor.constraint(equalToConstant: Metrics.compactTarget).isActive = true
+        cancelButton.titleLabel?.font = font(size: 13, textStyle: .body)
+        cancelButton.titleLabel?.adjustsFontForContentSizeCategory = true
+        cancelButton.heightAnchor.constraint(greaterThanOrEqualToConstant: Metrics.touchTarget).isActive = true
         cancelButton.addTarget(self, action: #selector(cancelShare), for: .touchUpInside)
 
         let stack = UIStackView(arrangedSubviews: [heading, clipTitle, folderLabel, folderButton,
@@ -278,7 +306,8 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
     private func fieldLabel(_ text: String) -> UILabel {
         let label = UILabel()
         label.text = text
-        label.font = font(size: 12, semibold: true)
+        label.font = font(size: 12, textStyle: .caption1, semibold: true)
+        label.adjustsFontForContentSizeCategory = true
         label.textColor = Palette.textPrimary
         return label
     }
@@ -289,7 +318,7 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
 
         var buttonConfiguration = UIButton.Configuration.plain()
         var folderTitle = AttributedString(localized(selectedFolder))
-        folderTitle.font = font(size: 13, semibold: true)
+        folderTitle.font = font(size: 13, textStyle: .body, semibold: true)
         buttonConfiguration.attributedTitle = folderTitle
         buttonConfiguration.image = UIImage(systemName: "folder")
         buttonConfiguration.imagePadding = 8
@@ -365,12 +394,16 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         activityIndicator.isHidden = true
         statusIcon.isHidden = false
         statusLabel.text = localized("Clip Inbox에 저장됨")
-        statusLabel.font = font(size: 15, semibold: true)
+        statusLabel.font = font(size: 15, textStyle: .body, semibold: true)
         statusLabel.textColor = Palette.onAccent
         statusIcon.tintColor = Palette.onAccent
         statusCard.backgroundColor = Palette.accentYellow
-        statusCard.alpha = 0
-        UIView.animate(withDuration: 0.18) { self.statusCard.alpha = 1 }
+        if UIAccessibility.isReduceMotionEnabled {
+            statusCard.alpha = 1
+        } else {
+            statusCard.alpha = 0
+            UIView.animate(withDuration: 0.18) { self.statusCard.alpha = 1 }
+        }
     }
 
     @objc private func dismissKeyboard() {

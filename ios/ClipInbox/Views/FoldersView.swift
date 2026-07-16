@@ -21,7 +21,7 @@ struct FoldersView: View {
                                        title: folder.label,
                                        value: "\(store.folderCount(folder.label))")
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(ResponsivePressButtonStyle())
                     if index < store.folders.count - 1 {
                         RowDivider()
                     }
@@ -128,7 +128,7 @@ private struct TrashClipRow: View {
                             .fill(Tokens.accentYellow)
                     )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(ResponsivePressButtonStyle())
             .accessibilityLabel(L10n.text("클립 복원", locale: locale))
         }
         .frame(minHeight: Tokens.actionTarget)
