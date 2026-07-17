@@ -8,31 +8,84 @@ struct ClipCardView: View {
     @Environment(\.locale) private var locale
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let clip: Clip
+    var selectionState: Bool?
+    var onSelectionToggle: () -> Void
     var onMenu: () -> Void
 
-    var body: some View {
-        HStack(alignment: .center, spacing: 0) {
-            NavigationLink(value: Route.detail(clip.id)) {
-                navigationContent
-            }
-            .buttonStyle(ResponsivePressButtonStyle())
-            .accessibilityLabel(L10n.format("format.clip_detail_accessibility", L10n.text(metadata.cardTitle(for: clip, locale: locale), locale: locale)))
+    init(
+        clip: Clip,
+        selectionState: Bool? = nil,
+        onSelectionToggle: @escaping () -> Void = {},
+        onMenu: @escaping () -> Void
+    ) {
+        self.clip = clip
+        self.selectionState = selectionState
+        self.onSelectionToggle = onSelectionToggle
+        self.onMenu = onMenu
+    }
 
-            Button(action: onMenu) {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Tokens.textPrimary)
-                    .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
+    var body: some View {
+        Group {
+            if let selectionState {
+                Button(action: onSelectionToggle) {
+                    HStack(alignment: .center, spacing: 0) {
+                        selectionIndicator(isSelected: selectionState)
+                        navigationContent
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
+                }
+                .buttonStyle(ResponsivePressButtonStyle())
+                .accessibilityLabel(L10n.format(
+                    "format.clip_selection_accessibility",
+                    L10n.text(metadata.cardTitle(for: clip, locale: locale), locale: locale)
+                ))
+                .accessibilityAddTraits(selectionState ? .isSelected : [])
+            } else {
+                HStack(alignment: .center, spacing: 0) {
+                    NavigationLink(value: Route.detail(clip.id)) {
+                        navigationContent
+                    }
+                    .buttonStyle(ResponsivePressButtonStyle())
+                    .accessibilityLabel(L10n.format("format.clip_detail_accessibility", L10n.text(metadata.cardTitle(for: clip, locale: locale), locale: locale)))
+
+                    Button(action: onMenu) {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Tokens.textPrimary)
+                            .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(ResponsivePressButtonStyle(pressedScale: 0.9))
+                    .accessibilityLabel(L10n.format("format.clip_menu_accessibility", L10n.text(metadata.cardTitle(for: clip, locale: locale), locale: locale)))
+                }
             }
-            .buttonStyle(ResponsivePressButtonStyle(pressedScale: 0.9))
-            .accessibilityLabel(L10n.format("format.clip_menu_accessibility", L10n.text(metadata.cardTitle(for: clip, locale: locale), locale: locale)))
         }
         .padding(.vertical, Tokens.cardPad)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .bottom) {
             Tokens.borderSoft.frame(height: Tokens.borderChipWidth)
         }
+    }
+
+    private func selectionIndicator(isSelected: Bool) -> some View {
+        ZStack {
+            Circle()
+                .fill(isSelected ? Tokens.accentYellow : Tokens.bgCard)
+            Circle()
+                .strokeBorder(
+                    isSelected ? Tokens.accentYellow : Tokens.borderSoft,
+                    lineWidth: Tokens.borderCardWidth
+                )
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Tokens.onAccent)
+            }
+        }
+        .frame(width: 22, height: 22)
+        .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
+        .accessibilityHidden(true)
     }
 
     private var navigationContent: some View {

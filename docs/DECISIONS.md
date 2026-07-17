@@ -1,5 +1,21 @@
 # Decisions
 
+## 2026-07-17: A Multi-Image Share Is One Atomic Intake Batch
+
+Decision: Advertise Share Extension support for up to 200 images, matching the pending queue item ceiling. Collect every image provider in selection order and create one payload per image. Quick mode saves the complete selection immediately; Review mode applies the chosen folder and memo to every selected image. Store original image files first, preflight the complete payload batch against the queue's item and byte limits, then write all payload files with rollback for any failure created by this attempt.
+
+Why: The extension previously declared an image maximum of one in its activation rule, so iOS could hide it when two or more Photos items were selected. Its loader also returned after the first image provider, which discarded later selections even if the extension opened. Repeating the existing single-item enqueue would additionally allow a late capacity failure to leave only part of a user's selection queued.
+
+Impact: Each selected image becomes an independent clip while retaining the existing 50 MB/100 MP per-image and 250 MB/200-item pending-queue protections. The extension shows localized multi-item counts and preserves the one-image copy and confirmation path. If a batch cannot be accepted, newly written originals and payloads from that attempt are removed instead of reporting partial success.
+
+## 2026-07-16: Classification Keeps Detail Context While Batch Actions Stay Contextual
+
+Decision: Extract the Clip Detail overview into one shared SwiftUI component and use it in Sort Later through the collapsed link-information boundary only. Keep folder selection and the classify CTA pinned below the scrolling context. Add an Inbox-only selection mode whose selected IDs are constrained to the current filter and whose move/delete mutations commit once for the whole set; batch deletion becomes one five-second Undo unit.
+
+Why: A title and source alone do not provide enough evidence to classify an unfamiliar clip, but duplicating the complete editable detail page would hide the organization decision. On the Inbox, repeated per-card move/delete flows are unnecessarily slow when several clips share the same destination or cleanup intent.
+
+Impact: Sort Later shows the same type/state, resolved title, source/time, media, description fallback, and collapsed metadata summary users already recognize from Clip Detail, while link/copy/note/tag/edit/delete actions remain out of scope. Inbox rows replace navigation/menu targets with a single full-row selection target during selection mode; filter changes clear hidden selections, the bottom action bar stays visible, and Dynamic Type collapses the pinned folder rail to a native menu.
+
 ## 2026-07-16: Interaction Feedback and Accessibility Adapt Without Changing Product Density
 
 Decision: Keep the existing warm, list-first visual identity, but make every interactive surface acknowledge touch immediately through a shared press style. Use system accessibility preferences as input: Pretendard scales relative to Dynamic Type, Increased Contrast selects stronger semantic colors, Reduce Motion removes scale and movement, and accessibility text sizes replace the dense folder/tag rails with two native menus. Use `UIScrollView` physics for the full-screen image viewer and a finger-tracking leading-edge back gesture for direct manipulation.

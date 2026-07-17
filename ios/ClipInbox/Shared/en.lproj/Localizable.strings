@@ -1,6 +1,9 @@
 "quick" = "Save immediately";
 "review" = "Choose folder and note";
 "format.imported_shared_clips" = "Added %ld shared clips to Inbox";
+"format.share_clips_count" = "%ld clips";
+"format.save_shared_clips" = "Save %ld clips";
+"format.shared_clips_saved" = "Saved %ld to Clip Inbox";
 "format.moved_to_folder" = "Moved to %@";
 "format.saved_to_folder" = "Saved to %@";
 "format.created_folder" = "Created the %@ folder";
@@ -316,6 +319,16 @@
 "새 메모" = "New memo";
 "저장한 사진" = "Saved photo";
 "format.deleted_clip_title" = "%@ deleted";
+"선택" = "Select";
+"클립 선택" = "Select Clips";
+"전체 선택" = "Select All";
+"전체 해제" = "Deselect All";
+"format.selected_clip_count" = "%ld selected";
+"format.clip_selection_accessibility" = "Select %@";
+"format.delete_selected_clips_title" = "Delete %ld clips?";
+"선택한 클립은 휴지통으로 이동하며 5초 동안 바로 되돌릴 수 있습니다." = "Selected clips will be moved to Trash and can be undone for 5 seconds.";
+"format.move_selected_clips" = "Move %ld Clips";
+"format.moved_clips_to_folder" = "Moved %1$ld clips to %2$@.";
 "format.storage_images" = "%ld · %@";
 "format.storage_pending" = "%ld · %@";
 "이전 보관함으로 복구했습니다" = "Restored the previous library";

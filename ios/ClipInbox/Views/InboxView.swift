@@ -7,14 +7,40 @@ struct InboxView: View {
     @State private var filter: InboxFilter = .all
     @State private var showSortFlow = false
     @State private var actionClipID: Int?
+    @State private var isSelecting = false
+    @State private var selectedClipIDs: Set<Int> = []
+    @State private var showBatchMove = false
+    @State private var showBatchDeleteConfirm = false
 
     private var list: [Clip] { store.filteredClips(filter) }
+    private var visibleClipIDs: Set<Int> { Set(list.map(\.id)) }
+    private var allVisibleSelected: Bool {
+        !visibleClipIDs.isEmpty && visibleClipIDs.isSubset(of: selectedClipIDs)
+    }
 
     var body: some View {
         ScreenScaffold(additionalBottomPadding: Tokens.bottomNavigationClearance) {
-            ScreenHeader("클립 인박스", trailing: {
-                UtilityIconButton(label: "분류하기", systemImage: "arrow.up.arrow.down") {
-                    showSortFlow = true
+            ScreenHeader(headerTitle, trailing: {
+                if isSelecting {
+                    Button(allVisibleSelected ? "전체 해제" : "전체 선택", action: toggleAllVisible)
+                        .font(Tokens.bodySemibold)
+                        .foregroundStyle(Tokens.textPrimary)
+                        .frame(minHeight: Tokens.touchTarget)
+                        .buttonStyle(ResponsivePressButtonStyle())
+                    Button("완료", action: finishSelection)
+                        .font(Tokens.bodyBold)
+                        .foregroundStyle(Tokens.textPrimary)
+                        .frame(minWidth: Tokens.touchTarget, minHeight: Tokens.touchTarget)
+                        .buttonStyle(ResponsivePressButtonStyle())
+                } else {
+                    if !list.isEmpty {
+                        UtilityIconButton(label: "선택", systemImage: "checkmark.circle") {
+                            isSelecting = true
+                        }
+                    }
+                    UtilityIconButton(label: "분류하기", systemImage: "arrow.up.arrow.down") {
+                        showSortFlow = true
+                    }
                 }
             })
 
@@ -28,10 +54,10 @@ struct InboxView: View {
                 // 윗줄은 폴더, 아랫줄은 태그 필터를 보여 준다.
                 TwoRowHorizontalSelection(
                     topRow: store.inboxFolderFilters.map { item in
-                        (store.filterLabel(item), filter == item, { filter = item })
+                        (store.filterLabel(item), filter == item, { selectFilter(item) })
                     },
                     bottomRow: store.inboxTagFilters.map { item in
-                        (store.filterLabel(item), filter == item, { filter = item })
+                        (store.filterLabel(item), filter == item, { selectFilter(item) })
                     }
                 )
 
@@ -46,9 +72,12 @@ struct InboxView: View {
                 } else {
                     LazyVStack(spacing: 0) {
                         ForEach(list) { clip in
-                            ClipCardView(clip: clip) {
-                                actionClipID = clip.id
-                            }
+                            ClipCardView(
+                                clip: clip,
+                                selectionState: isSelecting ? selectedClipIDs.contains(clip.id) : nil,
+                                onSelectionToggle: { toggleSelection(for: clip.id) },
+                                onMenu: { actionClipID = clip.id }
+                            )
                         }
                     }
                 }
@@ -58,12 +87,164 @@ struct InboxView: View {
         .fullScreenCover(isPresented: $showSortFlow) {
             SortView()
         }
+        .sheet(isPresented: $showBatchMove) {
+            BatchMoveFolderSheet(clipIDs: selectedClipIDs) {
+                finishSelection()
+            }
+            .workflowSheet(.expanded)
+        }
         .sheet(item: Binding(
             get: { actionClipID.flatMap { store.clip(id: $0) } },
             set: { actionClipID = $0?.id }
         )) { clip in
             CardActionsSheet(clipID: clip.id)
                 .workflowSheet(.expanded)
+        }
+        .alert(
+            L10n.format("format.delete_selected_clips_title", selectedClipIDs.count),
+            isPresented: $showBatchDeleteConfirm
+        ) {
+            Button("삭제", role: .destructive, action: deleteSelection)
+            Button("취소", role: .cancel) {}
+        } message: {
+            Text("선택한 클립은 휴지통으로 이동하며 5초 동안 바로 되돌릴 수 있습니다.")
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if isSelecting {
+                BatchSelectionBar(
+                    selectionCount: selectedClipIDs.count,
+                    move: { showBatchMove = true },
+                    delete: { showBatchDeleteConfirm = true }
+                )
+                // RootView owns the persistent bottom navigation, so keep this
+                // contextual bar above that independently inserted safe area.
+                .padding(.bottom, Tokens.bottomNavigationClearance)
+            }
+        }
+        .onChange(of: list.map(\.id)) { _, visibleIDs in
+            selectedClipIDs.formIntersection(Set(visibleIDs))
+            if visibleIDs.isEmpty, isSelecting { finishSelection() }
+        }
+    }
+
+    private var headerTitle: String {
+        guard isSelecting else { return "클립 인박스" }
+        return selectedClipIDs.isEmpty
+            ? "클립 선택"
+            : L10n.format("format.selected_clip_count", selectedClipIDs.count)
+    }
+
+    private func selectFilter(_ newFilter: InboxFilter) {
+        filter = newFilter
+        selectedClipIDs.removeAll()
+    }
+
+    private func toggleSelection(for id: Int) {
+        if selectedClipIDs.contains(id) {
+            selectedClipIDs.remove(id)
+        } else if visibleClipIDs.contains(id) {
+            selectedClipIDs.insert(id)
+        }
+    }
+
+    private func toggleAllVisible() {
+        if allVisibleSelected {
+            selectedClipIDs.subtract(visibleClipIDs)
+        } else {
+            selectedClipIDs.formUnion(visibleClipIDs)
+        }
+    }
+
+    private func deleteSelection() {
+        guard store.deleteClips(ids: selectedClipIDs) else { return }
+        finishSelection()
+    }
+
+    private func finishSelection() {
+        isSelecting = false
+        selectedClipIDs.removeAll()
+        showBatchMove = false
+        showBatchDeleteConfirm = false
+    }
+}
+
+private struct BatchSelectionBar: View {
+    let selectionCount: Int
+    let move: () -> Void
+    let delete: () -> Void
+
+    var body: some View {
+        HStack(spacing: Tokens.rowGap) {
+            Button(action: move) {
+                Label("폴더 이동", systemImage: "folder")
+            }
+            .buttonStyle(SecondaryBoxButtonStyle())
+
+            Button(action: delete) {
+                Label("삭제", systemImage: "trash")
+            }
+            .buttonStyle(SecondaryBoxButtonStyle(isDanger: true))
+        }
+        .disabled(selectionCount == 0)
+        .opacity(selectionCount == 0 ? 0.45 : 1)
+        .padding(.horizontal, Tokens.screenX)
+        .padding(.vertical, Tokens.rowGap)
+        .background(
+            Tokens.bgCardMuted
+                .overlay(alignment: .top) {
+                    Tokens.borderSoft.frame(height: Tokens.borderChipWidth)
+                }
+        )
+    }
+}
+
+private struct BatchMoveFolderSheet: View {
+    @Environment(AppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+
+    let clipIDs: Set<Int>
+    let onMoved: () -> Void
+    @State private var destination = ""
+
+    var body: some View {
+        ScreenScaffold {
+            ScreenHeader("폴더 이동", onBack: { dismiss() })
+
+            BoardSection(title: "이동할 폴더", count: clipIDs.count) {
+                VStack(spacing: 0) {
+                    ForEach(store.destinationFolders) { folder in
+                        ActionRow(
+                            systemImage: folder.systemImage,
+                            label: folder.label,
+                            value: L10n.format("format.folder_clip_count", store.folderCount(folder.label)),
+                            isSelected: destination == folder.label
+                        ) {
+                            destination = folder.label
+                        }
+                    }
+                }
+            }
+
+            Button {
+                guard store.moveClips(ids: clipIDs, to: destination) else { return }
+                onMoved()
+                dismiss()
+            } label: {
+                Label {
+                    Text(L10n.format("format.move_selected_clips", clipIDs.count))
+                } icon: {
+                    Image(systemName: "checkmark")
+                }
+            }
+            .buttonStyle(PrimaryBoxButtonStyle())
+            .disabled(destination.isEmpty || clipIDs.isEmpty)
+        }
+        .onAppear {
+            if store.destinationFolders.contains(where: { $0.label == store.preferences.defaultFolder }) {
+                destination = store.preferences.defaultFolder
+            } else {
+                destination = store.destinationFolders.first?.label ?? ""
+            }
         }
     }
 }

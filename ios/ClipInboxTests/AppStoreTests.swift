@@ -148,13 +148,42 @@ final class AppStoreTests: XCTestCase {
         XCTAssertTrue(store.deleteClip(id: 1))
         XCTAssertNil(store.activeClips.first { $0.id == 1 })
         XCTAssertTrue(store.clip(id: 1)?.isInTrash == true)
-        XCTAssertEqual(store.pendingDeletion?.clip.id, 1)
+        XCTAssertEqual(store.pendingDeletion?.clips.first?.id, 1)
         XCTAssertTrue(store.undoDelete())
         XCTAssertEqual(store.clip(id: 1)?.title, DefaultData.clips[0].title)
         XCTAssertNil(store.pendingDeletion)
 
         let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
         XCTAssertNotNil(reloaded.clip(id: 1))
+    }
+
+    func testBatchMoveDeleteAndUndoCommitAsSingleTransactions() {
+        let repository = TestClipRepository(bootstrapHandler: {
+            .loaded(DataSnapshot(
+                version: 2,
+                clips: DefaultData.clips,
+                folders: DefaultData.folders,
+                preferences: .standard
+            ))
+        })
+        let store = AppStore(userDefaults: defaults, repository: repository)
+        let initialCommitCount = repository.committedSnapshots.count
+
+        XCTAssertTrue(store.moveClips(ids: [1, 2], to: "폴더 4"))
+        XCTAssertEqual(repository.committedSnapshots.count, initialCommitCount + 1)
+        XCTAssertEqual(store.clip(id: 1)?.folder, "폴더 4")
+        XCTAssertEqual(store.clip(id: 2)?.folder, "폴더 4")
+        XCTAssertNil(store.clip(id: 1)?.state)
+
+        XCTAssertTrue(store.deleteClips(ids: [1, 2]))
+        XCTAssertEqual(repository.committedSnapshots.count, initialCommitCount + 2)
+        XCTAssertEqual(Set(store.trashedClips.map(\.id)), Set([1, 2]))
+        XCTAssertEqual(Set(store.pendingDeletion?.clips.map(\.id) ?? []), Set([1, 2]))
+
+        XCTAssertTrue(store.undoDelete())
+        XCTAssertEqual(repository.committedSnapshots.count, initialCommitCount + 3)
+        XCTAssertEqual(Set(store.activeClips.filter { [1, 2].contains($0.id) }.map(\.id)), Set([1, 2]))
+        XCTAssertTrue(store.trashedClips.isEmpty)
     }
 
     func testTrashRestoreEmptyAndThirtyDayExpiry() throws {
@@ -700,6 +729,42 @@ final class AppStoreTests: XCTestCase {
             at: container.appendingPathComponent("ExpiredClips"),
             includingPropertiesForKeys: nil
         ).count, 1)
+    }
+
+    func testShareQueueBatchEnqueuesAndImportsEverySelectedImage() throws {
+        let container = temporaryDirectory.appendingPathComponent("BatchImageQueue", isDirectory: true)
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8)).image { context in
+            UIColor.systemYellow.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+        }
+        let asset = try XCTUnwrap(SharedImageAsset(data: try XCTUnwrap(image.pngData())))
+        let createdAt = Date()
+        let payloads = try (0..<3).map { index in
+            let id = UUID()
+            let imageName = try SharedClipQueue.storeImageAsset(asset, for: id, containerURL: container)
+            return SharedClipPayload(
+                id: id,
+                type: .image,
+                title: "Shared image \(index + 1)",
+                source: "Photos",
+                sharedImageName: imageName,
+                createdAt: createdAt.addingTimeInterval(Double(index) / 1_000)
+            )
+        }
+
+        try SharedClipQueue.enqueue(payloads, containerURL: container)
+
+        let queued = try SharedClipQueue.pendingItems(containerURL: container)
+        XCTAssertEqual(queued.map(\.payload.id), payloads.map(\.id))
+        XCTAssertEqual(queued.compactMap(\.payload.sharedImageName).count, 3)
+
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+        store.importSharedClips(containerURL: container)
+
+        XCTAssertEqual(Set(store.clips.compactMap(\.sharePayloadID)), Set(payloads.map(\.id)))
+        XCTAssertEqual(store.clips.filter { $0.type == .image }.count, 3)
+        XCTAssertTrue(try SharedClipQueue.pendingItems(containerURL: container).isEmpty)
     }
 
     func testShareQueueRejectsNewItemsAtCountLimit() throws {

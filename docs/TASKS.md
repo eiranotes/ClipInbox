@@ -2,6 +2,8 @@
 
 ## Done
 
+- [x] Allow multi-image Photos sharing, load every selected image in order, preserve each original as its own clip, apply Review destination/memo to the full selection, and enqueue the batch only after shared queue limits pass.
+- [x] Show Sort Later with the shared collapsed Clip Detail overview and pinned folder/classify controls; add filter-scoped Inbox multi-selection with select all/deselect all, atomic batch folder move, confirmed batch Trash move, and grouped five-second Undo.
 - [x] Apply the Emil/Apple UI quality pass: shared press feedback, Dynamic Type and Increased Contrast tokens, Reduce Motion compliance, labeled and accessibility-adaptive filters, sticky Add save CTA, explicit recent-clip Search state, interactive leading-edge back tracking, native pan/pinch image viewing, and matching Share Extension accessibility behavior.
 - [x] Rename the system default folder to `인박스`, preserve unorganized capture state until an explicit move, add Settings folder management, split Search into independent folder/tag rows, clean GitHub repository titles, reserve async thumbnail geometry, and restore Inbox bottom clearance.
 - [x] Add detail `복사하기` for URL/image payloads, guarantee bottom-action scroll clearance, pop a reselected bottom tab to its root, and audit interactive targets for overlap risk.

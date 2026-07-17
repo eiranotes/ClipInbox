@@ -1,6 +1,9 @@
 "quick" = "바로 저장";
 "review" = "폴더·메모 확인 후 저장";
 "format.imported_shared_clips" = "공유한 클립 %ld개를 인박스에 추가했습니다";
+"format.share_clips_count" = "%ld개 클립";
+"format.save_shared_clips" = "%ld개 클립 저장";
+"format.shared_clips_saved" = "클립 인박스에 %ld개 저장됨";
 "format.moved_to_folder" = "%@로 이동했습니다";
 "format.saved_to_folder" = "%@에 저장했습니다";
 "format.created_folder" = "%@ 폴더를 만들었습니다";
@@ -255,6 +258,16 @@
 "새 메모" = "새 메모";
 "저장한 사진" = "저장한 사진";
 "format.deleted_clip_title" = "%@ 삭제됨";
+"선택" = "선택";
+"클립 선택" = "클립 선택";
+"전체 선택" = "전체 선택";
+"전체 해제" = "전체 해제";
+"format.selected_clip_count" = "%ld개 선택";
+"format.clip_selection_accessibility" = "%@ 선택";
+"format.delete_selected_clips_title" = "%ld개 클립을 삭제할까요?";
+"선택한 클립은 휴지통으로 이동하며 5초 동안 바로 되돌릴 수 있습니다." = "선택한 클립은 휴지통으로 이동하며 5초 동안 바로 되돌릴 수 있습니다.";
+"format.move_selected_clips" = "%ld개 클립 이동";
+"format.moved_clips_to_folder" = "%1$ld개 클립을 %2$@ 폴더로 이동했습니다";
 "format.storage_images" = "%ld개 · %@";
 "format.storage_pending" = "%ld개 · %@";
 "이전 보관함으로 복구했습니다" = "이전 보관함으로 복구했습니다";

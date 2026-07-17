@@ -293,30 +293,60 @@ enum SharedClipQueue {
     }
 
     static func enqueue(_ payload: SharedClipPayload, containerURL: URL? = nil) throws {
+        try enqueue([payload], containerURL: containerURL)
+    }
+
+    /// 한 번의 Share 작업에서 넘어온 여러 항목은 용량/개수 한도를 먼저 함께
+    /// 검증한 뒤 기록한다. 중간 쓰기 실패 시 이번 배치가 만든 payload만 되돌린다.
+    static func enqueue(_ payloads: [SharedClipPayload], containerURL: URL? = nil) throws {
+        guard !payloads.isEmpty else { return }
         let directory = try pendingDirectoryURL(containerURL: containerURL)
-        let fileURL = directory.appendingPathComponent(payload.id.uuidString).appendingPathExtension("json")
+        let pending = try pendingItems(containerURL: containerURL)
+        var seenIDs = Set(pending.map(\.payload.id))
+        let newPayloads = payloads.filter { seenIDs.insert($0.id).inserted }
+        guard !newPayloads.isEmpty else { return }
+        guard pending.count + newPayloads.count <= maxPendingItemCount else {
+            throw QueueError.itemLimitReached(maxPendingItemCount)
+        }
+
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
-        let data = try encoder.encode(payload)
-        let pending = try pendingItems(containerURL: containerURL)
-        if pending.contains(where: { $0.payload.id == payload.id }) { return }
-        guard pending.count < maxPendingItemCount else {
-            throw QueueError.itemLimitReached(maxPendingItemCount)
+        let encoded = try newPayloads.map { payload in
+            (
+                payload: payload,
+                data: try encoder.encode(payload),
+                fileURL: directory
+                    .appendingPathComponent(payload.id.uuidString)
+                    .appendingPathExtension("json")
+            )
         }
         let existingBytes = try pending.reduce(Int64(0)) { partial, item in
             partial + (try queuedBytes(for: item, containerURL: containerURL))
         }
-        let imageBytes: Int64
-        if let imageName = payload.sharedImageName,
-           let imageURL = imageURL(named: imageName, containerURL: containerURL) {
-            imageBytes = Int64((try? imageURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
-        } else {
-            imageBytes = 0
+        let incomingBytes = encoded.reduce(Int64(0)) { partial, item in
+            let imageBytes: Int64
+            if let imageName = item.payload.sharedImageName,
+               let imageURL = imageURL(named: imageName, containerURL: containerURL) {
+                imageBytes = Int64((try? imageURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+            } else {
+                imageBytes = 0
+            }
+            return partial + Int64(item.data.count) + imageBytes
         }
-        guard existingBytes + Int64(data.count) + imageBytes <= maxPendingBytes else {
+        guard existingBytes + incomingBytes <= maxPendingBytes else {
             throw QueueError.byteLimitReached(Int(maxPendingBytes / 1_024 / 1_024))
         }
-        try data.write(to: fileURL, options: [.atomic, .completeFileProtectionUnlessOpen])
+
+        var writtenURLs: [URL] = []
+        do {
+            for item in encoded {
+                try item.data.write(to: item.fileURL, options: [.atomic, .completeFileProtectionUnlessOpen])
+                writtenURLs.append(item.fileURL)
+            }
+        } catch {
+            writtenURLs.forEach { try? FileManager.default.removeItem(at: $0) }
+            throw error
+        }
     }
 
     static func pendingItems(containerURL: URL? = nil, now: Date = Date()) throws -> [Item] {

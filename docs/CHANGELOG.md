@@ -1,15 +1,34 @@
 # Changelog
 
+## Unreleased - 2026-07-17
+
+### Added
+
+- Photos can share multiple selected images to Clip Inbox; every selected original becomes a separate clip in the same order.
+- Quick and Review Share flows show localized multi-item save counts, and Review applies one destination and memo to the complete selection.
+
+### Changed
+
+- Share payloads from one invocation are preflighted and queued as one batch against the existing 200-item/250 MB limits, with rollback of files created by a failed attempt.
+
+### Fixed
+
+- Clip Inbox no longer disappears from the Share sheet when two or more images are selected, and the Share loader no longer returns after only the first image provider.
+
 ## Unreleased - 2026-07-16
 
 ### Added
 
+- Inbox now has a filter-scoped clip selection mode with select all/deselect all, batch folder movement, confirmed batch deletion, and one five-second Undo for the deleted group.
+- Sort Later now shows the shared collapsed Clip Detail overview before classification, including media and available link-summary context.
 - Flat rows, icon controls, cards, and bottom tabs now give immediate press feedback; the feedback keeps opacity-only behavior when Reduce Motion is enabled.
 - Full-screen clip images now use native pinch, pan, momentum, bounded zoom, and double-tap zoom instead of scale-only magnification.
 - Increased Contrast now strengthens secondary text, tertiary text, separators, and muted surfaces in both the app and Share Extension.
 
 ### Changed
 
+- Sort Later keeps the folder picker and classify action pinned below the scrolling clip context, with an accessibility-size native folder menu.
+- Batch folder movement and deletion now persist the complete selected set in one repository transaction instead of repeating per-clip writes.
 - Pretendard typography now scales against the matching Dynamic Type text style. Accessibility sizes condense the Inbox/Search folder and tag filters into two native menus, while bottom-tab names remain on one line.
 - The Add save action is pinned above the bottom navigation, so it stays visible without appearing as a clipped sliver inside the scrolling form.
 - Empty Search now labels the three-item browse state as `최근 클립`; recent-search history hides once a real query is active, and the search field has a 44pt clear control.

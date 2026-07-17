@@ -1,6 +1,9 @@
 "quick" = "すぐに保存";
 "review" = "フォルダとメモを選択";
 "format.imported_shared_clips" = "共有された%ld件のクリップを受信トレイに追加しました";
+"format.share_clips_count" = "%ld件のクリップ";
+"format.save_shared_clips" = "%ld件のクリップを保存";
+"format.shared_clips_saved" = "Clip Inboxに%ld件保存しました";
 "format.moved_to_folder" = "%@に移動しました";
 "format.saved_to_folder" = "%@に保存しました";
 "format.created_folder" = "%@フォルダを作成しました";
@@ -316,6 +319,16 @@
 "새 메모" = "新しいメモ";
 "저장한 사진" = "保存した写真";
 "format.deleted_clip_title" = "%@を削除しました";
+"선택" = "選択";
+"클립 선택" = "クリップを選択";
+"전체 선택" = "すべて選択";
+"전체 해제" = "すべて解除";
+"format.selected_clip_count" = "%ld件を選択";
+"format.clip_selection_accessibility" = "%@を選択";
+"format.delete_selected_clips_title" = "%ld件のクリップを削除しますか？";
+"선택한 클립은 휴지통으로 이동하며 5초 동안 바로 되돌릴 수 있습니다." = "選択したクリップはゴミ箱に移動し、5秒間取り消せます。";
+"format.move_selected_clips" = "%ld件のクリップを移動";
+"format.moved_clips_to_folder" = "%1$ld件のクリップを%2$@に移動しました";
 "format.storage_images" = "%ld件・%@";
 "format.storage_pending" = "%ld件・%@";
 "이전 보관함으로 복구했습니다" = "以前のライブラリを復旧しました";

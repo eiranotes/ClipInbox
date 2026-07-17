@@ -64,8 +64,14 @@ struct AppStorageSummary: Equatable {
 final class AppStore {
     struct PendingDeletion: Identifiable {
         let id: UUID
-        let clip: Clip
-        let originalIndex: Int
+        let clips: [Clip]
+
+        var displayTitle: String {
+            guard let first = clips.first else { return "" }
+            return clips.count == 1
+                ? first.presentationTitle
+                : L10n.format("format.folder_clip_count", clips.count)
+        }
     }
 
     var clips: [Clip]
@@ -685,6 +691,25 @@ final class AppStore {
         return true
     }
 
+    /// 선택한 활성 클립을 한 번의 저장 트랜잭션으로 옮긴다.
+    @discardableResult
+    func moveClips(ids: Set<Int>, to folder: String) -> Bool {
+        let activeIDs = Set(clips.lazy.filter { ids.contains($0.id) && !$0.isInTrash }.map(\.id))
+        guard !activeIDs.isEmpty else { return false }
+        guard commitMutation({
+            for index in clips.indices where activeIDs.contains(clips[index].id) {
+                clips[index].folder = folder
+                clips[index].state = nil
+            }
+        }) else { return false }
+        showToast(L10n.format(
+            "format.moved_clips_to_folder",
+            activeIDs.count,
+            L10n.text(folder)
+        ))
+        return true
+    }
+
     func updateClip(id: Int, title: String, memo: String, tags: [String]) throws {
         let cleanTitle = Self.cleanText(title, maxLength: 200)
         guard !cleanTitle.isEmpty else { throw StoreError.message("클립 제목을 입력하세요.") }
@@ -728,17 +753,23 @@ final class AppStore {
 
     @discardableResult
     func deleteClip(id: Int) -> Bool {
-        guard let index = clips.firstIndex(where: { $0.id == id && !$0.isInTrash }) else { return false }
+        deleteClips(ids: [id])
+    }
+
+    /// 선택한 활성 클립을 원자적으로 휴지통에 넣고 하나의 Undo 단위로 보존한다.
+    @discardableResult
+    func deleteClips(ids: Set<Int>) -> Bool {
+        let indexes = clips.indices.filter { ids.contains(clips[$0].id) && !clips[$0].isInTrash }
+        guard !indexes.isEmpty else { return false }
         finalizePendingDeletion()
-        let clip = clips[index]
-        guard commitMutation({ clips[index].deletedAt = Date() }) else { return false }
-        let deletion = PendingDeletion(id: UUID(), clip: clip, originalIndex: index)
+        let originals = indexes.map { clips[$0] }
+        let deletedAt = Date()
+        guard commitMutation({
+            for index in indexes { clips[index].deletedAt = deletedAt }
+        }) else { return false }
+        let deletion = PendingDeletion(id: UUID(), clips: originals)
         pendingDeletion = deletion
-        deletionTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(5))
-            guard !Task.isCancelled else { return }
-            self?.finalizePendingDeletion(id: deletion.id)
-        }
+        scheduleDeletionFinalization(deletion)
         return true
     }
 
@@ -746,13 +777,21 @@ final class AppStore {
     func undoDelete() -> Bool {
         guard let deletion = pendingDeletion else { return false }
         deletionTask?.cancel()
-        guard let index = clips.firstIndex(where: { $0.id == deletion.clip.id && $0.isInTrash }) else {
+        let originals = Dictionary(uniqueKeysWithValues: deletion.clips.map { ($0.id, $0) })
+        let restorableIDs = Set(clips.lazy.filter {
+            originals[$0.id] != nil && $0.isInTrash
+        }.map(\.id))
+        guard !restorableIDs.isEmpty else {
             pendingDeletion = nil
             deletionTask = nil
             return false
         }
         guard commitMutation({
-            clips[index] = deletion.clip
+            for index in clips.indices {
+                guard restorableIDs.contains(clips[index].id),
+                      let original = originals[clips[index].id] else { continue }
+                clips[index] = original
+            }
         }) else {
             scheduleDeletionFinalization(deletion)
             return false
@@ -767,7 +806,7 @@ final class AppStore {
     func restoreClip(id: Int) -> Bool {
         guard let index = clips.firstIndex(where: { $0.id == id && $0.isInTrash }) else { return false }
         guard commitMutation({ clips[index].deletedAt = nil }) else { return false }
-        if pendingDeletion?.clip.id == id { finalizePendingDeletion() }
+        if pendingDeletion?.clips.contains(where: { $0.id == id }) == true { finalizePendingDeletion() }
         showToast("클립을 복원했습니다")
         return true
     }
@@ -777,8 +816,8 @@ final class AppStore {
         let removed = trashedClips
         guard !removed.isEmpty else { return true }
         guard commitMutation({ clips.removeAll { $0.isInTrash } }) else { return false }
-        if let pendingID = pendingDeletion?.clip.id,
-           removed.contains(where: { $0.id == pendingID }) {
+        if let pendingIDs = pendingDeletion.map({ Set($0.clips.map(\.id)) }),
+           removed.contains(where: { pendingIDs.contains($0.id) }) {
             finalizePendingDeletion()
         }
         removeStoredImages(for: removed)

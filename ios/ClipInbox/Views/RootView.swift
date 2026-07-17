@@ -130,7 +130,7 @@ struct RootView: View {
         .overlay(alignment: .bottom) {
             VStack(spacing: Tokens.rowGap) {
                 if let pendingDeletion = store.pendingDeletion {
-                    UndoDeletionBanner(title: pendingDeletion.clip.presentationTitle) {
+                    UndoDeletionBanner(title: pendingDeletion.displayTitle) {
                         store.undoDelete()
                     }
                     .transition(feedbackTransition)

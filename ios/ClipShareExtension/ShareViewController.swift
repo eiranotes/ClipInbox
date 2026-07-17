@@ -2,9 +2,13 @@ import UIKit
 import UniformTypeIdentifiers
 
 final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
+    private struct PendingShareItem {
+        var payload: SharedClipPayload
+        let imageAsset: SharedImageAsset?
+    }
+
     private var configuration = SharedClipConfiguration.standard
-    private var pendingImageAsset: SharedImageAsset?
-    private var pendingPayload: SharedClipPayload?
+    private var pendingItems: [PendingShareItem] = []
     private var selectedFolder = ""
     private var hasStarted = false
 
@@ -122,13 +126,14 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         hasStarted = true
         Task { @MainActor in
             do {
-                guard let payload = try await loadPayload() else { throw ShareError.missingPayload }
-                pendingPayload = payload
+                let items = try await loadItems()
+                guard !items.isEmpty else { throw ShareError.missingPayload }
+                pendingItems = items
                 switch configuration.saveMode {
                 case .quick:
-                    await saveAndComplete(payload)
+                    await saveAndComplete(items)
                 case .review:
-                    configureReviewForm(payload)
+                    configureReviewForm(items)
                 }
             } catch {
                 showFailure(error)
@@ -215,7 +220,8 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
     }
 
     @MainActor
-    private func configureReviewForm(_ payload: SharedClipPayload) {
+    private func configureReviewForm(_ items: [PendingShareItem]) {
+        guard let firstItem = items.first else { return }
         statusCard.removeFromSuperview()
         activityIndicator.stopAnimating()
 
@@ -234,7 +240,9 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         heading.textColor = Palette.textPrimary
 
         let clipTitle = UILabel()
-        clipTitle.text = payload.title
+        clipTitle.text = items.count == 1
+            ? firstItem.payload.title
+            : SharedL10n.format("format.share_clips_count", language: configuration.language, items.count)
         clipTitle.font = font(size: 12, textStyle: .caption1)
         clipTitle.adjustsFontForContentSizeCategory = true
         clipTitle.textColor = Palette.textSecondary
@@ -257,7 +265,10 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         memoTextView.heightAnchor.constraint(equalToConstant: Metrics.memoHeight).isActive = true
 
         var saveConfiguration = UIButton.Configuration.filled()
-        var saveTitle = AttributedString(localized("클립 저장"))
+        let saveLabel = items.count == 1
+            ? localized("클립 저장")
+            : SharedL10n.format("format.save_shared_clips", language: configuration.language, items.count)
+        var saveTitle = AttributedString(saveLabel)
         saveTitle.font = font(size: 15, textStyle: .headline, semibold: true)
         saveConfiguration.attributedTitle = saveTitle
         saveConfiguration.image = UIImage(systemName: "checkmark")
@@ -344,56 +355,68 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
     }
 
     @objc private func saveReviewedClip() {
-        guard let payload = pendingPayload else { return }
+        guard !pendingItems.isEmpty else { return }
         saveButton.isEnabled = false
         memoTextView.resignFirstResponder()
-        var reviewed = payload
-        reviewed.folder = selectedFolder
-        reviewed.memo = memoTextView.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let memo = memoTextView.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let reviewed = pendingItems.map { item in
+            var payload = item.payload
+            payload.folder = selectedFolder
+            payload.memo = memo
+            return PendingShareItem(payload: payload, imageAsset: item.imageAsset)
+        }
         Task { @MainActor in await saveAndComplete(reviewed) }
     }
 
     @objc private func cancelShare() {
+        cleanupPendingItems()
         extensionContext?.cancelRequest(withError: NSError(domain: NSCocoaErrorDomain, code: NSUserCancelledError))
     }
 
     @MainActor
-    private func saveAndComplete(_ item: SharedClipPayload) async {
-        var newlyStoredImageName: String?
+    private func saveAndComplete(_ items: [PendingShareItem]) async {
+        var newlyStoredImageNames: [String] = []
         defer {
-            pendingImageAsset?.cleanupSourceIfNeeded()
-            pendingImageAsset = nil
+            cleanupPendingItems(items)
+            pendingItems = []
         }
         do {
-            let sharedImageName: String?
-            if let pendingImageAsset {
-                sharedImageName = try SharedClipQueue.storeImageAsset(pendingImageAsset, for: item.id)
-                newlyStoredImageName = sharedImageName
-            } else {
-                sharedImageName = item.sharedImageName
+            var finalPayloads: [SharedClipPayload] = []
+            finalPayloads.reserveCapacity(items.count)
+            for item in items {
+                let sharedImageName: String?
+                if let imageAsset = item.imageAsset {
+                    sharedImageName = try SharedClipQueue.storeImageAsset(imageAsset, for: item.payload.id)
+                    if let sharedImageName { newlyStoredImageNames.append(sharedImageName) }
+                } else {
+                    sharedImageName = item.payload.sharedImageName
+                }
+                var finalPayload = item.payload
+                finalPayload.sharedImageName = sharedImageName
+                if finalPayload.folder.isEmpty { finalPayload.folder = configuration.defaultFolder }
+                finalPayloads.append(finalPayload)
             }
-            var finalPayload = item
-            finalPayload.sharedImageName = sharedImageName
-            if finalPayload.folder.isEmpty { finalPayload.folder = configuration.defaultFolder }
-            try SharedClipQueue.enqueue(finalPayload)
-            showSavedConfirmation()
+            try SharedClipQueue.enqueue(finalPayloads)
+            showSavedConfirmation(itemCount: finalPayloads.count)
             try? await Task.sleep(for: .milliseconds(650))
             guard !Task.isCancelled else { return }
             extensionContext?.completeRequest(returningItems: nil)
         } catch {
-            if let newlyStoredImageName { try? SharedClipQueue.removeImage(named: newlyStoredImageName) }
+            newlyStoredImageNames.forEach { try? SharedClipQueue.removeImage(named: $0) }
             showFailure(error)
         }
     }
 
     @MainActor
-    private func showSavedConfirmation() {
+    private func showSavedConfirmation(itemCount: Int) {
         view.subviews.forEach { $0.removeFromSuperview() }
         configureCompactStatus()
         activityIndicator.stopAnimating()
         activityIndicator.isHidden = true
         statusIcon.isHidden = false
-        statusLabel.text = localized("Clip Inbox에 저장됨")
+        statusLabel.text = itemCount == 1
+            ? localized("Clip Inbox에 저장됨")
+            : SharedL10n.format("format.shared_clips_saved", language: configuration.language, itemCount)
         statusLabel.font = font(size: 15, textStyle: .body, semibold: true)
         statusLabel.textColor = Palette.onAccent
         statusIcon.tintColor = Palette.onAccent
@@ -447,7 +470,7 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         present(alert, animated: true)
     }
 
-    private func loadPayload() async throws -> SharedClipPayload? {
+    private func loadItems() async throws -> [PendingShareItem] {
         let items = extensionContext?.inputItems.compactMap { $0 as? NSExtensionItem } ?? []
         let attributedTitle = items.compactMap(\.attributedTitle?.string).first
         let attributedText = items.compactMap(\.attributedContentText?.string).first
@@ -456,13 +479,31 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         // Photos와 일부 이미지 앱은 이미지와 파일 URL을 함께 제공한다. 이미지
         // provider가 하나라도 있으면 먼저 원본 이미지 표현을 읽어 URL 클립으로
         // 잘못 저장하지 않는다.
-        for provider in providers where provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
-            if let imageAsset = try await loadImageAsset(from: provider) {
-                pendingImageAsset = imageAsset
-                return SharedClipPayload(type: .image,
-                                         title: clean(attributedTitle, fallback: localized("공유한 이미지"), limit: 200),
-                                         source: localized("사진"), text: clean(attributedText, limit: 500),
-                                         folder: configuration.defaultFolder)
+        let imageProviders = providers.filter {
+            $0.hasItemConformingToTypeIdentifier(UTType.image.identifier)
+        }
+        if !imageProviders.isEmpty {
+            var loadedItems: [PendingShareItem] = []
+            let batchCreatedAt = Date()
+            do {
+                for (index, provider) in imageProviders.enumerated() {
+                    guard let imageAsset = try await loadImageAsset(from: provider) else {
+                        throw ShareError.missingPayload
+                    }
+                    let payload = SharedClipPayload(
+                        type: .image,
+                        title: clean(attributedTitle, fallback: localized("공유한 이미지"), limit: 200),
+                        source: localized("사진"),
+                        text: clean(attributedText, limit: 500),
+                        folder: configuration.defaultFolder,
+                        createdAt: batchCreatedAt.addingTimeInterval(Double(index) / 1_000)
+                    )
+                    loadedItems.append(PendingShareItem(payload: payload, imageAsset: imageAsset))
+                }
+                return loadedItems
+            } catch {
+                cleanupPendingItems(loadedItems)
+                throw error
             }
         }
 
@@ -482,22 +523,33 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
 
         if let url = sharedURL {
             let host = url.host ?? localized("공유한 링크")
-            return SharedClipPayload(type: .link,
-                                     title: clean(attributedTitle, fallback: clean(sharedText, fallback: host, limit: 200), limit: 200),
-                                     source: host, url: url.absoluteString,
-                                     text: clean(sharedText, limit: 500),
-                                     folder: configuration.defaultFolder)
+            let payload = SharedClipPayload(type: .link,
+                                            title: clean(attributedTitle, fallback: clean(sharedText, fallback: host, limit: 200), limit: 200),
+                                            source: host, url: url.absoluteString,
+                                            text: clean(sharedText, limit: 500),
+                                            folder: configuration.defaultFolder)
+            return [PendingShareItem(payload: payload, imageAsset: nil)]
         }
         if let sharedText, !sharedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let firstLine = sharedText.split(separator: "\n", maxSplits: 1).first.map(String.init)
-            return SharedClipPayload(type: .text,
-                                     title: clean(attributedTitle,
-                                                  fallback: clean(firstLine, fallback: localized("공유한 텍스트"), limit: 200),
-                                                  limit: 200),
-                                     source: localized("공유 시트"), text: clean(sharedText, limit: 500),
-                                     folder: configuration.defaultFolder)
+            let payload = SharedClipPayload(type: .text,
+                                            title: clean(attributedTitle,
+                                                         fallback: clean(firstLine, fallback: localized("공유한 텍스트"), limit: 200),
+                                                         limit: 200),
+                                            source: localized("공유 시트"), text: clean(sharedText, limit: 500),
+                                            folder: configuration.defaultFolder)
+            return [PendingShareItem(payload: payload, imageAsset: nil)]
         }
-        return nil
+        return []
+    }
+
+    private func cleanupPendingItems(_ items: [PendingShareItem]? = nil) {
+        if let items {
+            items.forEach { $0.imageAsset?.cleanupSourceIfNeeded() }
+        } else {
+            pendingItems.forEach { $0.imageAsset?.cleanupSourceIfNeeded() }
+            pendingItems = []
+        }
     }
 
     private func loadItem(from provider: NSItemProvider, typeIdentifier: String) async throws -> NSSecureCoding? {

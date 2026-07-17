@@ -15,6 +15,80 @@ enum ClipDetailCopyKind: Equatable {
     }
 }
 
+/// 상세 화면과 분류 흐름이 공유하는 클립의 기본 정보 영역.
+/// 링크/복사 같은 작업과 노트/정리 편집은 포함하지 않아 정보 위계가 한 곳에서 유지된다.
+struct ClipDetailOverview: View {
+    @Environment(URLMetadataCoordinator.self) private var metadata
+    @Environment(\.locale) private var locale
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    let clip: Clip
+    var imageHeight = Tokens.detailImageHeight
+    var onOpenImage: (() -> Void)?
+
+    var body: some View {
+        let presentation = metadata.cardPresentation(for: clip, locale: locale)
+
+        VStack(alignment: .leading, spacing: Tokens.detailGap) {
+            HStack(spacing: Tokens.rowGap) {
+                TokenBadge(tone: .type(clip.type))
+                if let state = clip.state { TokenBadge(tone: .state(state)) }
+            }
+            Text(L10n.text(metadata.cardTitle(for: clip, locale: locale), locale: locale))
+                .font(Tokens.sectionTitle)
+                .foregroundStyle(Tokens.textPrimary)
+                .lineSpacing(Tokens.titleLineSpacing)
+                .accessibilityAddTraits(.isHeader)
+            HStack(spacing: Tokens.rowGap) {
+                HStack(spacing: 5) {
+                    Image(systemName: "globe").font(.system(size: 12, weight: .bold))
+                    Text(L10n.text(presentation?.subtitle ?? clip.source, locale: locale))
+                }
+                Spacer()
+                Text(L10n.text(clip.time, locale: locale))
+            }
+            .font(Tokens.meta)
+            .foregroundStyle(Tokens.textSecondary)
+
+            if clip.hasImageReference {
+                if let onOpenImage {
+                    Button(action: onOpenImage) {
+                        localImage
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(ResponsivePressButtonStyle())
+                    .accessibilityLabel("이미지 크게 보기")
+                } else {
+                    localImage
+                }
+            } else if let thumbnailURL = presentation?.thumbnailURL.flatMap(URL.init(string:)) {
+                MetadataRemoteImage(url: thumbnailURL, contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: resolvedImageHeight)
+            }
+
+            // 링크 메타데이터가 있으면 별도의 접힌 정보 섹션이 요약을 담당한다.
+            if !clip.description.isEmpty, metadata.result(for: clip.id) == nil {
+                Text(L10n.text(clip.description, locale: locale))
+                    .font(Tokens.body)
+                    .foregroundStyle(Tokens.textPrimary)
+                    .lineSpacing(Tokens.bodyLineSpacing)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var resolvedImageHeight: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? imageHeight * 1.6 : imageHeight
+    }
+
+    private var localImage: some View {
+        ClipThumbnail(clip: clip, contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .frame(height: resolvedImageHeight)
+    }
+}
+
 struct DetailView: View {
     @Environment(AppStore.self) private var store
     // CLIPINBOX_URL_METADATA_ENGINE_V1
@@ -54,58 +128,9 @@ struct DetailView: View {
                     }
                 }
 
-                VStack(alignment: .leading, spacing: Tokens.detailGap) {
-                    HStack(spacing: Tokens.rowGap) {
-                        TokenBadge(tone: .type(clip.type))
-                        if let state = clip.state { TokenBadge(tone: .state(state)) }
-                    }
-                    Text(L10n.text(metadata.cardTitle(for: clip, locale: locale), locale: locale))
-                        .font(Tokens.sectionTitle)
-                        .foregroundStyle(Tokens.textPrimary)
-                        .lineSpacing(Tokens.titleLineSpacing)
-                        .accessibilityAddTraits(.isHeader)
-                    HStack(spacing: Tokens.rowGap) {
-                        HStack(spacing: 5) {
-                            Image(systemName: "globe").font(.system(size: 12, weight: .bold))
-                            Text(L10n.text(metadata.cardPresentation(for: clip, locale: locale)?.subtitle ?? clip.source, locale: locale))
-                        }
-                        Spacer()
-                        Text(L10n.text(clip.time, locale: locale))
-                    }
-                    .font(Tokens.meta)
-                    .foregroundStyle(Tokens.textSecondary)
-
-                    if clip.hasImageReference {
-                        Button {
-                            showImageViewer = true
-                        } label: {
-                            ClipThumbnail(clip: clip, contentMode: .fit)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: dynamicTypeSize.isAccessibilitySize
-                                       ? Tokens.detailImageHeight * 1.6
-                                       : Tokens.detailImageHeight)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(ResponsivePressButtonStyle())
-                        .accessibilityLabel("이미지 크게 보기")
-                    } else if let thumbnailURL = metadata.cardPresentation(for: clip, locale: locale)?.thumbnailURL.flatMap(URL.init(string:)) {
-                        MetadataRemoteImage(url: thumbnailURL, contentMode: .fit)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: dynamicTypeSize.isAccessibilitySize
-                                ? Tokens.detailImageHeight * 1.6
-                                : Tokens.detailImageHeight)
-                    }
-
-                    // 링크 메타데이터가 있으면 아래 "링크 정보" 섹션이 요약을 담당하므로
-                    // 같은 설명이 두 번 보이지 않게 한다.
-                    if !clip.description.isEmpty, metadata.result(for: clip.id) == nil {
-                        Text(L10n.text(clip.description, locale: locale))
-                            .font(Tokens.body)
-                            .foregroundStyle(Tokens.textPrimary)
-                            .lineSpacing(Tokens.bodyLineSpacing)
-                    }
+                ClipDetailOverview(clip: clip) {
+                    showImageViewer = true
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
 
                 MetadataDetailSectionsView(clip: clip)
 
