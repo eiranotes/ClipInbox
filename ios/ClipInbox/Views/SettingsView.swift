@@ -68,8 +68,10 @@ enum SettingKey: String, Hashable, CaseIterable {
 
 struct SettingsView: View {
     @Environment(AppStore.self) private var store
+    @Environment(URLMetadataCoordinator.self) private var metadata
     @Environment(\.locale) private var locale
     @State private var showDeleteConfirm = false
+    @State private var isDeletingAllData = false
 
     var body: some View {
         ScreenScaffold(spacing: Tokens.formSectionGap,
@@ -100,18 +102,23 @@ struct SettingsView: View {
             Button {
                 showDeleteConfirm = true
             } label: {
-                Text("모든 데이터 삭제")
+                Text(isDeletingAllData ? "삭제 중…" : "모든 데이터 삭제")
             }
             .buttonStyle(SecondaryBoxButtonStyle(isDanger: true))
+            .disabled(isDeletingAllData)
 
         }
         .alert("모든 데이터 삭제", isPresented: $showDeleteConfirm) {
             Button("삭제 확인", role: .destructive) {
-                store.deleteAllData()
+                isDeletingAllData = true
+                Task { @MainActor in
+                    _ = await store.deleteAllData(metadata: metadata)
+                    isDeletingAllData = false
+                }
             }
             Button("취소", role: .cancel) {}
         } message: {
-            Text("클립, 폴더, 설정과 원본 이미지를 삭제합니다. 필요한 경우 먼저 JSON과 원본 이미지를 별도로 내보내세요.")
+            Text("클립, 폴더, 설정, 원본 이미지, 검색 기록, 공유 대기 항목과 복구 사본을 모두 삭제합니다. 이 작업은 되돌릴 수 없습니다.")
         }
     }
 

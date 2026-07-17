@@ -286,8 +286,9 @@ enum SharedClipQueue {
         return .standard
     }
 
-    static func saveConfiguration(_ configuration: SharedClipConfiguration) throws {
-        let fileURL = try configurationFileURL()
+    static func saveConfiguration(_ configuration: SharedClipConfiguration,
+                                  containerURL: URL? = nil) throws {
+        let fileURL = try configurationFileURL(containerURL: containerURL)
         let data = try JSONEncoder().encode(configuration)
         try data.write(to: fileURL, options: [.atomic, .completeFileProtectionUnlessOpen])
     }
@@ -414,6 +415,26 @@ enum SharedClipQueue {
         }
     }
 
+    /// 앱의 명시적 전체 삭제에서만 사용한다. 활성 이미지뿐 아니라 아직 앱에
+    /// 들어오지 않은 payload와 실패/만료 격리본, Share 설정 파일까지 제거한다.
+    static func removeAllData(containerURL: URL? = nil) throws {
+        let container = try resolvedContainerURL(containerURL)
+        let removableDirectories = [
+            "PendingClips", "SharedImages", "FailedClips", "ExpiredClips", "ExpiredImages"
+        ]
+        for name in removableDirectories {
+            let directory = container.appendingPathComponent(name, isDirectory: true)
+            if FileManager.default.fileExists(atPath: directory.path) {
+                try FileManager.default.removeItem(at: directory)
+            }
+        }
+        let configurationURL = container.appendingPathComponent(configurationFileName)
+        if FileManager.default.fileExists(atPath: configurationURL.path) {
+            try FileManager.default.removeItem(at: configurationURL)
+        }
+        try removeLegacyConfiguration(containerURL: containerURL)
+    }
+
     static func storageSummary(containerURL: URL? = nil) throws -> StorageSummary {
         let images = try FileManager.default.contentsOfDirectory(
             at: imagesDirectoryURL(containerURL: containerURL),
@@ -459,12 +480,8 @@ enum SharedClipQueue {
         return supportedImageFileExtensions.contains(normalized) ? normalized : nil
     }
 
-    private static func configurationFileURL() throws -> URL {
-        guard let container = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: appGroupIdentifier
-        ) else {
-            throw QueueError.appGroupUnavailable
-        }
+    private static func configurationFileURL(containerURL: URL? = nil) throws -> URL {
+        let container = try resolvedContainerURL(containerURL)
         return container.appendingPathComponent(configurationFileName)
     }
 
@@ -482,6 +499,26 @@ enum SharedClipQueue {
               let dictionary = plist as? [String: Any],
               let configurationData = dictionary[legacyConfigurationKey] as? Data else { return nil }
         return try? JSONDecoder().decode(SharedClipConfiguration.self, from: configurationData)
+    }
+
+    private static func removeLegacyConfiguration(containerURL: URL?) throws {
+        let container = try resolvedContainerURL(containerURL)
+        let fileURL = container
+            .appendingPathComponent("Library/Preferences", isDirectory: true)
+            .appendingPathComponent("\(appGroupIdentifier).plist")
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
+        let data = try Data(contentsOf: fileURL)
+        guard var dictionary = try PropertyListSerialization.propertyList(
+            from: data,
+            format: nil
+        ) as? [String: Any] else { return }
+        guard dictionary.removeValue(forKey: legacyConfigurationKey) != nil else { return }
+        let updated = try PropertyListSerialization.data(
+            fromPropertyList: dictionary,
+            format: .binary,
+            options: 0
+        )
+        try updated.write(to: fileURL, options: .atomic)
     }
 
     private static func pendingDirectoryURL(containerURL override: URL? = nil) throws -> URL {

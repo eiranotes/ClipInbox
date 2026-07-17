@@ -23,6 +23,11 @@ private final class TestClipRepository: ClipRepository {
         if let commitError { throw commitError }
         committedSnapshots.append(snapshot)
     }
+
+    func eraseAllData(replacingWith snapshot: DataSnapshot) throws {
+        if let commitError { throw commitError }
+        committedSnapshots.append(snapshot)
+    }
 }
 
 private final class TestLockAuthenticator: AppLockAuthenticating {
@@ -579,6 +584,124 @@ final class AppStoreTests: XCTestCase {
         )
         XCTAssertEqual(recoveryFiles.count, 1)
         XCTAssertEqual(try Data(contentsOf: recoveryFiles[0]), Data("not-json".utf8))
+    }
+
+    @MainActor
+    func testDeleteAllDataRemovesRecoverySearchQueueAndMetadataArtifacts() async throws {
+        let repository = FileClipRepository(fileURL: dataURL)
+        let original = DataSnapshot(
+            version: 2,
+            clips: DefaultData.clips,
+            folders: DefaultData.folders,
+            preferences: .standard
+        )
+        try repository.commit(original)
+        try repository.commit(original)
+        try FileManager.default.createDirectory(
+            at: repository.recoveryDirectoryURL,
+            withIntermediateDirectories: true
+        )
+        let recoveryArtifact = repository.recoveryDirectoryURL.appendingPathComponent("corrupt.json")
+        try Data("recoverable library".utf8).write(to: recoveryArtifact)
+
+        let queueContainer = temporaryDirectory.appendingPathComponent("DeleteAllQueue", isDirectory: true)
+        for directoryName in ["PendingClips", "SharedImages", "FailedClips", "ExpiredClips", "ExpiredImages"] {
+            let directory = queueContainer.appendingPathComponent(directoryName, isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try Data("stale".utf8).write(to: directory.appendingPathComponent("artifact"))
+        }
+        let staleConfiguration = SharedClipConfiguration(
+            saveMode: .review,
+            language: .ja,
+            defaultFolder: "개인",
+            folders: ["개인"],
+            theme: "다크"
+        )
+        try JSONEncoder().encode(staleConfiguration).write(
+            to: queueContainer.appendingPathComponent("ShareConfiguration-v1.json")
+        )
+
+        let metadataDirectory = temporaryDirectory.appendingPathComponent("DeleteAllMetadata", isDirectory: true)
+        try FileManager.default.createDirectory(at: metadataDirectory, withIntermediateDirectories: true)
+        let sidecarURL = metadataDirectory.appendingPathComponent("link-metadata-v1.json")
+        let cacheURL = metadataDirectory.appendingPathComponent("canonical-cache-v1.json")
+        try Data("stale sidecar".utf8).write(to: sidecarURL)
+        try Data("stale cache".utf8).write(to: cacheURL)
+
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+        store.recordSearch("private query")
+        store.updateLinkOpenMode(.confirm)
+        let metadata = URLMetadataCoordinator(
+            sidecar: LinkMetadataSidecarStore(fileURL: sidecarURL),
+            cacheURL: cacheURL
+        )
+
+        let deleted = await store.deleteAllData(metadata: metadata, containerURL: queueContainer)
+
+        XCTAssertTrue(deleted)
+        XCTAssertTrue(store.clips.isEmpty)
+        XCTAssertTrue(store.recentSearches.isEmpty)
+        XCTAssertEqual(store.preferences, .standard)
+        let persistedData = try Data(contentsOf: dataURL)
+        XCTAssertFalse(String(decoding: persistedData, as: UTF8.self).contains(DefaultData.clips[0].title))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: repository.previousURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: repository.recoveryDirectoryURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: sidecarURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: cacheURL.path))
+        for directoryName in ["PendingClips", "SharedImages", "FailedClips", "ExpiredClips", "ExpiredImages"] {
+            let directory = queueContainer.appendingPathComponent(directoryName, isDirectory: true)
+            XCTAssertFalse(FileManager.default.fileExists(atPath: directory.path))
+        }
+
+        let savedConfigurationData = try Data(
+            contentsOf: queueContainer.appendingPathComponent("ShareConfiguration-v1.json")
+        )
+        let savedConfiguration = try JSONDecoder().decode(
+            SharedClipConfiguration.self,
+            from: savedConfigurationData
+        )
+        XCTAssertEqual(savedConfiguration.saveMode, .quick)
+        XCTAssertEqual(savedConfiguration.defaultFolder, "인박스")
+
+        let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
+        XCTAssertTrue(reloaded.clips.isEmpty)
+        XCTAssertTrue(reloaded.recentSearches.isEmpty)
+        XCTAssertEqual(reloaded.linkOpenMode, .direct)
+    }
+
+    @MainActor
+    func testDeleteAllDataDoesNotClearSideDataWhenLibraryResetFails() async throws {
+        let initial = DataSnapshot(
+            version: 2,
+            clips: [DefaultData.clips[0]],
+            folders: DefaultData.folders,
+            preferences: .standard
+        )
+        let repository = TestClipRepository(
+            bootstrapHandler: { .loaded(initial) },
+            commitError: ClipRepositoryError.writeFailed
+        )
+        let queueContainer = temporaryDirectory.appendingPathComponent("FailedDeleteQueue", isDirectory: true)
+        let pendingDirectory = queueContainer.appendingPathComponent("PendingClips", isDirectory: true)
+        try FileManager.default.createDirectory(at: pendingDirectory, withIntermediateDirectories: true)
+        let pendingArtifact = pendingDirectory.appendingPathComponent("keep.json")
+        try Data("keep".utf8).write(to: pendingArtifact)
+        let metadata = URLMetadataCoordinator(
+            sidecar: LinkMetadataSidecarStore(
+                fileURL: temporaryDirectory.appendingPathComponent("failed-sidecar.json")
+            ),
+            cacheURL: temporaryDirectory.appendingPathComponent("failed-cache.json")
+        )
+        let store = AppStore(userDefaults: defaults, repository: repository)
+        store.recordSearch("keep search")
+
+        let deleted = await store.deleteAllData(metadata: metadata, containerURL: queueContainer)
+
+        XCTAssertFalse(deleted)
+        XCTAssertEqual(store.clips.map(\.id), [1])
+        XCTAssertEqual(store.recentSearches, ["keep search"])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: pendingArtifact.path))
+        XCTAssertNotNil(store.storageErrorMessage)
     }
 
     func testCorruptSnapshotWithoutPreviousBlocksInsteadOfLoadingSamples() throws {

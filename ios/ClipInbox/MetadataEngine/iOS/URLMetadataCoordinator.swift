@@ -24,19 +24,23 @@ final class URLMetadataCoordinator {
     @ObservationIgnored private let engine: URLMetadataEngine
     @ObservationIgnored private var loaded = false
     @ObservationIgnored private var synchronizationTask: Task<Void, Never>?
+    @ObservationIgnored private var resetGeneration = 0
+    @ObservationIgnored private var isResetting = false
 
     init(
         configuration: MetadataConfiguration = .default,
-        sidecar: LinkMetadataSidecarStore = LinkMetadataSidecarStore()
+        sidecar: LinkMetadataSidecarStore = LinkMetadataSidecarStore(),
+        cacheURL: URL? = nil
     ) {
         self.sidecar = sidecar
         self.configuration = configuration
-        let cacheURL = LinkMetadataSidecarStore.defaultDirectory().appendingPathComponent("canonical-cache-v1.json")
+        let resolvedCacheURL = cacheURL
+            ?? LinkMetadataSidecarStore.defaultDirectory().appendingPathComponent("canonical-cache-v1.json")
         self.engine = URLMetadataEngine(
             configuration: configuration,
             normalizer: URLNormalizer(),
             inspector: URLSessionHTTPInspector(),
-            cache: DiskMetadataCache(fileURL: cacheURL),
+            cache: DiskMetadataCache(fileURL: resolvedCacheURL),
             renderer: WKWebViewMetadataRenderer(),
             registry: PlatformRegistry()
         )
@@ -74,7 +78,7 @@ final class URLMetadataCoordinator {
     }
 
     func synchronize(store: AppStore) {
-        guard synchronizationTask == nil else { return }
+        guard !isResetting, synchronizationTask == nil else { return }
         synchronizationTask = Task { @MainActor [weak self, weak store] in
             guard let self, let store else { return }
             defer { self.synchronizationTask = nil }
@@ -89,14 +93,17 @@ final class URLMetadataCoordinator {
     }
 
     func analyze(clip: Clip, store: AppStore, forceRefresh: Bool) async {
-        guard clip.type == .link,
+        guard !isResetting,
+              clip.type == .link,
               let url = URL(string: clip.url),
               ["http", "https"].contains(url.scheme?.lowercased() ?? "") else { return }
         guard !activeClipIDs.contains(clip.id) else { return }
 
+        let generation = resetGeneration
         activeClipIDs.insert(clip.id)
         defer { activeClipIDs.remove(clip.id) }
         let result = await engine.analyze(clip.url, forceRefresh: forceRefresh)
+        guard generation == resetGeneration else { return }
         results[clip.id] = result
         do {
             try await sidecar.store(result, clipID: clip.id, sourceURL: clip.url)
@@ -118,6 +125,31 @@ final class URLMetadataCoordinator {
     func removeMetadata(for clipID: Int) async {
         results[clipID] = nil
         try? await sidecar.remove(clipID: clipID)
+    }
+
+    /// 사용자 전체 삭제는 화면 메모리, sidecar, canonical URL cache를 하나의
+    /// 수명주기로 비운다. 진행 중 분석은 세대 번호로 늦은 결과 반영을 차단한다.
+    func removeAllMetadata() async throws {
+        isResetting = true
+        defer { isResetting = false }
+        resetGeneration += 1
+        synchronizationTask?.cancel()
+        synchronizationTask = nil
+        results.removeAll()
+        lastError = nil
+        loaded = true
+        // 이미 HTTP/WKWebView 분석에 들어간 작업은 취소가 즉시 반영되지 않을 수 있다.
+        // 모든 이전 세대가 끝난 뒤 마지막으로 disk cache를 지워 늦은 재생성을 막는다.
+        while !activeClipIDs.isEmpty {
+            try? await Task.sleep(for: .milliseconds(25))
+        }
+        try await engine.clearCache()
+        do {
+            try await sidecar.removeAll()
+        } catch {
+            lastError = error.localizedDescription
+            throw error
+        }
     }
 
     private func loadSidecarIfNeeded(validClipIDs: Set<Int>) async {

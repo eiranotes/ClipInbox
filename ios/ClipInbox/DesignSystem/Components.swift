@@ -609,6 +609,10 @@ enum SharedImageCache {
         cache.setObject(image, forKey: key)
         return image
     }
+
+    static func removeAll() {
+        cache.removeAllObjects()
+    }
 }
 
 struct ClipThumbnail: View {

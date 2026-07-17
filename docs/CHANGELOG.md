@@ -10,10 +10,12 @@
 ### Changed
 
 - Share payloads from one invocation are preflighted and queued as one batch against the existing 200-item/250 MB limits, with rollback of files created by a failed attempt.
+- `모든 데이터 삭제` now clears the current library plus previous/recovery snapshots, recent searches, tag/link settings, pending and quarantined Share data, original images, decoded image memory, and link-metadata sidecar/cache before reporting success.
 
 ### Fixed
 
 - Clip Inbox no longer disappears from the Share sheet when two or more images are selected, and the Share loader no longer returns after only the first image provider.
+- Deleting all data no longer rotates the complete pre-deletion library into a recoverable `previous` snapshot or allows stale URL metadata to reappear on reused clip IDs.
 
 ## Unreleased - 2026-07-16
 

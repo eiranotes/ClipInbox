@@ -96,6 +96,7 @@ final class AppStore {
     private static let recentSearchLimit = 5
     private static let tagCatalogKey = "clip-inbox-tag-catalog-v1"
     private static let linkOpenModeKey = "clip-inbox-link-open-mode-v1"
+    private static let onboardingCompletedKey = "clip-inbox-onboarding-completed-v1"
     static let trashRetentionDays = 30
     private static let trashRetentionInterval: TimeInterval = 30 * 24 * 60 * 60
 
@@ -1124,20 +1125,53 @@ final class AppStore {
         showToast("설정을 저장했습니다")
     }
 
+    @MainActor
     @discardableResult
-    func deleteAllData() -> Bool {
+    func deleteAllData(metadata: URLMetadataCoordinator,
+                       containerURL: URL? = nil) async -> Bool {
         deletionTask?.cancel()
         pendingDeletion = nil
-        guard commitMutation({
-            clips = []
-            folders = DefaultData.folders
-            preferences = .standard
-            linkOpenMode = .direct
-            tagCatalog = DefaultData.suggestedTags
-        }) else { return false }
+        let emptySnapshot = DataSnapshot(
+            version: FileClipRepository.supportedVersion,
+            clips: [],
+            folders: DefaultData.folders,
+            preferences: .standard
+        )
+        do {
+            try repository.eraseAllData(replacingWith: emptySnapshot)
+        } catch {
+            storageErrorMessage = error.localizedDescription
+            showToast(storageFailureMessage)
+            return false
+        }
+
+        clips = []
+        folders = DefaultData.folders
+        preferences = .standard
+        recentSearches = []
+        linkOpenMode = .direct
+        tagCatalog = DefaultData.suggestedTags
+        bootstrapState = .ready
+        storageErrorMessage = nil
+        recoveredLibraryNotice = false
+        sharedQueueNotice = nil
+
+        userDefaults.removeObject(forKey: Self.recentSearchesKey)
         userDefaults.removeObject(forKey: Self.linkOpenModeKey)
-        saveTagCatalog()
-        try? SharedClipQueue.removeAllImages()
+        userDefaults.removeObject(forKey: Self.tagCatalogKey)
+        userDefaults.removeObject(forKey: Self.onboardingCompletedKey)
+        SharedImageCache.removeAll()
+
+        do {
+            try SharedClipQueue.removeAllData(containerURL: containerURL)
+            try await metadata.removeAllMetadata()
+            try syncSharedConfiguration(containerURL: containerURL)
+        } catch {
+            storageErrorMessage = L10n.text("일부 로컬 데이터를 정리하지 못했습니다. 다시 시도하세요.")
+            showToast(storageErrorMessage ?? error.localizedDescription)
+            return false
+        }
+
         showToast("로컬 데이터를 삭제했습니다")
         return true
     }
@@ -1170,7 +1204,7 @@ final class AppStore {
         }
     }
 
-    private func syncSharedConfiguration() throws {
+    private func syncSharedConfiguration(containerURL: URL? = nil) throws {
         let destinations = destinationFolders.map(\.label)
         try SharedClipQueue.saveConfiguration(
             SharedClipConfiguration(
@@ -1179,7 +1213,8 @@ final class AppStore {
                 defaultFolder: preferences.defaultFolder,
                 folders: destinations.isEmpty ? [preferences.defaultFolder] : destinations,
                 theme: preferences.theme
-            )
+            ),
+            containerURL: containerURL
         )
     }
 

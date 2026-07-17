@@ -44,6 +44,9 @@ enum LibraryBootstrapState: Equatable {
 protocol ClipRepository: AnyObject {
     func bootstrap() throws -> ClipBootstrapResult
     func commit(_ snapshot: DataSnapshot) throws
+    /// 사용자 요청으로 전체 데이터를 지울 때는 일반 commit처럼 현재 보관함을
+    /// previous 복구본으로 회전시키지 않고, 복구/격리본까지 함께 제거한다.
+    func eraseAllData(replacingWith snapshot: DataSnapshot) throws
 }
 
 final class FileClipRepository: ClipRepository {
@@ -115,6 +118,39 @@ final class FileClipRepository: ClipRepository {
                 try applyFileProtection(to: previousURL)
             }
 
+            try data.write(to: fileURL, options: .atomic)
+            try applyFileProtection(to: fileURL)
+            currentIsSafeToRotate = true
+        } catch let error as ClipRepositoryError {
+            throw error
+        } catch {
+            throw ClipRepositoryError.writeFailed
+        }
+    }
+
+    func eraseAllData(replacingWith snapshot: DataSnapshot) throws {
+        guard snapshot.version == Self.supportedVersion else {
+            throw ClipRepositoryError.unsupportedVersion(snapshot.version)
+        }
+
+        let directory = fileURL.deletingLastPathComponent()
+        do {
+            try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.sortedKeys]
+            let data = try encoder.encode(snapshot)
+            _ = try validatedSnapshot(from: data)
+
+            // current를 바꾸기 전에 복구 사본부터 정리한다. 정리 단계가 실패하면
+            // 기존 current는 그대로 남으므로 호출자가 실패를 보고도 메모리와 디스크가
+            // 서로 다른 상태가 되지 않는다.
+            if fileManager.fileExists(atPath: previousURL.path) {
+                try fileManager.removeItem(at: previousURL)
+            }
+            if fileManager.fileExists(atPath: recoveryDirectoryURL.path) {
+                try fileManager.removeItem(at: recoveryDirectoryURL)
+            }
             try data.write(to: fileURL, options: .atomic)
             try applyFileProtection(to: fileURL)
             currentIsSafeToRotate = true

@@ -49,6 +49,13 @@ actor LinkMetadataSidecarStore {
         try persist()
     }
 
+    func removeAll() throws {
+        entries.removeAll()
+        loaded = true
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
+        try FileManager.default.removeItem(at: fileURL)
+    }
+
     private func loadIfNeeded() {
         guard !loaded else { return }
         loaded = true

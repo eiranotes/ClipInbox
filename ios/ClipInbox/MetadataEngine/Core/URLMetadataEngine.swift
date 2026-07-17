@@ -45,8 +45,8 @@ public final class URLMetadataEngine: @unchecked Sendable {
         }
     }
 
-    public func clearCache() async {
-        await cache.removeAll()
+    public func clearCache() async throws {
+        try await cache.removeAll()
     }
 
     private func performAnalysis(_ rawURL: String, forceRefresh: Bool) async throws -> LinkMetadataResult {

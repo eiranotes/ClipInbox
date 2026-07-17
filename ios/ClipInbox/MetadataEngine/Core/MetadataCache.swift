@@ -3,7 +3,7 @@ import Foundation
 protocol MetadataCaching: Sendable {
     func value(for key: String) async -> LinkMetadataResult?
     func store(_ value: LinkMetadataResult, for keys: [String], ttl: TimeInterval) async
-    func removeAll() async
+    func removeAll() async throws
 }
 
 actor MemoryMetadataCache: MetadataCaching {
@@ -76,10 +76,12 @@ actor DiskMetadataCache: MetadataCaching {
         try? persist()
     }
 
-    func removeAll() async {
+    func removeAll() async throws {
         entries.removeAll()
         loaded = true
-        try? FileManager.default.removeItem(at: fileURL)
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            try FileManager.default.removeItem(at: fileURL)
+        }
     }
 
     private func loadIfNeeded() async {

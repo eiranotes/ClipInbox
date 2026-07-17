@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-07-17: Destructive Reset Has a Separate Cross-Store Lifecycle
+
+Decision: Treat `모든 데이터 삭제` as a dedicated asynchronous reset rather than a normal library mutation. Replace the current snapshot with a validated empty snapshot without rotation, remove previous and recovery copies, clear app defaults and in-memory image state, erase pending/quarantined Share artifacts, clear URL metadata sidecar/cache after in-flight analysis finishes, and rewrite only the standard Share configuration. Report success only after every owned store completes.
+
+Why: The previous implementation committed an empty snapshot through the normal recovery path, which preserved the complete old library as `clip-inbox-data.previous.json`. It also left recent searches, Share queue artifacts, and metadata keyed by reusable integer clip IDs, contradicting the visible destructive action.
+
+Impact: The reset is intentionally irreversible and its confirmation names the expanded scope. Repository failure leaves side stores untouched; later cleanup failure is reported as retryable partial cleanup. Focused tests prove the current snapshot contains no old clip bytes and previous/recovery, queue, search, and metadata artifacts do not resurrect after reload.
+
 ## 2026-07-17: A Multi-Image Share Is One Atomic Intake Batch
 
 Decision: Advertise Share Extension support for up to 200 images, matching the pending queue item ceiling. Collect every image provider in selection order and create one payload per image. Quick mode saves the complete selection immediately; Review mode applies the chosen folder and memo to every selected image. Store original image files first, preflight the complete payload batch against the queue's item and byte limits, then write all payload files with rollback for any failure created by this attempt.

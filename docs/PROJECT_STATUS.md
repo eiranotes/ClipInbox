@@ -10,6 +10,8 @@ The same-day organization pass makes Sort Later show the shared collapsed detail
 
 The 2026-07-17 Share intake fix enables Clip Inbox for multi-image Photos shares and turns every selected image into an independent clip. The extension preserves selection order and original image bytes, applies one review destination/memo to the complete selection, preflights the whole batch against the existing 200-item/250 MB queue limits, and rolls back newly stored images if the batch cannot be queued.
 
+The 1.1 data-lifecycle pass makes `모든 데이터 삭제` truthful across every local owner: current/previous/recovery library files, app preferences and recent searches, active/pending/quarantined Share files, decoded image memory, and URL metadata sidecar/cache. In-flight metadata analysis is drained before the final cache deletion, and success is withheld when any cleanup owner fails.
+
 Implemented screens:
 
 - Inbox with a two-row, five-column equal-width filter grid (top row folders, bottom row in-use tags) whose rows scroll horizontally and independently, full-row clip navigation, stable reserved thumbnail space while remote images load, a metadata short-summary secondary line, enough bottom-navigation clearance to reveal the final clip completely, and a contextual multi-selection mode for batch move/delete.
@@ -24,6 +26,7 @@ Implemented screens:
 
 ## Completed Work
 
+- Added a non-rotating repository erase path and cross-store reset orchestration, including exact Share-container cleanup, standard configuration rewrite, metadata cache/sidecar deletion, onboarding/search/default cleanup, and focused success/failure regressions.
 - Raised the Share Extension image activation count from one to the queue-aligned 200, replaced the first-image early return with ordered provider collection, and added atomic batch queueing plus cleanup rollback. A live Photos share sheet exposes Clip Inbox with two images selected; a separate three-image regression proves every original image payload reaches the app import path. All 68 native tests pass, and the built embedded extension reports the multi-image activation value.
 - Reused the Clip Detail overview in Sort Later, pinned its folder/classify controls, added Inbox select all/deselect all plus batch move/delete, and made multi-item mutations transactional with grouped deletion Undo. Added trilingual selection copy and a storage regression covering one-commit batch move/delete plus grouped restore; all 67 native tests pass, and the fixed classification/selection layouts were exercised on the specified iOS 26.5 simulator.
 - Renamed the system capture bucket from `기본 폴더` to `인박스`, migrated legacy libraries (including custom-name collision handling), and made new Share/manual captures remain `미정리` until an explicit folder move or Sort Later action. Added centralized folder add/rename/delete management in Settings, matched Search to the independently scrolling Inbox folder/tag rows, simplified GitHub repository titles to `owner/repository`, stabilized async thumbnail geometry, and restored final-row bottom clearance. The then-current 66-test native suite passed.
