@@ -4,6 +4,7 @@
 "format.share_clips_count" = "%ld件のクリップ";
 "format.save_shared_clips" = "%ld件のクリップを保存";
 "format.shared_clips_saved" = "Clip Inboxに%ld件保存しました";
+"format.saving_shared_clips_progress" = "Clip Inboxに保存中… %ld/%ld";
 "format.moved_to_folder" = "%@に移動しました";
 "format.saved_to_folder" = "%@に保存しました";
 "format.created_folder" = "%@フォルダを作成しました";
@@ -292,6 +293,7 @@
 "format.image_too_large" = "画像は%ldMB以下にしてください。";
 "format.image_too_many_pixels" = "画像は%ldメガピクセル以下にしてください。";
 "format.share_queue_item_limit" = "未読み込みの共有項目が%ld件あります。先にClip Inboxを開いて読み込んでください。";
+"format.share_batch_item_limit" = "写真は一度に最大%ld枚まで保存できます。";
 "format.share_queue_byte_limit" = "未読み込みの共有項目が%ldMBを超えています。先にClip Inboxを開いて読み込んでください。";
 "지원하는 이미지 파일을 읽을 수 없습니다." = "対応している形式の画像ファイルを読み込めませんでした。";
 "공유 항목을 불러오는 시간이 초과되었습니다. 다시 시도하세요." = "共有項目の読み込みがタイムアウトしました。もう一度お試しください。";

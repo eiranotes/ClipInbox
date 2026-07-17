@@ -9,12 +9,15 @@
 
 ### Changed
 
-- Share payloads from one invocation are preflighted and queued as one batch against the existing 200-item/250 MB limits, with rollback of files created by a failed attempt.
+- Share payloads and original images from one invocation are written into a hidden staging directory and exposed together by one atomic directory promotion. One invocation accepts up to 20 images while the accumulated queue remains capped at 200 items/250 MB.
+- Multi-image file work runs outside the main actor and reports localized save progress in both Quick and Review modes. Completed imports promote original images before removing their payloads, while interrupted staging older than 24 hours is removed safely.
+- Newer Share invocations appear above older invocations without reversing Photos selection order inside either batch, and pending-storage totals now include staged original-image bytes.
 - `모든 데이터 삭제` now clears the current library plus previous/recovery snapshots, recent searches, tag/link settings, pending and quarantined Share data, original images, decoded image memory, and link-metadata sidecar/cache before reporting success.
 
 ### Fixed
 
 - Clip Inbox no longer disappears from the Share sheet when two or more images are selected, and the Share loader no longer returns after only the first image provider.
+- Multi-image imports keep the Photos selection order in Inbox, Sort Later updates the exact clip shown on screen, and a failed grouped move/delete no longer consumes an earlier deletion's Undo opportunity.
 - Deleting all data no longer rotates the complete pre-deletion library into a recoverable `previous` snapshot or allows stale URL metadata to reappear on reused clip IDs.
 
 ## Unreleased - 2026-07-16

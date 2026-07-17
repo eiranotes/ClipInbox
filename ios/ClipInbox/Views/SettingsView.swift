@@ -493,7 +493,7 @@ struct SettingDetailView: View {
                         storageRow("가져오기 대기", value: L10n.format(
                             "format.storage_pending",
                             storageSummary.pendingCount,
-                            byteText(storageSummary.pendingPayloadBytes)
+                            byteText(storageSummary.pendingBytes)
                         ))
                         storageRow("격리된 항목", value: "\(storageSummary.quarantinedCount)")
                     }

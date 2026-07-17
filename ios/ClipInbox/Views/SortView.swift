@@ -80,7 +80,7 @@ struct SortView: View {
 
             Button {
                 withAnimation(reduceMotion ? nil : .easeOut(duration: Tokens.motionBase)) {
-                    guard store.applySort(to: selected) else { return }
+                    guard store.applySort(clipID: clip.id, to: selected) else { return }
                     completed += 1
                     syncChoice()
                 }

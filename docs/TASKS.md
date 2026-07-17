@@ -3,7 +3,7 @@
 ## Done
 
 - [x] Make `모든 데이터 삭제` remove previous/recovery snapshots, app defaults and recent searches, all Share queue/quarantine/image artifacts, decoded image memory, and URL metadata sidecar/cache before showing success.
-- [x] Allow multi-image Photos sharing, load every selected image in order, preserve each original as its own clip, apply Review destination/memo to the full selection, and enqueue the batch only after shared queue limits pass.
+- [x] Allow multi-image Photos sharing, preserve every selected original in order, apply Review destination/memo to the full selection, atomically promote staged payload/image batches, cap one invocation at 20 while keeping the 200-item backlog, clean interrupted staging, and show off-main-thread save progress.
 - [x] Show Sort Later with the shared collapsed Clip Detail overview and pinned folder/classify controls; add filter-scoped Inbox multi-selection with select all/deselect all, atomic batch folder move, confirmed batch Trash move, and grouped five-second Undo.
 - [x] Apply the Emil/Apple UI quality pass: shared press feedback, Dynamic Type and Increased Contrast tokens, Reduce Motion compliance, labeled and accessibility-adaptive filters, sticky Add save CTA, explicit recent-clip Search state, interactive leading-edge back tracking, native pan/pinch image viewing, and matching Share Extension accessibility behavior.
 - [x] Rename the system default folder to `인박스`, preserve unorganized capture state until an explicit move, add Settings folder management, split Search into independent folder/tag rows, clean GitHub repository titles, reserve async thumbnail geometry, and restore Inbox bottom clearance.

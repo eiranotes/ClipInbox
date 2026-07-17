@@ -2,7 +2,7 @@ import UIKit
 import UniformTypeIdentifiers
 
 final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
-    private struct PendingShareItem {
+    private struct PendingShareItem: Sendable {
         var payload: SharedClipPayload
         let imageAsset: SharedImageAsset?
     }
@@ -375,36 +375,48 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
 
     @MainActor
     private func saveAndComplete(_ items: [PendingShareItem]) async {
-        var newlyStoredImageNames: [String] = []
+        if configuration.saveMode == .review {
+            view.subviews.forEach { $0.removeFromSuperview() }
+            configureCompactStatus()
+        }
         defer {
             cleanupPendingItems(items)
             pendingItems = []
         }
         do {
-            var finalPayloads: [SharedClipPayload] = []
-            finalPayloads.reserveCapacity(items.count)
-            for item in items {
-                let sharedImageName: String?
-                if let imageAsset = item.imageAsset {
-                    sharedImageName = try SharedClipQueue.storeImageAsset(imageAsset, for: item.payload.id)
-                    if let sharedImageName { newlyStoredImageNames.append(sharedImageName) }
-                } else {
-                    sharedImageName = item.payload.sharedImageName
-                }
-                var finalPayload = item.payload
-                finalPayload.sharedImageName = sharedImageName
-                if finalPayload.folder.isEmpty { finalPayload.folder = configuration.defaultFolder }
-                finalPayloads.append(finalPayload)
+            let defaultFolder = configuration.defaultFolder
+            let batchItems = items.map { item in
+                var payload = item.payload
+                if payload.folder.isEmpty { payload.folder = defaultFolder }
+                return SharedClipQueue.BatchItem(payload: payload, imageAsset: item.imageAsset)
             }
-            try SharedClipQueue.enqueue(finalPayloads)
-            showSavedConfirmation(itemCount: finalPayloads.count)
+            let progressHandler: SharedClipQueue.BatchProgressHandler = { [weak self] completed, total in
+                Task { @MainActor [weak self] in
+                    self?.showSaveProgress(completed: completed, total: total)
+                }
+            }
+            try await Task.detached(priority: .userInitiated) {
+                try SharedClipQueue.enqueueBatch(batchItems, progress: progressHandler)
+            }.value
+            showSavedConfirmation(itemCount: batchItems.count)
             try? await Task.sleep(for: .milliseconds(650))
             guard !Task.isCancelled else { return }
             extensionContext?.completeRequest(returningItems: nil)
         } catch {
-            newlyStoredImageNames.forEach { try? SharedClipQueue.removeImage(named: $0) }
             showFailure(error)
         }
+    }
+
+    @MainActor
+    private func showSaveProgress(completed: Int, total: Int) {
+        guard total > 1 else { return }
+        statusLabel.text = SharedL10n.format(
+            "format.saving_shared_clips_progress",
+            language: configuration.language,
+            completed,
+            total
+        )
+        statusLabel.accessibilityLabel = statusLabel.text
     }
 
     @MainActor
@@ -483,6 +495,11 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
             $0.hasItemConformingToTypeIdentifier(UTType.image.identifier)
         }
         if !imageProviders.isEmpty {
+            guard imageProviders.count <= SharedClipQueue.maxShareBatchItemCount else {
+                throw SharedClipQueue.QueueError.batchItemLimitReached(
+                    SharedClipQueue.maxShareBatchItemCount
+                )
+            }
             var loadedItems: [PendingShareItem] = []
             let batchCreatedAt = Date()
             do {

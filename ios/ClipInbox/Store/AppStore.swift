@@ -56,7 +56,7 @@ struct AppStorageSummary: Equatable {
     let originalImageCount: Int
     let originalImageBytes: Int64
     let pendingCount: Int
-    let pendingPayloadBytes: Int64
+    let pendingBytes: Int64
     let quarantinedCount: Int
 }
 
@@ -211,15 +211,40 @@ final class AppStore {
         let alreadyImported = pending.filter { item in
             clips.contains(where: { $0.sharePayloadID == item.payload.id })
         }
-        for item in alreadyImported { try? SharedClipQueue.remove(item) }
-        let candidates = pending.filter { item in
+        if !alreadyImported.isEmpty {
+            do {
+                try SharedClipQueue.finalizeImport(alreadyImported, containerURL: containerURL)
+            } catch {
+                sharedQueueNotice = error.localizedDescription
+            }
+        }
+        let unorderedCandidates = pending.filter { item in
             !clips.contains(where: { $0.sharePayloadID == item.payload.id })
         }
+        let candidates = Dictionary(grouping: unorderedCandidates, by: \.importBatchIdentifier)
+            .values
+            .sorted { left, right in
+                let leftDate = left.map(\.payload.createdAt).min() ?? .distantPast
+                let rightDate = right.map(\.payload.createdAt).min() ?? .distantPast
+                if leftDate != rightDate { return leftDate > rightDate }
+                return (left.first?.importBatchIdentifier ?? "")
+                    < (right.first?.importBatchIdentifier ?? "")
+            }
+            .flatMap { batch in
+                batch.sorted {
+                    if $0.payload.createdAt != $1.payload.createdAt {
+                        return $0.payload.createdAt < $1.payload.createdAt
+                    }
+                    return $0.payload.id.uuidString < $1.payload.id.uuidString
+                }
+            }
         guard !candidates.isEmpty else { return }
 
         var nextID = clips.map(\.id).max().map { $0 + 1 } ?? 1
 
         guard commitMutation({
+            var importedClips: [Clip] = []
+            importedClips.reserveCapacity(candidates.count)
             for item in candidates {
                 let payload = item.payload
                 var destination = Self.cleanText(payload.folder, fallback: preferences.defaultFolder, maxLength: 40)
@@ -270,15 +295,22 @@ final class AppStore {
                     description: Self.cleanText(payload.text, maxLength: 500),
                     memo: Self.cleanText(payload.memo, maxLength: 1000)
                 )
-                clips.insert(clip, at: 0)
+                importedClips.append(clip)
                 tagCatalog = Self.normalizeTags(tagCatalog + cleanTags)
                 nextID += 1
             }
+            // 최신 Share 작업을 위에 두되, 각 작업 안에서는 Photos 선택 순서를
+            // 보존한다. 한 항목씩 index 0에 넣으면 작업 내부 순서가 뒤집힌다.
+            clips.insert(contentsOf: importedClips, at: 0)
         }) else { return }
 
         saveTagCatalog()
-        for item in candidates {
-            try? SharedClipQueue.remove(item)
+        do {
+            try SharedClipQueue.finalizeImport(candidates, containerURL: containerURL)
+        } catch {
+            // 보관함 저장은 이미 완료됐다. payload identity가 있으므로 다음
+            // 활성화에서 이미지 승격/queue 정리를 안전하게 재시도한다.
+            sharedQueueNotice = error.localizedDescription
         }
         showToast(L10n.format("format.imported_shared_clips", candidates.count))
     }
@@ -297,7 +329,7 @@ final class AppStore {
             originalImageCount: shared.originalImageCount,
             originalImageBytes: shared.originalImageBytes,
             pendingCount: shared.pendingCount,
-            pendingPayloadBytes: shared.pendingPayloadBytes,
+            pendingBytes: shared.pendingBytes,
             quarantinedCount: shared.quarantinedCount
         )
     }
@@ -762,12 +794,14 @@ final class AppStore {
     func deleteClips(ids: Set<Int>) -> Bool {
         let indexes = clips.indices.filter { ids.contains(clips[$0].id) && !clips[$0].isInTrash }
         guard !indexes.isEmpty else { return false }
-        finalizePendingDeletion()
         let originals = indexes.map { clips[$0] }
         let deletedAt = Date()
         guard commitMutation({
             for index in indexes { clips[index].deletedAt = deletedAt }
         }) else { return false }
+        // 새 삭제가 실제로 저장된 뒤에만 기존 Undo를 확정한다. 저장 실패가
+        // 이전에 성공한 삭제의 복구 기회까지 없애서는 안 된다.
+        finalizePendingDeletion()
         let deletion = PendingDeletion(id: UUID(), clips: originals)
         pendingDeletion = deletion
         scheduleDeletionFinalization(deletion)
@@ -1091,10 +1125,12 @@ final class AppStore {
         return true
     }
 
-    /// 분류하기: 첫 미정리 클립을 지정 폴더로 옮기고 state를 해제한다.
+    /// 분류하기: 화면에 제시된 특정 미정리 클립만 지정 폴더로 옮긴다.
     @discardableResult
-    func applySort(to destination: String) -> Bool {
-        guard let index = clips.firstIndex(where: { !$0.isInTrash && $0.state == .unsorted }) else { return false }
+    func applySort(clipID: Int, to destination: String) -> Bool {
+        guard let index = clips.firstIndex(where: {
+            $0.id == clipID && !$0.isInTrash && $0.state == .unsorted
+        }) else { return false }
         return commitMutation {
             clips[index].folder = destination
             clips[index].state = nil

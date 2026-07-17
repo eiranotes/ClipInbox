@@ -567,3 +567,11 @@ Decision: Show one `복사하기` action in detail. Link clips copy their URL ev
 Why: A metadata thumbnail does not change a link clip into an image payload, and users expect an already-selected tab to act as a predictable shortcut back to that section's main screen. Keeping the paths separate prevents one tab's reset from changing another tab's navigation state.
 
 Impact: Long detail content gets explicit bottom-navigation clearance, and the note input grows with its text instead of owning a nested vertical scroll region that can capture the parent screen's swipe. All new actions retain the shared 52pt button style, and the existing sibling clip-row/menu hit regions remain unchanged. Broken image references report a copy failure instead of placing the generated fallback artwork on the pasteboard.
+
+## 2026-07-17: Multi-Image Share Uses Atomic Directory Promotion
+
+Decision: Limit one Photos Share invocation to 20 images while retaining the independent 200-item/250 MB accumulated queue limits. Write every payload and original image into a UUID staging directory, then rename that completed directory into the pending root as the single visibility boundary. Run the file work outside the main actor and finalize imports by promoting originals before removing payloads.
+
+Why: Sequentially exposing payload files can leave a partially visible selection or orphaned images if the extension is terminated between writes. Treating the queue backlog as the per-invocation UI limit also advertises a workload whose provider deadlines and extension lifetime are not realistically verifiable.
+
+Impact: The app sees either the complete selected batch or none of it, places newer Share invocations first while keeping each Photos selection in order, and can retry finalization safely after an app-side commit. Failed attempts remove their staging directory, staging left by process termination stays invisible and expires after 24 hours, storage totals include pending originals, and both Share modes show localized progress without blocking UIKit interaction.

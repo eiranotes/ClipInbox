@@ -4,6 +4,7 @@
 "format.share_clips_count" = "%ld clips";
 "format.save_shared_clips" = "Save %ld clips";
 "format.shared_clips_saved" = "Saved %ld to Clip Inbox";
+"format.saving_shared_clips_progress" = "Saving to Clip Inbox… %ld/%ld";
 "format.moved_to_folder" = "Moved to %@";
 "format.saved_to_folder" = "Saved to %@";
 "format.created_folder" = "Created the %@ folder";
@@ -292,6 +293,7 @@
 "format.image_too_large" = "Images must be %ld MB or smaller.";
 "format.image_too_many_pixels" = "Images must be %ld megapixels or smaller.";
 "format.share_queue_item_limit" = "There are %ld unimported shared items. Open Clip Inbox to import them first.";
+"format.share_batch_item_limit" = "You can save up to %ld photos at a time.";
 "format.share_queue_byte_limit" = "Unimported shared items exceed %ld MB. Open Clip Inbox to import them first.";
 "지원하는 이미지 파일을 읽을 수 없습니다." = "The image file could not be read in a supported format.";
 "공유 항목을 불러오는 시간이 초과되었습니다. 다시 시도하세요." = "Loading the shared item timed out. Try again.";

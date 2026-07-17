@@ -191,6 +191,49 @@ final class AppStoreTests: XCTestCase {
         XCTAssertTrue(store.trashedClips.isEmpty)
     }
 
+    func testBatchMutationFailureRollsBackAndPreservesExistingUndo() {
+        let repository = TestClipRepository(bootstrapHandler: {
+            .loaded(DataSnapshot(
+                version: 2,
+                clips: DefaultData.clips,
+                folders: DefaultData.folders,
+                preferences: .standard
+            ))
+        })
+        let store = AppStore(userDefaults: defaults, repository: repository)
+        let originalFolder = store.clip(id: 2)?.folder
+
+        XCTAssertTrue(store.deleteClip(id: 1))
+        XCTAssertEqual(store.pendingDeletion?.clips.map(\.id), [1])
+        repository.commitError = ClipRepositoryError.writeFailed
+
+        XCTAssertFalse(store.moveClips(ids: [2, 3], to: "폴더 5"))
+        XCTAssertEqual(store.clip(id: 2)?.folder, originalFolder)
+        XCTAssertFalse(store.deleteClips(ids: [2, 3]))
+        XCTAssertEqual(store.pendingDeletion?.clips.map(\.id), [1])
+        XCTAssertFalse(store.clip(id: 2)?.isInTrash == true)
+        XCTAssertFalse(store.clip(id: 3)?.isInTrash == true)
+    }
+
+    func testSortMutatesOnlyThePresentedClipID() {
+        let repository = TestClipRepository(bootstrapHandler: {
+            .loaded(DataSnapshot(
+                version: 2,
+                clips: DefaultData.clips,
+                folders: DefaultData.folders,
+                preferences: .standard
+            ))
+        })
+        let store = AppStore(userDefaults: defaults, repository: repository)
+
+        XCTAssertTrue(store.applySort(clipID: 5, to: "폴더 4"))
+        XCTAssertEqual(store.clip(id: 5)?.folder, "폴더 4")
+        XCTAssertNil(store.clip(id: 5)?.state)
+        XCTAssertEqual(store.clip(id: 1)?.state, .unsorted)
+        XCTAssertEqual(store.clip(id: 1)?.folder, DefaultData.clips[0].folder)
+        XCTAssertFalse(store.applySort(clipID: 3, to: "폴더 4"))
+    }
+
     func testTrashRestoreEmptyAndThirtyDayExpiry() throws {
         try seedDefaultLibrary()
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
@@ -863,31 +906,254 @@ final class AppStoreTests: XCTestCase {
         }
         let asset = try XCTUnwrap(SharedImageAsset(data: try XCTUnwrap(image.pngData())))
         let createdAt = Date()
-        let payloads = try (0..<3).map { index in
+        let payloads = (0..<3).map { index in
             let id = UUID()
-            let imageName = try SharedClipQueue.storeImageAsset(asset, for: id, containerURL: container)
             return SharedClipPayload(
                 id: id,
                 type: .image,
                 title: "Shared image \(index + 1)",
                 source: "Photos",
-                sharedImageName: imageName,
                 createdAt: createdAt.addingTimeInterval(Double(index) / 1_000)
             )
         }
 
-        try SharedClipQueue.enqueue(payloads, containerURL: container)
+        try SharedClipQueue.enqueueBatch(
+            payloads.map { SharedClipQueue.BatchItem(payload: $0, imageAsset: asset) },
+            containerURL: container
+        )
 
         let queued = try SharedClipQueue.pendingItems(containerURL: container)
         XCTAssertEqual(queued.map(\.payload.id), payloads.map(\.id))
         XCTAssertEqual(queued.compactMap(\.payload.sharedImageName).count, 3)
+        let pendingImageURLs = try queued.map { item in
+            try XCTUnwrap(SharedClipQueue.imageURL(
+                named: try XCTUnwrap(item.payload.sharedImageName),
+                containerURL: container
+            ))
+        }
+        XCTAssertTrue(pendingImageURLs.allSatisfy {
+            $0.path.contains(SharedClipQueue.pendingBatchesDirectoryName)
+        })
 
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
         store.importSharedClips(containerURL: container)
 
-        XCTAssertEqual(Set(store.clips.compactMap(\.sharePayloadID)), Set(payloads.map(\.id)))
+        XCTAssertEqual(store.clips.compactMap(\.sharePayloadID), payloads.map(\.id))
         XCTAssertEqual(store.clips.filter { $0.type == .image }.count, 3)
         XCTAssertTrue(try SharedClipQueue.pendingItems(containerURL: container).isEmpty)
+        let promotedURLs = try store.clips.compactMap(\.sharedImageName).map { name in
+            try XCTUnwrap(SharedClipQueue.imageURL(named: name, containerURL: container))
+        }
+        XCTAssertTrue(promotedURLs.allSatisfy { $0.path.contains("SharedImages") })
+        XCTAssertTrue(promotedURLs.allSatisfy { FileManager.default.fileExists(atPath: $0.path) })
+    }
+
+    func testShareImportShowsNewerInvocationsFirstWithoutReversingEachSelection() throws {
+        let container = temporaryDirectory.appendingPathComponent("BatchDisplayOrder", isDirectory: true)
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        let baseDate = Date().addingTimeInterval(-120)
+        let older = (0..<2).map { index in
+            SharedClipPayload(
+                type: .text,
+                title: "Older \(index + 1)",
+                source: "Share sheet",
+                text: "Older \(index + 1)",
+                createdAt: baseDate.addingTimeInterval(Double(index) / 1_000)
+            )
+        }
+        let newer = (0..<2).map { index in
+            SharedClipPayload(
+                type: .text,
+                title: "Newer \(index + 1)",
+                source: "Share sheet",
+                text: "Newer \(index + 1)",
+                createdAt: baseDate.addingTimeInterval(60 + Double(index) / 1_000)
+            )
+        }
+        try SharedClipQueue.enqueueBatch(
+            older.map { SharedClipQueue.BatchItem(payload: $0) },
+            containerURL: container
+        )
+        try SharedClipQueue.enqueueBatch(
+            newer.map { SharedClipQueue.BatchItem(payload: $0) },
+            containerURL: container
+        )
+
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+        store.importSharedClips(containerURL: container)
+
+        XCTAssertEqual(
+            store.clips.compactMap(\.sharePayloadID),
+            newer.map(\.id) + older.map(\.id)
+        )
+    }
+
+    func testShareQueueRejectsOversizedInvocationWithoutArtifacts() throws {
+        let container = temporaryDirectory.appendingPathComponent("OversizedBatchQueue", isDirectory: true)
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        let items = (0...SharedClipQueue.maxShareBatchItemCount).map { index in
+            SharedClipQueue.BatchItem(payload: SharedClipPayload(
+                type: .text,
+                title: "Shared text \(index)",
+                source: "test",
+                text: "value"
+            ))
+        }
+
+        XCTAssertThrowsError(try SharedClipQueue.enqueueBatch(items, containerURL: container)) { error in
+            XCTAssertEqual(
+                error as? SharedClipQueue.QueueError,
+                .batchItemLimitReached(SharedClipQueue.maxShareBatchItemCount)
+            )
+        }
+        XCTAssertTrue(try SharedClipQueue.pendingItems(containerURL: container).isEmpty)
+        let committedRoot = container.appendingPathComponent(
+            SharedClipQueue.pendingBatchesDirectoryName,
+            isDirectory: true
+        )
+        XCTAssertTrue(try FileManager.default.contentsOfDirectory(
+            at: committedRoot,
+            includingPropertiesForKeys: nil
+        ).isEmpty)
+    }
+
+    func testShareQueueFailedBatchWriteLeavesNoVisibleOrStagedArtifacts() throws {
+        let container = temporaryDirectory.appendingPathComponent("FailedBatchQueue", isDirectory: true)
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8)).image { context in
+            UIColor.systemBlue.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+        }
+        let data = try XCTUnwrap(image.pngData())
+        let validAsset = try SharedImageAsset(validatingData: data, typeIdentifier: UTType.png.identifier)
+        let disappearingSource = temporaryDirectory.appendingPathComponent("disappearing.png")
+        try data.write(to: disappearingSource)
+        let missingAsset = try SharedImageAsset(
+            validatingFileAt: disappearingSource,
+            typeIdentifier: UTType.png.identifier
+        )
+        try FileManager.default.removeItem(at: disappearingSource)
+        let items = [validAsset, missingAsset].enumerated().map { index, asset in
+            SharedClipQueue.BatchItem(
+                payload: SharedClipPayload(
+                    type: .image,
+                    title: "Shared image \(index)",
+                    source: "Photos",
+                    createdAt: Date().addingTimeInterval(Double(index) / 1_000)
+                ),
+                imageAsset: asset
+            )
+        }
+
+        XCTAssertThrowsError(try SharedClipQueue.enqueueBatch(items, containerURL: container))
+        XCTAssertTrue(try SharedClipQueue.pendingItems(containerURL: container).isEmpty)
+        for directoryName in [
+            SharedClipQueue.pendingBatchesDirectoryName,
+            SharedClipQueue.stagingBatchesDirectoryName
+        ] {
+            let directory = container.appendingPathComponent(directoryName, isDirectory: true)
+            XCTAssertTrue(try FileManager.default.contentsOfDirectory(
+                at: directory,
+                includingPropertiesForKeys: nil
+            ).isEmpty)
+        }
+    }
+
+    func testShareImportCommitFailureLeavesAtomicBatchAvailableForRetry() throws {
+        let container = temporaryDirectory.appendingPathComponent("RetryBatchQueue", isDirectory: true)
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8)).image { context in
+            UIColor.systemYellow.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+        }
+        let asset = try SharedImageAsset(
+            validatingData: try XCTUnwrap(image.pngData()),
+            typeIdentifier: UTType.png.identifier
+        )
+        let payload = SharedClipPayload(
+            type: .image,
+            title: "Retry image",
+            source: "Photos"
+        )
+        try SharedClipQueue.enqueueBatch(
+            [SharedClipQueue.BatchItem(payload: payload, imageAsset: asset)],
+            containerURL: container
+        )
+        let repository = TestClipRepository(
+            bootstrapHandler: {
+                .loaded(DataSnapshot(version: 2, clips: [], folders: DefaultData.folders,
+                                     preferences: .standard))
+            },
+            commitError: ClipRepositoryError.writeFailed
+        )
+        let store = AppStore(userDefaults: defaults, repository: repository)
+
+        store.importSharedClips(containerURL: container)
+
+        XCTAssertTrue(store.clips.isEmpty)
+        let pending = try SharedClipQueue.pendingItems(containerURL: container)
+        XCTAssertEqual(pending.map(\.payload.id), [payload.id])
+        let imageName = try XCTUnwrap(pending.first?.payload.sharedImageName)
+        let pendingImage = try XCTUnwrap(SharedClipQueue.imageURL(
+            named: imageName,
+            containerURL: container
+        ))
+        XCTAssertTrue(pendingImage.path.contains(SharedClipQueue.pendingBatchesDirectoryName))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: pendingImage.path))
+    }
+
+    func testShareQueueQuarantinesCommittedImagePayloadWhenOriginalIsMissing() throws {
+        let container = temporaryDirectory.appendingPathComponent("MissingBatchImage", isDirectory: true)
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8)).image { context in
+            UIColor.systemRed.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+        }
+        let asset = try SharedImageAsset(
+            validatingData: try XCTUnwrap(image.pngData()),
+            typeIdentifier: UTType.png.identifier
+        )
+        let payload = SharedClipPayload(type: .image, title: "Missing image", source: "Photos")
+        try SharedClipQueue.enqueueBatch(
+            [SharedClipQueue.BatchItem(payload: payload, imageAsset: asset)],
+            containerURL: container
+        )
+        let queued = try XCTUnwrap(SharedClipQueue.pendingItems(containerURL: container).first)
+        let imageName = try XCTUnwrap(queued.payload.sharedImageName)
+        let pendingImage = try XCTUnwrap(SharedClipQueue.imageURL(
+            named: imageName,
+            containerURL: container
+        ))
+        try FileManager.default.removeItem(at: pendingImage)
+
+        XCTAssertTrue(try SharedClipQueue.pendingItems(containerURL: container).isEmpty)
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(
+            at: container.appendingPathComponent("FailedClips", isDirectory: true),
+            includingPropertiesForKeys: nil
+        ).count, 1)
+    }
+
+    func testShareQueueCleansOnlyStaleStagingBatches() throws {
+        let container = temporaryDirectory.appendingPathComponent("StaleBatchQueue", isDirectory: true)
+        let stagingRoot = container.appendingPathComponent(
+            SharedClipQueue.stagingBatchesDirectoryName,
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(at: stagingRoot, withIntermediateDirectories: true)
+        let stale = stagingRoot.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let recent = stagingRoot.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: stale, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: recent, withIntermediateDirectories: true)
+        let now = Date()
+        try FileManager.default.setAttributes(
+            [.modificationDate: now.addingTimeInterval(-SharedClipQueue.maxStagingBatchAge - 1)],
+            ofItemAtPath: stale.path
+        )
+
+        _ = try SharedClipQueue.pendingItems(containerURL: container, now: now)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: stale.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: recent.path))
     }
 
     func testShareQueueRejectsNewItemsAtCountLimit() throws {
@@ -983,8 +1249,11 @@ final class AppStoreTests: XCTestCase {
         }
         let asset = try XCTUnwrap(SharedImageAsset(data: try XCTUnwrap(image.pngData())))
         _ = try SharedClipQueue.storeImageAsset(asset, for: UUID(), containerURL: container)
-        let payload = SharedClipPayload(type: .text, title: "pending", source: "test", text: "pending")
-        try SharedClipQueue.enqueue(payload, containerURL: container)
+        let payload = SharedClipPayload(type: .image, title: "pending", source: "test")
+        try SharedClipQueue.enqueueBatch(
+            [SharedClipQueue.BatchItem(payload: payload, imageAsset: asset)],
+            containerURL: container
+        )
         let pendingDirectory = container.appendingPathComponent("PendingClips", isDirectory: true)
         try Data("broken".utf8).write(to: pendingDirectory.appendingPathComponent("broken.json"))
 
@@ -995,7 +1264,7 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(shared.originalImageCount, 1)
         XCTAssertGreaterThan(shared.originalImageBytes, 0)
         XCTAssertEqual(shared.pendingCount, 1)
-        XCTAssertGreaterThan(shared.pendingPayloadBytes, 0)
+        XCTAssertGreaterThan(shared.pendingBytes, asset.byteCount)
         XCTAssertEqual(shared.quarantinedCount, 1)
         XCTAssertGreaterThan(app.snapshotBytes, 0)
         XCTAssertEqual(app.originalImageCount, shared.originalImageCount)

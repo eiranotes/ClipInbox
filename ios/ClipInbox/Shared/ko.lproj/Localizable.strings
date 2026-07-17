@@ -4,6 +4,7 @@
 "format.share_clips_count" = "%ld개 클립";
 "format.save_shared_clips" = "%ld개 클립 저장";
 "format.shared_clips_saved" = "클립 인박스에 %ld개 저장됨";
+"format.saving_shared_clips_progress" = "클립 인박스에 저장하는 중… %ld/%ld";
 "format.moved_to_folder" = "%@로 이동했습니다";
 "format.saved_to_folder" = "%@에 저장했습니다";
 "format.created_folder" = "%@ 폴더를 만들었습니다";
@@ -231,6 +232,7 @@
 "format.image_too_large" = "이미지는 %ldMB 이하여야 합니다.";
 "format.image_too_many_pixels" = "이미지는 %ld메가픽셀 이하여야 합니다.";
 "format.share_queue_item_limit" = "가져오지 않은 공유 항목이 %ld개 있습니다. 클립 인박스를 열어 먼저 가져오세요.";
+"format.share_batch_item_limit" = "사진은 한 번에 최대 %ld개까지 저장할 수 있습니다.";
 "format.share_queue_byte_limit" = "가져오지 않은 공유 항목이 %ldMB를 넘었습니다. 클립 인박스를 열어 먼저 가져오세요.";
 "지원하는 이미지 파일을 읽을 수 없습니다." = "지원하는 이미지 파일을 읽을 수 없습니다.";
 "공유 항목을 불러오는 시간이 초과되었습니다. 다시 시도하세요." = "공유 항목을 불러오는 시간이 초과되었습니다. 다시 시도하세요.";
