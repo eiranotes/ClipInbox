@@ -510,7 +510,7 @@ struct SettingDetailView: View {
 
         case .importData:
             BoardSection(title: "백업 파일") {
-                Text("Clip Inbox 백업 JSON만 지원합니다. 가져오면 현재 로컬 데이터를 대체합니다.")
+                Text("Clip Inbox 백업 JSON만 지원합니다. 클립, 폴더와 백업에 포함된 설정은 백업 내용으로 대체됩니다. 최근 검색, 링크 열기 방식, 태그 카탈로그와 저장된 원본 첨부 파일은 유지됩니다. 원본 첨부 파일은 백업에 포함되지 않습니다.")
                     .font(Tokens.body)
                     .foregroundStyle(Tokens.textPrimary)
                     .lineSpacing(Tokens.bodyLineSpacing)

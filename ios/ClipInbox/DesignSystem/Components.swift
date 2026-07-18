@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import ImageIO
 
 // MARK: - 배지
 
@@ -448,6 +449,7 @@ struct UtilityIconButton: View {
     let label: String
     let systemImage: String
     var isOn = false
+    var accessibilitySelectionState: Bool? = nil
     let action: () -> Void
 
     var body: some View {
@@ -464,6 +466,10 @@ struct UtilityIconButton: View {
         }
         .buttonStyle(ResponsivePressButtonStyle(pressedScale: 0.92))
         .accessibilityLabel(L10n.text(label, locale: locale))
+        .accessibilityValue(accessibilitySelectionState.map {
+            L10n.text($0 ? "선택됨" : "선택 안 됨", locale: locale)
+        } ?? "")
+        .accessibilityAddTraits(accessibilitySelectionState == true ? .isSelected : [])
     }
 }
 
@@ -609,18 +615,50 @@ struct EmptyStateView: View {
 
 /// 공유 이미지 파일을 행 렌더마다 디스크에서 다시 읽지 않도록 하는 메모리 캐시.
 enum SharedImageCache {
-    private static let cache = NSCache<NSString, UIImage>()
+    private static let cache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.totalCostLimit = 96 * 1_024 * 1_024
+        return cache
+    }()
+    private static let thumbnailCache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.totalCostLimit = 32 * 1_024 * 1_024
+        return cache
+    }()
 
     static func image(at url: URL) -> UIImage? {
         let key = url.path as NSString
         if let cached = cache.object(forKey: key) { return cached }
         guard let image = UIImage(contentsOfFile: url.path) else { return nil }
-        cache.setObject(image, forKey: key)
+        cache.setObject(image, forKey: key, cost: image.memoryCost)
+        return image
+    }
+
+    static func thumbnail(at url: URL, maxPixelSize: CGFloat) -> UIImage? {
+        let key = "\(url.path)#\(Int(maxPixelSize.rounded()))" as NSString
+        if let cached = thumbnailCache.object(forKey: key) { return cached }
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: Int(maxPixelSize.rounded(.up)),
+                kCGImageSourceShouldCacheImmediately: true
+              ] as CFDictionary) else { return nil }
+        let image = UIImage(cgImage: cgImage)
+        thumbnailCache.setObject(image, forKey: key, cost: image.memoryCost)
         return image
     }
 
     static func removeAll() {
         cache.removeAllObjects()
+        thumbnailCache.removeAllObjects()
+    }
+}
+
+private extension UIImage {
+    var memoryCost: Int {
+        guard let cgImage else { return 0 }
+        return cgImage.bytesPerRow * cgImage.height
     }
 }
 
@@ -649,18 +687,35 @@ struct ClipThumbnail: View {
 }
 
 enum ClipImageResolver {
-    static func originalImage(for clip: Clip) -> UIImage? {
-        if let url = clip.sharedImageURL, let uiImage = SharedImageCache.image(at: url) {
+    static func originalImage(for source: ClipImageSource) -> UIImage? {
+        if let url = source.fileURL, let uiImage = SharedImageCache.image(at: url) {
             return uiImage
         }
-        if let asset = clip.imageAssetName, let uiImage = UIImage(named: asset) {
+        if let assetName = source.assetName, let uiImage = UIImage(named: assetName) {
             return uiImage
         }
         return nil
     }
 
+    static func thumbnail(for source: ClipImageSource, maxPixelSize: CGFloat) -> UIImage? {
+        if let url = source.fileURL,
+           let image = SharedImageCache.thumbnail(at: url, maxPixelSize: maxPixelSize) {
+            return image
+        }
+        if let assetName = source.assetName { return UIImage(named: assetName) }
+        return nil
+    }
+
+    static func originalImage(for clip: Clip) -> UIImage? {
+        clip.imageSources.first.flatMap(originalImage(for:))
+    }
+
     static func image(for clip: Clip) -> UIImage {
         originalImage(for: clip) ?? UIImage(named: "clip-image-fallback") ?? UIImage()
+    }
+
+    static func image(for source: ClipImageSource) -> UIImage {
+        originalImage(for: source) ?? UIImage(named: "clip-image-fallback") ?? UIImage()
     }
 }
 
@@ -772,9 +827,43 @@ extension View {
     }
 }
 
+/// 화면을 떠나기 전에 로컬 편집 상태를 저장해야 하는 destination이 뒤로가기
+/// 제스처와 하단 탭 전환에 같은 검증을 제공한다.
+final class NavigationExitGuard {
+    private var ownerID: UUID?
+    private var handler: (() -> Bool)?
+
+    func register(ownerID: UUID, handler: @escaping () -> Bool) {
+        self.ownerID = ownerID
+        self.handler = handler
+    }
+
+    func unregister(ownerID: UUID) {
+        guard self.ownerID == ownerID else { return }
+        self.ownerID = nil
+        handler = nil
+    }
+
+    func attemptExit() -> Bool {
+        handler?() ?? true
+    }
+}
+
+private struct NavigationExitGuardKey: EnvironmentKey {
+    static let defaultValue: NavigationExitGuard? = nil
+}
+
+extension EnvironmentValues {
+    var navigationExitGuard: NavigationExitGuard? {
+        get { self[NavigationExitGuardKey.self] }
+        set { self[NavigationExitGuardKey.self] = newValue }
+    }
+}
+
 private struct LeadingEdgeSwipeBackModifier: ViewModifier {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.navigationExitGuard) private var navigationExitGuard
     @State private var dragOffset: CGFloat = 0
 
     func body(content: Content) -> some View {
@@ -795,7 +884,13 @@ private struct LeadingEdgeSwipeBackModifier: ViewModifier {
                     let reachedThreshold = value.translation.width > Tokens.touchTarget * 2
                         || value.predictedEndTranslation.width > Tokens.touchTarget * 3
                     if isLeadingEdge, isHorizontal, reachedThreshold {
-                        dismiss()
+                        if navigationExitGuard?.attemptExit() != false {
+                            dismiss()
+                        } else if !reduceMotion {
+                            withAnimation(.spring(response: 0.22, dampingFraction: 0.86)) {
+                                dragOffset = 0
+                            }
+                        }
                     } else if !reduceMotion {
                         withAnimation(.spring(response: 0.22, dampingFraction: 0.86)) {
                             dragOffset = 0

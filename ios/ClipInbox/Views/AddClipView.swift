@@ -6,6 +6,7 @@ import UIKit
 /// 공유 시트를 쓰기 어려운 상황을 위한 실제 수동 캡처 폼.
 struct AddClipView: View {
     @Environment(AppStore.self) private var store
+    @Environment(\.locale) private var locale
 
     @State private var type: ManualCaptureType = .link
     @State private var title = ""
@@ -62,7 +63,7 @@ struct AddClipView: View {
                             .foregroundStyle(Tokens.onAccent)
                             .frame(width: Tokens.destinationIcon, height: Tokens.destinationIcon)
                             .tokenSurface(fill: Tokens.accentYellow, radius: Tokens.radiusButton)
-                        Text(destination)
+                        Text(L10n.text(destination, locale: locale))
                             .font(Tokens.bodyBold)
                             .foregroundStyle(Tokens.onAccent)
                         Spacer()
@@ -246,7 +247,7 @@ struct AddClipView: View {
             .tokenSurface(radius: Tokens.radiusInput)
             .overlay(alignment: .topLeading) {
                 if text.isEmpty {
-                    Text(placeholder)
+                    Text(L10n.text(placeholder, locale: locale))
                         .font(Tokens.body)
                         .foregroundStyle(Tokens.textTertiary)
                         .padding(.top, Tokens.rowGap + 8)

@@ -50,6 +50,7 @@ struct RootView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selectedTab: AppTab = .inbox
     @State private var navigation = TabNavigationState()
+    @State private var navigationExitGuard = NavigationExitGuard()
     @State private var keyboardVisible = false
     @State private var showOnboarding = false
     @AppStorage("clip-inbox-onboarding-completed-v1") private var onboardingCompleted = false
@@ -88,6 +89,7 @@ struct RootView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .environment(\.navigationExitGuard, navigationExitGuard)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !keyboardVisible && !store.bootstrapState.blocksLibrary {
                 BottomNavBar(selected: selectedTab, onSelect: selectTab)
@@ -171,6 +173,7 @@ struct RootView: View {
     }
 
     private func selectTab(_ tab: AppTab) {
+        guard navigationExitGuard.attemptExit() else { return }
         Keyboard.dismiss()
         if selectedTab == tab {
             navigation.reset(tab)
@@ -310,6 +313,10 @@ private struct BottomNavBar: View {
                             )
                         Text(L10n.text(tab.label, locale: locale))
                             .font(Tokens.nav)
+                            // 다섯 개의 고정 탭 이름은 접근성 글자 크기에서도 서로
+                            // 침범하지 않도록 네이티브 탭 바처럼 표시 크기만 제한한다.
+                            // 각 버튼의 VoiceOver 레이블과 44pt 타깃은 그대로 유지된다.
+                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                             .foregroundStyle(selected == tab ? Tokens.textPrimary : Tokens.textSecondary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.55)

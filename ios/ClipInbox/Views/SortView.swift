@@ -10,6 +10,7 @@ struct SortView: View {
 
     @State private var total = 0
     @State private var completed = 0
+    @State private var classified = 0
     @State private var choice = ""
     @State private var deleteCandidate: Clip?
     @State private var localDeletionID: UUID?
@@ -37,7 +38,7 @@ struct SortView: View {
                 BoardSection(title: "분류 완료") {
                     StatePanel(systemImage: "checkmark.circle",
                                title: "미정리 클립을 모두 분류했습니다",
-                               message: "선택한 폴더에서 바로 확인할 수 있습니다.")
+                               message: completionMessage)
                 }
                 Button {
                     dismiss()
@@ -82,6 +83,7 @@ struct SortView: View {
         .onAppear {
             total = store.unsortedClips.count
             completed = 0
+            classified = 0
             syncChoice()
         }
         .task(id: unsorted.first?.id) {
@@ -146,6 +148,7 @@ struct SortView: View {
             withAnimation(reduceMotion ? nil : .easeOut(duration: Tokens.motionBase)) {
                 guard store.applySort(clipID: clip.id, to: destination) else { return }
                 completed += 1
+                classified += 1
                 syncChoice()
             }
         } label: {
@@ -198,6 +201,17 @@ struct SortView: View {
         guard total > 0 else { return "0/0" }
         let current = min(completed + (hasCurrentClip ? 1 : 0), total)
         return "\(current)/\(total)"
+    }
+
+    private var completionMessage: String {
+        let deleted = max(0, completed - classified)
+        if classified == 0, deleted > 0 {
+            return "삭제한 클립은 휴지통에서 확인하거나 복원할 수 있습니다."
+        }
+        if deleted > 0 {
+            return "분류한 클립은 선택한 폴더에 있고, 삭제한 클립은 휴지통에서 확인할 수 있습니다."
+        }
+        return "선택한 폴더에서 바로 확인할 수 있습니다."
     }
 }
 

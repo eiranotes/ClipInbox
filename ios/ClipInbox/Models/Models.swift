@@ -47,6 +47,8 @@ struct Clip: Identifiable, Codable, Equatable {
     var source: String
     var url: String
     var time: String
+    /// 실제 클립 저장 시각. `time`은 version-2 백업 호환용 표시 문자열로만 남긴다.
+    var createdAt: Date?
     var folder: String
     var tags: [String]
     var folderSuggestions: [String]
@@ -60,7 +62,7 @@ struct Clip: Identifiable, Codable, Equatable {
     var deletedAt: Date?
 
     init(id: Int, type: ClipType, state: ClipState? = nil, title: String, source: String,
-         url: String, time: String, folder: String, tags: [String] = [],
+         url: String, time: String, createdAt: Date? = nil, folder: String, tags: [String] = [],
          folderSuggestions: [String] = [], image: String? = nil, sharedImageName: String? = nil,
          attachments: [SharedClipAttachment] = [],
          sharePayloadID: UUID? = nil,
@@ -73,6 +75,7 @@ struct Clip: Identifiable, Codable, Equatable {
         self.source = source
         self.url = url
         self.time = time
+        self.createdAt = createdAt
         self.folder = folder
         self.tags = tags
         self.folderSuggestions = folderSuggestions
@@ -95,6 +98,7 @@ struct Clip: Identifiable, Codable, Equatable {
         source = (try? container.decodeIfPresent(String.self, forKey: .source)) ?? "출처 없음"
         url = (try? container.decodeIfPresent(String.self, forKey: .url)) ?? ""
         time = (try? container.decodeIfPresent(String.self, forKey: .time)) ?? "저장됨"
+        createdAt = try? container.decodeIfPresent(Date.self, forKey: .createdAt)
         folder = (try? container.decodeIfPresent(String.self, forKey: .folder)) ?? "인박스"
         tags = (try? container.decodeIfPresent([String].self, forKey: .tags)) ?? []
         folderSuggestions = (try? container.decodeIfPresent([String].self, forKey: .folderSuggestions)) ?? []
@@ -122,15 +126,65 @@ struct Clip: Identifiable, Codable, Equatable {
     }
 
     var hasImageReference: Bool {
-        image?.isEmpty == false || sharedImageName?.isEmpty == false
+        image?.isEmpty == false
+            || sharedImageName?.isEmpty == false
+            || attachments.contains(where: { $0.kind == .image })
+    }
+
+    /// 저장된 다중 이미지의 원래 순서를 유지한다. 그룹 첨부가 없을 때만
+    /// 기존 단일 공유 이미지/번들 에셋을 폴백으로 노출한다.
+    var imageSources: [ClipImageSource] {
+        let attachmentSources = attachments.compactMap { attachment -> ClipImageSource? in
+            guard attachment.kind == .image,
+                  let fileName = attachment.storedFileName,
+                  let url = SharedClipQueue.attachmentURL(named: fileName),
+                  FileManager.default.fileExists(atPath: url.path) else { return nil }
+            return ClipImageSource(
+                id: "attachment:\(attachment.id.uuidString)",
+                attachmentID: attachment.id,
+                displayName: attachment.originalFileName,
+                fileURL: url,
+                assetName: nil,
+                typeIdentifier: attachment.typeIdentifier
+            )
+        }
+        if !attachmentSources.isEmpty { return attachmentSources }
+
+        if let url = sharedImageURL, FileManager.default.fileExists(atPath: url.path) {
+            return [ClipImageSource(
+                id: "shared:\(url.lastPathComponent)",
+                attachmentID: nil,
+                displayName: url.lastPathComponent,
+                fileURL: url,
+                assetName: nil,
+                typeIdentifier: nil
+            )]
+        }
+        if let imageAssetName {
+            return [ClipImageSource(
+                id: "asset:\(imageAssetName)",
+                attachmentID: nil,
+                displayName: imageAssetName,
+                fileURL: nil,
+                assetName: imageAssetName,
+                typeIdentifier: nil
+            )]
+        }
+        return []
     }
 
     var storedAttachmentURLs: [(attachment: SharedClipAttachment, url: URL)] {
-        attachments.compactMap { attachment in
-            guard let fileName = attachment.storedFileName,
-                  let url = SharedClipQueue.attachmentURL(named: fileName),
-                  FileManager.default.fileExists(atPath: url.path) else { return nil }
-            return (attachment, url)
+        storedAttachments.compactMap { item in
+            item.url.map { (item.attachment, $0) }
+        }
+    }
+
+    var storedAttachments: [ClipStoredAttachment] {
+        attachments.map { attachment in
+            let url = attachment.storedFileName
+                .flatMap { SharedClipQueue.attachmentURL(named: $0) }
+                .flatMap { FileManager.default.fileExists(atPath: $0.path) ? $0 : nil }
+            return ClipStoredAttachment(attachment: attachment, url: url)
         }
     }
 
@@ -139,6 +193,56 @@ struct Clip: Identifiable, Codable, Equatable {
     }
 
     var isInTrash: Bool { deletedAt != nil }
+
+    /// 과거 스냅샷에는 실제 시각이 없으므로 영구적인 "방금 전" 대신
+    /// 사실에 맞는 저장 완료 상태를 보여 준다.
+    var legacyTimeKey: String {
+        let normalized = time.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lowercase = normalized.lowercased()
+        let relativeWords = Set([
+            "방금 전", "방금", "now", "just now", "어제", "그저께",
+            "yesterday", "the day before yesterday", "たった今", "昨日", "一昨日"
+        ])
+        let relativePatterns = [
+            #"^\d+\s*(초|분|시간|일|주|개월|달|년)\s*전$"#,
+            #"^\d+\s*(second|minute|hour|day|week|month|year)s?\s+ago$"#,
+            #"^\d+\s*(秒|分|時間|日|週間|か月|ヶ月|年)前$"#
+        ]
+        let isRelative = relativeWords.contains(lowercase) || relativePatterns.contains { pattern in
+            lowercase.range(of: pattern, options: .regularExpression) != nil
+        }
+        return isRelative ? "저장됨" : normalized
+    }
+
+    func timeLabel(relativeTo referenceDate: Date, locale: Locale) -> String {
+        guard let createdAt else { return L10n.text(legacyTimeKey, locale: locale) }
+        let elapsed = referenceDate.timeIntervalSince(createdAt)
+        if elapsed >= 0, elapsed < 60 {
+            return L10n.text("방금 전", locale: locale)
+        }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = locale
+        formatter.dateTimeStyle = .named
+        formatter.unitsStyle = .full
+        return formatter.localizedString(for: createdAt, relativeTo: referenceDate)
+    }
+}
+
+/// 영속 모델에서 파생한 표시/복사 전용 이미지 참조.
+struct ClipImageSource: Identifiable, Equatable, Sendable {
+    let id: String
+    let attachmentID: UUID?
+    let displayName: String
+    let fileURL: URL?
+    let assetName: String?
+    let typeIdentifier: String?
+}
+
+struct ClipStoredAttachment: Identifiable, Equatable, Sendable {
+    let attachment: SharedClipAttachment
+    let url: URL?
+
+    var id: UUID { attachment.id }
 }
 
 struct Folder: Identifiable, Codable, Equatable {

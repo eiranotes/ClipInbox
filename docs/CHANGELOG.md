@@ -4,6 +4,7 @@
 
 ### Added
 
+- Clip Detail now previews every grouped image in order, pages through all images full-screen, lists every attachment, and can copy all available images or an ordered user-selected subset in one operation.
 - Sort Later now offers a confirmed Delete action beside classification and keeps the shared five-second Undo visible while moving to the next unclassified clip.
 - Multi-image and Files shares now keep every selected original as an attachment inside one clip; Clip Detail lists the bundle and can re-share each original file.
 - Prepared the 1.1 update as version `1.1.0 (2)` for both the app and Share Extension; the local release gate now rejects stale or mismatched archive versions.
@@ -15,6 +16,9 @@
 
 ### Changed
 
+- New manual and Share clips persist their capture date and show a live relative label; legacy clips without a trustworthy timestamp show a neutral saved state instead of a permanently incorrect `방금 전`.
+- Multi-image clipboard preparation preserves each original byte stream, type identifier, and selection order, and writes nothing when any selected original cannot be prepared.
+- The current native suite passes 98/98 tests on the iPhone 17 Pro iOS 26.5 simulator, including capture-date compatibility, grouped Share timestamps, atomic batch recovery, navigation exit guards, cleanup retry, and all/selected attachment-copy regressions.
 - One Share invocation now creates one clip instead of one clip per selected image. Up to 20 attachments are staged and promoted atomically, with legacy separate-image batches still importable.
 - Storage accounting, full reset, Trash expiry, and permanent deletion now include original non-image attachments as well as images.
 - The current native suite passes 88/88 tests on the iPhone 17 Pro iOS 26.5 simulator, including grouped attachment import, the 20-item invocation cap, and embedded Share Extension validation.
@@ -28,6 +32,13 @@
 
 ### Fixed
 
+- Detail Delete now leaves the screen only after a successful mutation, note and bookmark failures no longer dismiss or report success, and edit/more/share follow-up sheets no longer open after a failed pending-note save.
+- URL-less copy text, JSON-import disclosure, Search/Add labels, Sort Later completion copy, and bookmark accessibility state now describe the action actually available.
+- Trash expiry and permanent emptying now report original-attachment cleanup failures instead of silently showing complete success.
+- Failed permanent attachment removals retain a cleanup ledger and retry on the next cleanup or app launch; referenced current-clip files are never removed by that retry.
+- A committed Share batch is now fully decoded and identity-checked before any item is exposed; an undecodable payload quarantines every payload and original attachment together instead of leaking an earlier item or deleting unclaimed image/PDF files.
+- Leaving Detail, moving, opening tags, confirming deletion, swiping back, or switching/resetting a bottom tab now saves a dirty note first and stays on screen when that save fails.
+- Accessibility-XXXL bottom-tab labels no longer collide while the rest of the interface continues to honor large Dynamic Type sizes.
 - Search and Inbox now share one scope predicate, so query results intersect correctly with smart views while trashed clips remain excluded.
 - A failed move cannot leave behind a default tag or a partially updated organization state.
 - Storage and cleanup failures no longer appear with a success checkmark, and link-opening or automatic-purge notices no longer impersonate a completed save.

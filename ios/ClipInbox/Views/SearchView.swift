@@ -3,6 +3,7 @@ import SwiftUI
 struct SearchView: View {
     @Environment(AppStore.self) private var store
     @Environment(URLMetadataCoordinator.self) private var metadata
+    @Environment(\.locale) private var locale
     @Binding private var path: [Route]
     @State private var query = ""
     @State private var settledQuery = ""
@@ -65,7 +66,7 @@ struct SearchView: View {
                             .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
                     }
                     .buttonStyle(ResponsivePressButtonStyle(pressedScale: 0.9))
-                    .accessibilityLabel("검색어 지우기")
+                    .accessibilityLabel(L10n.text("검색어 지우기", locale: locale))
                 }
             }
             .padding(.horizontal, Tokens.cardPad)

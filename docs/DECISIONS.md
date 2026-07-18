@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-07-18: Detail Uses Durable Capture Time and Atomic Multi-Item Copy
+
+Decision: Add an optional `createdAt` date to the version-2 clip record without changing the schema version, require new Share payloads to carry their capture date, and assign manual captures at save time. Render current records with a live relative formatter; treat legacy display-only `방금 전` values as unknown and show a neutral saved label rather than inventing a date. Present grouped images in attachment order, let users copy all available originals or an ordered selected subset, and publish to the system pasteboard only after every selected file has been read with its original type identifier.
+
+Why: A persisted display string never ages, so every reopened clip falsely appeared newly captured. Showing only the first image hid content that the grouped Share flow had correctly preserved. Repeated pasteboard writes could also expose a partial or reordered result when one attachment was missing or unreadable.
+
+Impact: New manual and Share clips retain a durable capture instant while old backups remain decodable. Malformed pending Share payloads without `createdAt` are quarantined instead of silently acquiring the import time; a committed batch is decoded and identity-checked in local state before any item is exposed, and one failure preserves every payload and original in quarantine together. Detail uses a downsampled paged gallery and complete attachment list, selection remains in original order, and any preparation failure leaves the pasteboard untouched. The accompanying UI audit registers one owner-checked navigation exit guard so header Back, the leading-edge gesture, and bottom-tab switch/reset all require dirty-note persistence before leaving. Permanent attachment deletion is staged in a durable filename ledger before the library commit, protects any filename still referenced by a current clip, and retries failures on the next cleanup or app initialization. Bottom-tab label growth is capped at accessibility sizes while larger content text remains unrestricted.
+
 ## 2026-07-18: One Share Invocation Becomes One Clip
 
 Decision: Treat the user's Share action as the clip boundary. Collect up to 20 image or Files providers in their supplied order, create one payload and one app clip, and retain each original as attachment metadata plus an atomically staged file. An all-image bundle remains an image clip with its first image as the representative thumbnail; a mixed or non-image bundle uses the file clip type. Keep legacy multi-payload image batches import-compatible. Add confirmed Delete beside the pinned Sort Later classify action and route it through the existing Trash/five-second Undo transaction.

@@ -306,6 +306,7 @@ struct CardActionsSheet: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let clipID: Int
+    var onDelete: (() -> Void)? = nil
 
     @State private var showShare = false
     @State private var showMove = false
@@ -332,10 +333,12 @@ struct CardActionsSheet: View {
                         }
                         ActionRow(systemImage: "bookmark", label: "북마크",
                                   value: clip.bookmarked ? "이미 추가됨" : "빠른 보관") {
-                            store.toggleBookmark(id: clip.id)
-                            store.showToast(store.clip(id: clip.id)?.bookmarked == true ? "북마크에 추가했습니다" : "북마크에서 해제했습니다")
+                            guard store.toggleBookmark(id: clip.id) else { return }
+                            store.showToast(store.clip(id: clip.id)?.bookmarked == true
+                                            ? "북마크에 추가했습니다"
+                                            : "북마크에서 해제했습니다")
                         }
-                        ActionRow(systemImage: "square.and.arrow.up", label: "공유", value: "링크 또는 이미지 카드") {
+                        ActionRow(systemImage: "square.and.arrow.up", label: "공유", value: "클립 내용과 저장된 원본") {
                             showShare = true
                         }
                         ActionRow(systemImage: "folder", label: "이동", value: "폴더 변경") {
@@ -362,8 +365,9 @@ struct CardActionsSheet: View {
             }
             .alert("삭제 확인", isPresented: $showDeleteConfirm) {
                 Button("삭제 확인", role: .destructive) {
-                    store.deleteClip(id: clip.id)
+                    guard store.deleteClip(id: clip.id) else { return }
                     dismiss()
+                    onDelete?()
                 }
                 Button("취소", role: .cancel) {}
             } message: {

@@ -6,12 +6,9 @@ enum ClipDetailCopyKind: Equatable {
     case image
 
     static func resolve(for clip: Clip) -> Self? {
-        switch clip.type {
-        case .image, .screenshot:
-            return clip.hasImageReference ? .image : nil
-        case .link, .memo, .file:
-            return clip.url.isEmpty ? nil : .link
-        }
+        if clip.type == .link, !clip.url.isEmpty { return .link }
+        if !clip.imageSources.isEmpty { return .image }
+        return clip.url.isEmpty ? nil : .link
     }
 }
 
@@ -24,7 +21,8 @@ struct ClipDetailOverview: View {
 
     let clip: Clip
     var imageHeight = Tokens.detailImageHeight
-    var onOpenImage: (() -> Void)?
+    var showsAttachmentSummary = true
+    var onOpenImage: ((Int) -> Void)?
 
     var body: some View {
         let presentation = metadata.cardPresentation(for: clip, locale: locale)
@@ -41,33 +39,44 @@ struct ClipDetailOverview: View {
                 .accessibilityAddTraits(.isHeader)
             HStack(spacing: Tokens.rowGap) {
                 HStack(spacing: 5) {
-                    Image(systemName: "globe").font(.system(size: 12, weight: .bold))
+                    Image(systemName: clip.type.systemImage).font(.system(size: 12, weight: .bold))
                     Text(L10n.text(presentation?.subtitle ?? clip.source, locale: locale))
                 }
                 Spacer()
-                Text(L10n.text(clip.time, locale: locale))
+                TimelineView(.periodic(from: .now, by: 30)) { context in
+                    Text(clip.timeLabel(relativeTo: context.date, locale: locale))
+                }
             }
             .font(Tokens.meta)
             .foregroundStyle(Tokens.textSecondary)
 
-            if clip.hasImageReference {
+            if clip.imageSources.count > 1 {
+                ClipImageGallery(
+                    sources: clip.imageSources,
+                    height: resolvedImageHeight,
+                    onOpen: onOpenImage
+                )
+            } else if !clip.imageSources.isEmpty {
                 if let onOpenImage {
-                    Button(action: onOpenImage) {
+                    Button { onOpenImage(0) } label: {
                         localImage
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(ResponsivePressButtonStyle())
-                    .accessibilityLabel("이미지 크게 보기")
+                    .accessibilityLabel(L10n.text("이미지 크게 보기", locale: locale))
                 } else {
                     localImage
                 }
+            } else if clip.hasImageReference {
+                localImage
             } else if let thumbnailURL = presentation?.thumbnailURL.flatMap(URL.init(string:)) {
                 MetadataRemoteImage(url: thumbnailURL, contentMode: .fit)
                     .frame(maxWidth: .infinity)
                     .frame(height: resolvedImageHeight)
             }
 
-            if clip.attachments.count > 1 || clip.attachments.contains(where: { $0.kind == .file }) {
+            if showsAttachmentSummary,
+               (clip.attachments.count > 1 || clip.attachments.contains(where: { $0.kind == .file })) {
                 ClipAttachmentSummary(attachments: clip.attachments)
             }
 
@@ -140,6 +149,7 @@ struct DetailView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.locale) private var locale
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.navigationExitGuard) private var navigationExitGuard
     let clipID: Int
 
     @State private var showShare = false
@@ -151,28 +161,66 @@ struct DetailView: View {
     @State private var showDeleteConfirm = false
     @State private var showExternalConfirm = false
     @State private var showImageViewer = false
+    @State private var selectedImageIndex = 0
+    @State private var selectedAttachmentIDs: Set<UUID> = []
+    @State private var isSelectingAttachments = false
+    @State private var isCopyingAttachments = false
     @State private var noteDraft = ""
+    @State private var noteBaseline = ""
     @State private var noteDirty = false
+    @State private var exitGuardOwnerID = UUID()
 
     var body: some View {
         if let clip = store.clip(id: clipID) {
             ScreenScaffold(additionalBottomPadding: Tokens.bottomNavigationClearance) {
-                ScreenHeader("클립 상세", onBack: { dismiss() }) {
+                ScreenHeader("클립 상세", onBack: {
+                    guard saveNoteIfNeeded() else { return }
+                    dismiss()
+                }) {
                     UtilityIconButton(label: "북마크", systemImage: clip.bookmarked ? "bookmark.fill" : "bookmark",
-                                      isOn: clip.bookmarked) {
-                        store.toggleBookmark(id: clip.id)
-                        store.showToast(store.clip(id: clip.id)?.bookmarked == true ? "북마크에 추가했습니다" : "북마크에서 해제했습니다")
+                                      isOn: clip.bookmarked,
+                                      accessibilitySelectionState: clip.bookmarked) {
+                        guard store.toggleBookmark(id: clip.id) else { return }
+                        store.showToast(store.clip(id: clip.id)?.bookmarked == true
+                                        ? "북마크에 추가했습니다"
+                                        : "북마크에서 해제했습니다")
                     }
                     UtilityIconButton(label: "공유", systemImage: "square.and.arrow.up") {
+                        guard saveNoteIfNeeded() else { return }
                         showShare = true
                     }
                     UtilityIconButton(label: "더보기", systemImage: "ellipsis") {
+                        guard saveNoteIfNeeded() else { return }
                         showMore = true
                     }
                 }
 
-                ClipDetailOverview(clip: clip) {
+                ClipDetailOverview(clip: clip, showsAttachmentSummary: false) { index in
+                    selectedImageIndex = index
                     showImageViewer = true
+                }
+
+                if !clip.storedAttachments.isEmpty {
+                    ClipAttachmentDetailSection(
+                        attachments: clip.storedAttachments,
+                        selectedIDs: $selectedAttachmentIDs,
+                        isSelecting: $isSelectingAttachments,
+                        isCopying: isCopyingAttachments,
+                        onOpenImage: { attachmentID in
+                            guard let index = clip.imageSources.firstIndex(where: {
+                                $0.attachmentID == attachmentID
+                            }) else { return }
+                            selectedImageIndex = index
+                            showImageViewer = true
+                        },
+                        onCopyAll: { copyAttachments(clip.storedAttachments) },
+                        onCopySelected: {
+                            copyAttachments(ClipAttachmentPasteboard.selectedAttachments(
+                                from: clip.storedAttachments,
+                                selectedIDs: selectedAttachmentIDs
+                            ))
+                        }
+                    )
                 }
 
                 MetadataDetailSectionsView(clip: clip)
@@ -194,9 +242,10 @@ struct DetailView: View {
                             Button {
                                 copy(clip, as: copyKind)
                             } label: {
-                                Label("복사하기", systemImage: "doc.on.doc")
+                                Label(copyActionLabel(for: clip, kind: copyKind), systemImage: "doc.on.doc")
                             }
                             .buttonStyle(SecondaryBoxButtonStyle())
+                            .disabled(isCopyingAttachments)
                         }
                     }
                 }
@@ -208,7 +257,7 @@ struct DetailView: View {
                             .foregroundStyle(Tokens.textPrimary)
                             .accessibilityAddTraits(.isHeader)
                         Spacer(minLength: Tokens.rowGap)
-                        Button("저장", action: saveNote)
+                        Button("저장") { _ = saveNote() }
                             .font(Tokens.bodySemibold)
                             .foregroundStyle(noteDirty ? Tokens.textPrimary : Tokens.textTertiary)
                             .disabled(!noteDirty)
@@ -245,6 +294,7 @@ struct DetailView: View {
                         .foregroundStyle(Tokens.textPrimary)
                         .accessibilityAddTraits(.isHeader)
                     organizeRow(label: "폴더", value: clip.folder, systemImage: "folder") {
+                        guard saveNoteIfNeeded() else { return }
                         showMove = true
                     }
                     organizeRow(label: "태그",
@@ -252,6 +302,7 @@ struct DetailView: View {
                                     .map { L10n.text($0, locale: locale) }
                                     .joined(separator: " · "),
                                 systemImage: "tag") {
+                        guard saveNoteIfNeeded() else { return }
                         tagDraft = clip.tags
                         showTagEdit = true
                     }
@@ -260,17 +311,29 @@ struct DetailView: View {
                 VStack(spacing: Tokens.cardGap) {
                     if dynamicTypeSize.isAccessibilitySize {
                         VStack(spacing: Tokens.rowGap) {
-                            quietAction(label: "이동", systemImage: "folder") { showMove = true }
-                            quietAction(label: "편집", systemImage: "pencil") { showEdit = true }
+                            quietAction(label: "이동", systemImage: "folder") {
+                                guard saveNoteIfNeeded() else { return }
+                                showMove = true
+                            }
+                            quietAction(label: "편집", systemImage: "pencil") {
+                                guard saveNoteIfNeeded() else { return }
+                                showEdit = true
+                            }
                             quietAction(label: "삭제", systemImage: "trash", isDanger: true) {
                                 showDeleteConfirm = true
                             }
                         }
                     } else {
                         HStack(spacing: 0) {
-                            quietAction(label: "이동", systemImage: "folder") { showMove = true }
+                            quietAction(label: "이동", systemImage: "folder") {
+                                guard saveNoteIfNeeded() else { return }
+                                showMove = true
+                            }
                             Tokens.borderSoft.frame(width: Tokens.borderChipWidth, height: Tokens.touchTarget)
-                            quietAction(label: "편집", systemImage: "pencil") { showEdit = true }
+                            quietAction(label: "편집", systemImage: "pencil") {
+                                guard saveNoteIfNeeded() else { return }
+                                showEdit = true
+                            }
                             Tokens.borderSoft.frame(width: Tokens.borderChipWidth, height: Tokens.touchTarget)
                             quietAction(label: "삭제", systemImage: "trash", isDanger: true) {
                                 showDeleteConfirm = true
@@ -280,14 +343,18 @@ struct DetailView: View {
                 }
             }
             .sheet(isPresented: $showShare) { ShareOptionsSheet(clipID: clip.id).workflowSheet(.standard) }
-            .sheet(isPresented: $showMore) { CardActionsSheet(clipID: clip.id).workflowSheet(.expanded) }
+            .sheet(isPresented: $showMore, onDismiss: syncNoteFromStore) {
+                CardActionsSheet(clipID: clip.id, onDelete: { dismiss() }).workflowSheet(.expanded)
+            }
             .sheet(isPresented: $showMove) { MoveFolderSheet(clipID: clip.id).workflowSheet(.expanded) }
-            .sheet(isPresented: $showEdit) { EditClipSheet(clipID: clip.id).workflowSheet(.expanded) }
+            .sheet(isPresented: $showEdit, onDismiss: syncNoteFromStore) {
+                EditClipSheet(clipID: clip.id).workflowSheet(.expanded)
+            }
             .sheet(isPresented: $showTagEdit, onDismiss: { store.updateTags(id: clipID, tags: tagDraft) }) {
                 TagEditorSheet(tags: $tagDraft).workflowSheet(.standard)
             }
             .fullScreenCover(isPresented: $showImageViewer) {
-                ClipImageViewer(clip: clip)
+                ClipImageViewer(sources: clip.imageSources, initialIndex: selectedImageIndex)
             }
             .confirmationDialog("브라우저에서 열까요?", isPresented: $showExternalConfirm, titleVisibility: .visible) {
                 Button("브라우저에서 열기") {
@@ -301,7 +368,8 @@ struct DetailView: View {
             }
             .alert("삭제 확인", isPresented: $showDeleteConfirm) {
                 Button("삭제 확인", role: .destructive) {
-                    store.deleteClip(id: clip.id)
+                    guard saveNoteIfNeeded() else { return }
+                    guard store.deleteClip(id: clip.id) else { return }
                     dismiss()
                 }
                 Button("취소", role: .cancel) {}
@@ -314,14 +382,17 @@ struct DetailView: View {
                 }
             }
             .onAppear {
-                noteDraft = clip.memo ?? ""
-                noteDirty = false
+                syncNoteFromStore()
+                navigationExitGuard?.register(ownerID: exitGuardOwnerID) {
+                    saveNoteIfNeeded()
+                }
             }
             .onChange(of: noteDraft) { _, newValue in
-                noteDirty = newValue != (store.clip(id: clip.id)?.memo ?? "")
+                noteDirty = newValue != noteBaseline
             }
             .onDisappear {
-                if noteDirty { store.updateMemo(id: clip.id, memo: noteDraft) }
+                _ = saveNoteIfNeeded()
+                navigationExitGuard?.unregister(ownerID: exitGuardOwnerID)
             }
         } else {
             EmptyStateView(title: "클립을 찾을 수 없습니다", message: "삭제되었거나 이동된 클립입니다.")
@@ -329,8 +400,27 @@ struct DetailView: View {
         }
     }
 
-    private func saveNote() {
-        store.updateMemo(id: clipID, memo: noteDraft)
+    @discardableResult
+    private func saveNote() -> Bool {
+        guard store.updateMemo(id: clipID, memo: noteDraft) else {
+            noteDirty = true
+            return false
+        }
+        let savedMemo = store.clip(id: clipID)?.memo ?? ""
+        noteDraft = savedMemo
+        noteBaseline = savedMemo
+        noteDirty = false
+        return true
+    }
+
+    private func saveNoteIfNeeded() -> Bool {
+        !noteDirty || saveNote()
+    }
+
+    private func syncNoteFromStore() {
+        let storedMemo = store.clip(id: clipID)?.memo ?? ""
+        noteDraft = storedMemo
+        noteBaseline = storedMemo
         noteDirty = false
     }
 
@@ -350,12 +440,54 @@ struct DetailView: View {
             UIPasteboard.general.string = clip.url
             store.showToast("링크를 복사했습니다")
         case .image:
-            guard let image = ClipImageResolver.originalImage(for: clip) else {
+            copyImageSources(clip.imageSources)
+        }
+    }
+
+    private func copyActionLabel(for clip: Clip, kind: ClipDetailCopyKind) -> String {
+        switch kind {
+        case .link:
+            return L10n.text("링크 복사", locale: locale)
+        case .image:
+            return clip.imageSources.count > 1
+                ? L10n.format("format.copy_all_images", clip.imageSources.count)
+                : L10n.text("이미지 복사", locale: locale)
+        }
+    }
+
+    private func copyImageSources(_ sources: [ClipImageSource]) {
+        guard !sources.isEmpty, !isCopyingAttachments else { return }
+        isCopyingAttachments = true
+        Task { @MainActor in
+            do {
+                let payloads = try await Task.detached(priority: .userInitiated) {
+                    try ClipAttachmentPasteboard.prepareImageSources(sources)
+                }.value
+                ClipAttachmentPasteboard.write(payloads)
+                store.showToast(L10n.format("format.copied_images", payloads.count))
+            } catch {
                 store.showToast("이미지를 복사할 수 없습니다", semantic: .error)
-                return
             }
-            UIPasteboard.general.image = image
-            store.showToast("이미지를 복사했습니다")
+            isCopyingAttachments = false
+        }
+    }
+
+    private func copyAttachments(_ attachments: [ClipStoredAttachment]) {
+        guard !attachments.isEmpty, !isCopyingAttachments else { return }
+        isCopyingAttachments = true
+        Task { @MainActor in
+            do {
+                let payloads = try await Task.detached(priority: .userInitiated) {
+                    try ClipAttachmentPasteboard.prepareAttachments(attachments)
+                }.value
+                ClipAttachmentPasteboard.write(payloads)
+                store.showToast(L10n.format("format.copied_attachments", payloads.count))
+                selectedAttachmentIDs.removeAll()
+                isSelectingAttachments = false
+            } catch {
+                store.showToast("첨부 파일을 복사할 수 없습니다", semantic: .error)
+            }
+            isCopyingAttachments = false
         }
     }
 
@@ -408,21 +540,67 @@ struct DetailView: View {
 private struct ClipImageViewer: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    let clip: Clip
+    @Environment(\.locale) private var locale
+    let sources: [ClipImageSource]
+    @State private var selectedID: String
+
+    init(sources: [ClipImageSource], initialIndex: Int) {
+        self.sources = sources
+        let safeIndex = sources.indices.contains(initialIndex) ? initialIndex : 0
+        _selectedID = State(initialValue: sources.indices.contains(safeIndex) ? sources[safeIndex].id : "")
+    }
+
+    private var selectedIndex: Int {
+        sources.firstIndex(where: { $0.id == selectedID }) ?? 0
+    }
+
+    private var selectedSource: ClipImageSource? {
+        sources.indices.contains(selectedIndex) ? sources[selectedIndex] : nil
+    }
 
     var body: some View {
         ZStack {
             Tokens.bgApp.ignoresSafeArea()
-            ZoomableClipImage(
-                image: ClipImageResolver.image(for: clip),
-                reduceMotion: reduceMotion
-            )
-            .padding(.horizontal, Tokens.screenX)
-            .accessibilityLabel("확대 가능한 클립 이미지")
-            .accessibilityHint("두 번 탭하거나 두 손가락으로 확대하고 드래그해 이동합니다")
+            if let selectedSource {
+                ZoomableClipImage(
+                    image: ClipImageResolver.image(for: selectedSource),
+                    reduceMotion: reduceMotion
+                )
+                .id(selectedSource.id)
+                .padding(.horizontal, Tokens.screenX)
+                .padding(.bottom, sources.count > 1 ? 84 : 0)
+                .accessibilityLabel(L10n.format(
+                    "format.image_position",
+                    selectedIndex + 1,
+                    sources.count,
+                    selectedSource.displayName
+                ))
+                .accessibilityHint(L10n.text(
+                    "두 번 탭하거나 두 손가락으로 확대하고 드래그해 이동합니다",
+                    locale: locale
+                ))
+            } else {
+                EmptyStateView(
+                    systemImage: "photo.badge.exclamationmark",
+                    title: "이미지를 불러올 수 없습니다",
+                    message: "저장된 원본 파일을 찾을 수 없습니다."
+                )
+                .padding(.horizontal, Tokens.screenX)
+            }
 
             VStack {
                 HStack {
+                    if sources.count > 1 {
+                        Text("\(selectedIndex + 1)/\(sources.count)")
+                            .font(Tokens.bodyBold)
+                            .foregroundStyle(Tokens.textPrimary)
+                            .frame(minHeight: Tokens.touchTarget)
+                            .padding(.horizontal, Tokens.cardPad)
+                            .background(
+                                RoundedRectangle(cornerRadius: Tokens.radiusChip, style: .continuous)
+                                    .fill(Tokens.bgCard.opacity(0.92))
+                            )
+                    }
                     Spacer()
                     UtilityIconButton(label: "닫기", systemImage: "xmark") {
                         dismiss()
@@ -433,11 +611,60 @@ private struct ClipImageViewer: View {
                     )
                 }
                 Spacer()
+                if sources.count > 1 {
+                    imagePicker
+                }
             }
             .padding(.horizontal, Tokens.screenX)
             .padding(.top, Tokens.screenTop)
+            .padding(.bottom, Tokens.bottomSafe)
         }
         .statusBarHidden(true)
+    }
+
+    private var imagePicker: some View {
+        ScrollView(.horizontal) {
+            LazyHStack(spacing: Tokens.rowGap) {
+                ForEach(Array(sources.enumerated()), id: \.element.id) { index, source in
+                    let selected = source.id == selectedID
+                    Button {
+                        selectedID = source.id
+                    } label: {
+                        Image(uiImage: ClipImageResolver.thumbnail(for: source, maxPixelSize: 160)
+                              ?? ClipImageResolver.image(for: source))
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 56, height: 56)
+                            .clipShape(RoundedRectangle(
+                                cornerRadius: Tokens.radiusThumbnail,
+                                style: .continuous
+                            ))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: Tokens.radiusThumbnail, style: .continuous)
+                                    .strokeBorder(
+                                        selected ? Tokens.accentYellow : Tokens.borderSoft,
+                                        lineWidth: selected ? 3 : Tokens.borderChipWidth
+                                    )
+                            }
+                            .frame(minWidth: Tokens.touchTarget, minHeight: Tokens.touchTarget)
+                    }
+                    .buttonStyle(ResponsivePressButtonStyle())
+                    .accessibilityLabel(L10n.format(
+                        "format.image_position",
+                        index + 1,
+                        sources.count,
+                        source.displayName
+                    ))
+                    .accessibilityValue(L10n.text(
+                        selected ? "선택됨" : "선택 안 됨",
+                        locale: locale
+                    ))
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                }
+            }
+        }
+        .scrollIndicators(.hidden)
+        .frame(height: 64)
     }
 }
 
@@ -635,7 +862,7 @@ struct EditClipSheet: View {
         .onAppear {
             guard let clip = store.clip(id: clipID) else { return }
             title = clip.title
-            memo = clip.memo?.isEmpty == false ? clip.memo! : clip.description
+            memo = clip.memo ?? ""
             tags = clip.tags
         }
         .sheet(isPresented: $showTagEditor) {

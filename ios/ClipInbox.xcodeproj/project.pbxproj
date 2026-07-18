@@ -74,6 +74,7 @@
 		A740E90BE2B8B272550E4749 /* URLMetadataEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94C70DB7E88E5B7E88A9B450 /* URLMetadataEngine.swift */; };
 		A9910228D491E32B2FEE0F42 /* login.html in Resources */ = {isa = PBXBuildFile; fileRef = 2710A8221DFBA0B5E83277FC /* login.html */; };
 		AA1BE44A7141A45FA97E30CB /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = E52555145B8B48251B7480B0 /* Localizable.strings */; };
+		AB739E1CADADFFBB4939BCBA /* ClipAttachmentViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE7CBDCEA8885B0D3ABDED62 /* ClipAttachmentViews.swift */; };
 		ABF22AA264785B5C7FE51BFD /* MetadataCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98999626F22593A83C64F812 /* MetadataCache.swift */; };
 		B6DF8476653A886F134C10B4 /* rdfa-only.html in Resources */ = {isa = PBXBuildFile; fileRef = 989C278862CF7DE83269F066 /* rdfa-only.html */; };
 		B72C0DF88B1F031A702C1E50 /* GenericPipelineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F87C61D1FFF8E92067E0B2 /* GenericPipelineTests.swift */; };
@@ -212,6 +213,7 @@
 		DA385CB73815DE5C07C42A85 /* LinkMetadataSidecarStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkMetadataSidecarStore.swift; sourceTree = "<group>"; };
 		DC943CAF26CB91CD5D03CE3E /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		DD1E7CE5A632B3A06290BD81 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		DE7CBDCEA8885B0D3ABDED62 /* ClipAttachmentViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipAttachmentViews.swift; sourceTree = "<group>"; };
 		E06FCD91DA87BBB415241EFD /* URLNormalizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLNormalizerTests.swift; sourceTree = "<group>"; };
 		E0B4E17D450DB6BD8488434D /* jsonld-only.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "jsonld-only.html"; sourceTree = "<group>"; };
 		E0C6743E26E3691E749EC44C /* ClipCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipCardView.swift; sourceTree = "<group>"; };
@@ -330,6 +332,7 @@
 			children = (
 				96B891C6DD12A212D213542F /* AddClipView.swift */,
 				69111E08DB26D07102D7747A /* AppLockView.swift */,
+				DE7CBDCEA8885B0D3ABDED62 /* ClipAttachmentViews.swift */,
 				E0C6743E26E3691E749EC44C /* ClipCardView.swift */,
 				179DCA4CAD478D4C0509FA05 /* DetailView.swift */,
 				3A443C1F0B4FA3D992DFE533 /* FoldersView.swift */,
@@ -623,6 +626,7 @@
 				494FA08F453EFDD9DFC2E64A /* AppLockView.swift in Sources */,
 				376141A693A7E3E853C568A4 /* AppStore+Metadata.swift in Sources */,
 				7BEDA507E61BF64C4CF30AB6 /* AppStore.swift in Sources */,
+				AB739E1CADADFFBB4939BCBA /* ClipAttachmentViews.swift in Sources */,
 				D1005BCCE4557CF743994410 /* ClipCardView.swift in Sources */,
 				901E6DAE3F46B1874D6B8584 /* ClipInboxApp.swift in Sources */,
 				F6EF55AAF512CB847E3E04F9 /* ClipRepository.swift in Sources */,

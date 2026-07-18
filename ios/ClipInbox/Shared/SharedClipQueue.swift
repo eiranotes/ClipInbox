@@ -121,7 +121,7 @@ struct SharedClipPayload: Codable, Identifiable, Sendable {
         folder = try container.decodeIfPresent(String.self, forKey: .folder) ?? "인박스"
         tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
         memo = try container.decodeIfPresent(String.self, forKey: .memo) ?? ""
-        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
     }
 }
 
@@ -662,11 +662,14 @@ enum SharedClipQueue {
         for batchDirectory in try batchDirectoryURLs(containerURL: container) {
             let payloadsDirectory = batchDirectory
                 .appendingPathComponent(payloadsDirectoryName, isDirectory: true)
-            let payloadURLs = (try? FileManager.default.contentsOfDirectory(
+            let payloadURLs = ((try? FileManager.default.contentsOfDirectory(
                 at: payloadsDirectory,
                 includingPropertiesForKeys: nil,
                 options: [.skipsHiddenFiles]
-            )) ?? []
+            )) ?? []).sorted { $0.lastPathComponent < $1.lastPathComponent }
+            var batchItems: [Item] = []
+            var batchIDs = Set<UUID>()
+            var batchIsValid = true
             for payloadURL in payloadURLs where payloadURL.pathExtension == "json" {
                 guard let item = decodePendingItem(
                     at: payloadURL,
@@ -674,14 +677,28 @@ enum SharedClipQueue {
                     containerURL: container,
                     now: now,
                     decoder: decoder
-                ) else { continue }
-                guard seenIDs.insert(item.payload.id).inserted else {
-                    try? quarantinePendingItem(item, directoryName: "FailedClips",
-                                               imageDirectoryName: "FailedImages")
-                    continue
+                ) else {
+                    batchIsValid = false
+                    break
                 }
-                items.append(item)
+                guard !seenIDs.contains(item.payload.id),
+                      batchIDs.insert(item.payload.id).inserted else {
+                    batchIsValid = false
+                    break
+                }
+                batchItems.append(item)
             }
+            guard batchIsValid else {
+                // 먼저 읽은 payload도 아직 전역 결과에 노출하지 않는다. 배치 하나가
+                // 실패하면 남은 payload/원본까지 함께 격리해 부분 import를 막는다.
+                try? quarantineCommittedBatch(
+                    batchDirectory: batchDirectory,
+                    containerURL: container
+                )
+                continue
+            }
+            seenIDs.formUnion(batchIDs)
+            items.append(contentsOf: batchItems)
         }
 
         let legacyDirectory = try legacyPendingDirectoryURL(containerURL: container)
@@ -1031,15 +1048,16 @@ enum SharedClipQueue {
         guard let data = try? Data(contentsOf: payloadURL),
               let payload = try? decoder.decode(SharedClipPayload.self, from: data) else {
             if let batchDirectory {
-                try? quarantineBatchImageMatchingPayloadFile(
-                    payloadURL,
+                // 한 Share 호출은 한 원자적 배치다. payload를 해석할 수 없으면
+                // 첨부 이름도 신뢰할 수 없으므로 배치 안의 모든 payload/원본을
+                // 함께 격리해 마지막 payload 정리 과정에서 원본이 유실되지 않게 한다.
+                try? quarantineCommittedBatch(
                     batchDirectory: batchDirectory,
-                    directoryName: "FailedImages",
                     containerURL: containerURL
                 )
+                return nil
             }
             try? quarantine(payloadURL, directoryName: "FailedClips", containerURL: containerURL)
-            try? cleanupCommittedBatchIfEmpty(batchDirectory)
             return nil
         }
 
@@ -1130,24 +1148,44 @@ enum SharedClipQueue {
         try cleanupCommittedBatchIfEmpty(item.batchDirectoryURL)
     }
 
-    private static func quarantineBatchImageMatchingPayloadFile(
-        _ payloadURL: URL,
+    private static func quarantineCommittedBatch(
         batchDirectory: URL,
-        directoryName: String,
         containerURL: URL
     ) throws {
-        guard UUID(uuidString: payloadURL.deletingPathExtension().lastPathComponent) != nil else { return }
-        let imagesDirectory = batchDirectory
+        guard FileManager.default.fileExists(atPath: batchDirectory.path) else { return }
+
+        let attachmentsDirectory = batchDirectory
             .appendingPathComponent(batchImagesDirectoryName, isDirectory: true)
-        let images = (try? FileManager.default.contentsOfDirectory(
-            at: imagesDirectory,
+        let attachments = (try? FileManager.default.contentsOfDirectory(
+            at: attachmentsDirectory,
             includingPropertiesForKeys: nil,
             options: [.skipsHiddenFiles]
         )) ?? []
-        for image in images where
-            image.deletingPathExtension().lastPathComponent == payloadURL.deletingPathExtension().lastPathComponent
-                && isValidImageFileName(image.lastPathComponent) {
-            try quarantine(image, directoryName: directoryName, containerURL: containerURL)
+        for attachment in attachments where FileManager.default.fileExists(atPath: attachment.path) {
+            try quarantine(
+                attachment,
+                directoryName: "FailedImages",
+                containerURL: containerURL
+            )
+        }
+
+        let payloadsDirectory = batchDirectory
+            .appendingPathComponent(payloadsDirectoryName, isDirectory: true)
+        let payloads = (try? FileManager.default.contentsOfDirectory(
+            at: payloadsDirectory,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        )) ?? []
+        for payload in payloads where FileManager.default.fileExists(atPath: payload.path) {
+            try quarantine(
+                payload,
+                directoryName: "FailedClips",
+                containerURL: containerURL
+            )
+        }
+
+        if FileManager.default.fileExists(atPath: batchDirectory.path) {
+            try FileManager.default.removeItem(at: batchDirectory)
         }
     }
 

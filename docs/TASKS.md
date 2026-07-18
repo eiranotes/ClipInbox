@@ -2,6 +2,7 @@
 
 ## Done
 
+- [x] Show every grouped image in Clip Detail, add atomic copy-all and ordered selected-attachment copy, persist real capture dates with live relative labels, and reverse-audit visible UI claims, mutation feedback, draft-safe navigation, grouped-Share quarantine, retryable file cleanup, and accessibility-size bottom tabs.
 - [x] Add confirmed Delete to Sort Later with five-second Undo, and group up to 20 images/files from one Share invocation into one clip while preserving and re-sharing every original attachment atomically.
 - [x] Prepare the 1.1 update as `MARKETING_VERSION 1.1.0` build `2`, keep app/extension versions synchronized, and assert both values from the archived bundles in the local release gate.
 - [x] Add original-image re-sharing, actionable empty states, semantic and VoiceOver-announced toasts, explicit selection counts/states, and cancellation-safe Photo capture loading with a downsampled preview and removable error state.
@@ -147,7 +148,6 @@
 ## Deferred
 
 - [ ] Run App Store Connect Product Page Optimization against the denser onboarding panorama after enough first-time-download traffic is available.
-- [ ] Date-based clip timestamps with a relative formatter.
 - [ ] Interactive Face ID unlock verification on an enrolled device.
 - [ ] Physical-device App Group/signing verification with the release Apple Developer team.
 - [ ] Confirm export-compliance status and declare `ITSAppUsesNonExemptEncryption` only if the App Store Connect determination supports it.

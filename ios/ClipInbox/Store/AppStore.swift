@@ -118,19 +118,25 @@ final class AppStore {
 
     private let repository: any ClipRepository
     private let userDefaults: UserDefaults
+    @ObservationIgnored private let attachmentRemover: (String) throws -> Void
     private static let recentSearchesKey = "clip-inbox-recent-searches-v1"
     private static let recentSearchLimit = 5
     private static let tagCatalogKey = "clip-inbox-tag-catalog-v1"
     private static let linkOpenModeKey = "clip-inbox-link-open-mode-v1"
     private static let onboardingCompletedKey = "clip-inbox-onboarding-completed-v1"
+    private static let pendingAttachmentCleanupKey = "clip-inbox-pending-attachment-cleanup-v1"
     static let trashRetentionDays = 30
     private static let trashRetentionInterval: TimeInterval = 30 * 24 * 60 * 60
 
     init(fileURL: URL? = nil, userDefaults: UserDefaults = .standard,
-         repository: (any ClipRepository)? = nil) {
+         repository: (any ClipRepository)? = nil,
+         attachmentRemover: @escaping (String) throws -> Void = {
+             try SharedClipQueue.removeAttachment(named: $0)
+         }) {
         let base = fileURL ?? Self.defaultFileURL()
         self.repository = repository ?? FileClipRepository(fileURL: base)
         self.userDefaults = userDefaults
+        self.attachmentRemover = attachmentRemover
         recentSearches = Self.normalizeRecentSearches(
             userDefaults.stringArray(forKey: Self.recentSearchesKey) ?? []
         )
@@ -178,6 +184,7 @@ final class AppStore {
         }
         pendingDeletion = nil
         sharedQueueNotice = nil
+        _ = retryPendingAttachmentCleanup(showFeedback: true)
         _ = purgeExpiredTrash(showFeedback: false)
         try? syncSharedConfiguration()
     }
@@ -314,7 +321,8 @@ final class AppStore {
                     title: Self.cleanText(payload.title, fallback: titleFallback),
                     source: source,
                     url: safeURL,
-                    time: "방금 전",
+                    time: "저장됨",
+                    createdAt: payload.createdAt,
                     folder: destination,
                     tags: cleanTags,
                     folderSuggestions: [destination, "나중에"],
@@ -447,7 +455,7 @@ final class AppStore {
                 clip.title = repository
             }
             clip.folder = cleanText(clip.folder, fallback: "인박스", maxLength: 40)
-            clip.time = cleanText(clip.time, fallback: "저장됨", maxLength: 40)
+            clip.time = cleanText(clip.legacyTimeKey, fallback: "저장됨", maxLength: 40)
             clip.description = cleanText(clip.description, maxLength: 500)
             clip.memo = clip.memo.map { cleanText($0, maxLength: 1000) }
             clip.image = safeImagePath(clip.image)
@@ -927,15 +935,25 @@ final class AppStore {
     @discardableResult
     func emptyTrash() -> Bool {
         let removed = trashedClips
-        guard !removed.isEmpty else { return true }
+        guard !removed.isEmpty else {
+            return retryPendingAttachmentCleanup(showFeedback: true) == 0
+        }
+        stageAttachmentCleanup(for: removed)
         guard commitMutation({ clips.removeAll { $0.isInTrash } }) else { return false }
         if let pendingIDs = pendingDeletion.map({ Set($0.clips.map(\.id)) }),
            removed.contains(where: { pendingIDs.contains($0.id) }) {
             finalizePendingDeletion()
         }
-        removeStoredImages(for: removed)
-        showToast("휴지통을 비웠습니다")
-        return true
+        let failedAttachmentCount = retryPendingAttachmentCleanup()
+        if failedAttachmentCount == 0 {
+            showToast("휴지통을 비웠습니다")
+        } else {
+            showToast(
+                L10n.format("format.failed_attachment_cleanup", failedAttachmentCount),
+                semantic: .error
+            )
+        }
+        return failedAttachmentCount == 0
     }
 
     @discardableResult
@@ -947,9 +965,15 @@ final class AppStore {
         }
         guard !expired.isEmpty else { return 0 }
         let expiredIDs = Set(expired.map(\.id))
+        stageAttachmentCleanup(for: expired)
         guard commitMutation({ clips.removeAll { expiredIDs.contains($0.id) } }) else { return 0 }
-        removeStoredImages(for: expired)
-        if showFeedback {
+        let failedAttachmentCount = retryPendingAttachmentCleanup()
+        if failedAttachmentCount > 0 {
+            showToast(
+                L10n.format("format.failed_attachment_cleanup", failedAttachmentCount),
+                semantic: .error
+            )
+        } else if showFeedback {
             showToast(L10n.format("format.auto_deleted_trash", expired.count), semantic: .info)
         }
         return expired.count
@@ -990,7 +1014,8 @@ final class AppStore {
     @discardableResult
     func createManualClip(type: ManualCaptureType, title: String, url: String, text: String,
                           destination: String, tags: [String], memo: String,
-                          imageAsset: SharedImageAsset? = nil) throws -> Clip {
+                          imageAsset: SharedImageAsset? = nil,
+                          createdAt: Date = Date()) throws -> Clip {
         let id = clips.map(\.id).max().map { $0 + 1 } ?? 1
         let cleanTags = Self.normalizeTags(tags)
         let cleanDestination = Self.cleanText(destination, fallback: preferences.defaultFolder, maxLength: 40)
@@ -1052,7 +1077,7 @@ final class AppStore {
 
         let clip = Clip(id: id, type: clipType, state: .unsorted,
                         title: finalTitle, source: source, url: safeURL,
-                        time: "방금 전", folder: cleanDestination,
+                        time: "저장됨", createdAt: createdAt, folder: cleanDestination,
                         tags: cleanTags, folderSuggestions: [cleanDestination],
                         sharedImageName: sharedImageName,
                         description: description, memo: cleanMemo)
@@ -1246,6 +1271,7 @@ final class AppStore {
                        containerURL: URL? = nil) async -> Bool {
         deletionTask?.cancel()
         pendingDeletion = nil
+        stageAttachmentCleanup(for: clips)
         let emptySnapshot = DataSnapshot(
             version: FileClipRepository.supportedVersion,
             clips: [],
@@ -1281,6 +1307,7 @@ final class AppStore {
             try SharedClipQueue.removeAllData(containerURL: containerURL)
             try await metadata.removeAllMetadata()
             try syncSharedConfiguration(containerURL: containerURL)
+            userDefaults.removeObject(forKey: Self.pendingAttachmentCleanupKey)
         } catch {
             storageErrorMessage = L10n.text("일부 로컬 데이터를 정리하지 못했습니다. 다시 시도하세요.")
             showToast(storageErrorMessage ?? error.localizedDescription, semantic: .error)
@@ -1360,12 +1387,56 @@ final class AppStore {
         deletionTask = nil
     }
 
-    private func removeStoredImages(for clips: [Clip]) {
+    var pendingAttachmentCleanupFileNames: [String] {
+        Array(loadPendingAttachmentCleanup()).sorted()
+    }
+
+    /// 라이브러리 commit 전에 삭제 예정 원본을 별도 ledger에 기록한다. 앱이
+    /// commit 직후 종료되거나 실제 파일 제거가 실패해도 다음 실행에서 재시도한다.
+    private func stageAttachmentCleanup(for clips: [Clip]) {
         let fileNames = clips.reduce(into: Set<String>()) { names, clip in
             names.formUnion(clip.storedFileNames)
         }
-        for fileName in fileNames {
-            try? SharedClipQueue.removeAttachment(named: fileName)
+        guard !fileNames.isEmpty else { return }
+        persistPendingAttachmentCleanup(loadPendingAttachmentCleanup().union(fileNames))
+    }
+
+    private func loadPendingAttachmentCleanup() -> Set<String> {
+        Set((userDefaults.stringArray(forKey: Self.pendingAttachmentCleanupKey) ?? [])
+            .filter(SharedClipQueue.isValidAttachmentFileName))
+    }
+
+    private func persistPendingAttachmentCleanup(_ fileNames: Set<String>) {
+        if fileNames.isEmpty {
+            userDefaults.removeObject(forKey: Self.pendingAttachmentCleanupKey)
+        } else {
+            userDefaults.set(fileNames.sorted(), forKey: Self.pendingAttachmentCleanupKey)
         }
+    }
+
+    /// 현재 클립이 참조하는 이름은 절대 지우지 않고 ledger에서 해제한다. 참조가
+    /// 사라진 파일만 제거하며 실패 이름은 그대로 남겨 다음 실행/비우기 때 재시도한다.
+    @discardableResult
+    func retryPendingAttachmentCleanup(showFeedback: Bool = false) -> Int {
+        let referenced = clips.reduce(into: Set<String>()) { names, clip in
+            names.formUnion(clip.storedFileNames)
+        }
+        let removable = loadPendingAttachmentCleanup().subtracting(referenced)
+        var failed = Set<String>()
+        for fileName in removable {
+            do {
+                try attachmentRemover(fileName)
+            } catch {
+                failed.insert(fileName)
+            }
+        }
+        persistPendingAttachmentCleanup(failed)
+        if showFeedback, !failed.isEmpty {
+            showToast(
+                L10n.format("format.failed_attachment_cleanup", failed.count),
+                semantic: .error
+            )
+        }
+        return failed.count
     }
 }

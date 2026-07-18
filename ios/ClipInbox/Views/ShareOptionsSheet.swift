@@ -49,10 +49,10 @@ struct ShareOptionsSheet: View {
                 BoardSection(title: "공유 방식") {
                     VStack(spacing: 0) {
                         ActionRow(systemImage: "doc.on.doc",
-                                  label: clip.url.isEmpty ? "클립 정보 복사" : "링크 복사",
+                                  label: clip.url.isEmpty ? "제목 복사" : "링크 복사",
                                   value: clip.url.isEmpty ? "제목을 클립보드에 복사" : "URL을 클립보드에 복사") {
                             UIPasteboard.general.string = clip.url.isEmpty ? clip.title : clip.url
-                            store.showToast("링크를 복사했습니다")
+                            store.showToast(clip.url.isEmpty ? "제목을 복사했습니다" : "링크를 복사했습니다")
                         }
 
                         if clip.attachments.isEmpty, let originalImageItem = originalImageItem(for: clip) {
@@ -72,7 +72,7 @@ struct ShareOptionsSheet: View {
 
                         ShareLink(item: shareText(clip)) {
                             shareRowLabel(systemImage: "square.and.arrow.up", label: "시스템 공유",
-                                          value: "제목과 메모를 공유 시트로 전송")
+                                          value: "제목과 저장된 내용·URL을 공유 시트로 전송")
                         }
                         .buttonStyle(ResponsivePressButtonStyle())
 

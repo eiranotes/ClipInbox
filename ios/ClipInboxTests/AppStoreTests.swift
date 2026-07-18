@@ -440,6 +440,71 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(repository.committedSnapshots.last?.clips.map(\.id), [retained.id])
     }
 
+    func testFailedPermanentAttachmentRemovalPersistsLedgerAndRetriesOnNextInitialization() throws {
+        let attachmentFileName = "\(UUID().uuidString).pdf"
+        let attachmentURL = temporaryDirectory.appendingPathComponent(attachmentFileName)
+        let attachmentData = Data("%PDF-1.4\nPending cleanup\n%%EOF".utf8)
+        try attachmentData.write(to: attachmentURL)
+        let trashedClip = Clip(
+            id: 1,
+            type: .file,
+            state: .saved,
+            title: "Pending cleanup",
+            source: "Files",
+            url: "",
+            time: "저장됨",
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+            folder: "인박스",
+            attachments: [
+                SharedClipAttachment(
+                    kind: .file,
+                    originalFileName: "pending-cleanup.pdf",
+                    storedFileName: attachmentFileName,
+                    typeIdentifier: UTType.pdf.identifier,
+                    byteCount: Int64(attachmentData.count)
+                )
+            ],
+            deletedAt: Date()
+        )
+        try FileClipRepository(fileURL: dataURL).commit(DataSnapshot(
+            version: 2,
+            clips: [trashedClip],
+            folders: DefaultData.folders,
+            preferences: .standard
+        ))
+        var failedRemovalAttempts: [String] = []
+        let firstStore = AppStore(
+            fileURL: dataURL,
+            userDefaults: defaults,
+            attachmentRemover: { fileName in
+                failedRemovalAttempts.append(fileName)
+                throw CocoaError(.fileWriteNoPermission)
+            }
+        )
+
+        XCTAssertFalse(firstStore.emptyTrash())
+        XCTAssertTrue(firstStore.clips.isEmpty)
+        XCTAssertEqual(failedRemovalAttempts, [attachmentFileName])
+        XCTAssertEqual(firstStore.pendingAttachmentCleanupFileNames, [attachmentFileName])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: attachmentURL.path))
+
+        var successfulRemovalAttempts: [String] = []
+        let reloaded = AppStore(
+            fileURL: dataURL,
+            userDefaults: defaults,
+            attachmentRemover: { fileName in
+                successfulRemovalAttempts.append(fileName)
+                XCTAssertEqual(fileName, attachmentFileName)
+                try FileManager.default.removeItem(at: attachmentURL)
+            }
+        )
+
+        XCTAssertTrue(reloaded.clips.isEmpty)
+        XCTAssertEqual(successfulRemovalAttempts, [attachmentFileName])
+        XCTAssertTrue(reloaded.pendingAttachmentCleanupFileNames.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: attachmentURL.path))
+    }
+
     func testUpdateTagsCleansValuesPersistsAndSkipsNoOp() throws {
         try seedDefaultLibrary()
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
@@ -751,6 +816,32 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(navigation.settings, [.settingDetail(.about)])
     }
 
+    func testNavigationExitGuardBlocksUntilItsOwnerUnregisters() throws {
+        let guardOwner = try XCTUnwrap(
+            UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")
+        )
+        let unrelatedOwner = try XCTUnwrap(
+            UUID(uuidString: "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB")
+        )
+        let exitGuard = NavigationExitGuard()
+        var handlerCallCount = 0
+        exitGuard.register(ownerID: guardOwner) {
+            handlerCallCount += 1
+            return false
+        }
+
+        XCTAssertFalse(exitGuard.attemptExit())
+        XCTAssertEqual(handlerCallCount, 1)
+
+        exitGuard.unregister(ownerID: unrelatedOwner)
+        XCTAssertFalse(exitGuard.attemptExit(), "Another owner must not remove the active guard")
+        XCTAssertEqual(handlerCallCount, 2)
+
+        exitGuard.unregister(ownerID: guardOwner)
+        XCTAssertTrue(exitGuard.attemptExit())
+        XCTAssertEqual(handlerCallCount, 2)
+    }
+
     func testSharedImageAssetPreservesOriginalBytesFormatAndDimensions() throws {
         let sourceSize = CGSize(width: 2_400, height: 1_800)
         let format = UIGraphicsImageRendererFormat()
@@ -1038,6 +1129,75 @@ final class AppStoreTests: XCTestCase {
         ))
     }
 
+    func testManualClipCreatedAtPersistsAcrossReload() throws {
+        let createdAt = Date(timeIntervalSince1970: 1_700_000_000)
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+
+        let clip = try store.createManualClip(
+            type: .memo,
+            title: "Timestamped memo",
+            url: "",
+            text: "Persist this timestamp",
+            destination: "인박스",
+            tags: [],
+            memo: "",
+            createdAt: createdAt
+        )
+
+        XCTAssertEqual(clip.createdAt, createdAt)
+        let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
+        XCTAssertEqual(reloaded.clip(id: clip.id)?.createdAt, createdAt)
+    }
+
+    func testLegacyJustNowClipWithoutCreatedAtReloadsAsSaved() throws {
+        let legacyClip = Clip(
+            id: 42,
+            type: .memo,
+            title: "Legacy memo",
+            source: "Legacy import",
+            url: "",
+            time: "방금 전",
+            createdAt: nil,
+            folder: "인박스",
+            description: "Old data"
+        )
+        let legacyData = try JSONEncoder().encode(DataSnapshot(
+            version: 2,
+            clips: [legacyClip],
+            folders: DefaultData.folders,
+            preferences: .standard
+        ))
+        let legacyObject = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: legacyData) as? [String: Any]
+        )
+        let encodedClips = try XCTUnwrap(legacyObject["clips"] as? [[String: Any]])
+        XCTAssertNil(encodedClips.first?["createdAt"])
+        try legacyData.write(to: dataURL, options: .atomic)
+
+        let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
+        let decoded = try XCTUnwrap(reloaded.clip(id: legacyClip.id))
+        let label = decoded.timeLabel(
+            relativeTo: Date(timeIntervalSince1970: 1_800_000_000),
+            locale: Locale(identifier: "en_US")
+        )
+
+        XCTAssertNil(decoded.createdAt)
+        XCTAssertEqual(label, "Saved")
+        XCTAssertNotEqual(label, "Just now")
+        for legacyRelativeTime in ["2시간 전", "yesterday", "3日前"] {
+            var variant = decoded
+            variant.time = legacyRelativeTime
+            XCTAssertEqual(
+                variant.timeLabel(
+                    relativeTo: Date(timeIntervalSince1970: 1_800_000_000),
+                    locale: Locale(identifier: "en_US")
+                ),
+                "Saved",
+                "Legacy relative label \(legacyRelativeTime) must not remain time-sensitive"
+            )
+        }
+    }
+
     func testShareQueueSortsQuarantinesExpiresAndIsIdempotent() throws {
         let container = temporaryDirectory.appendingPathComponent("QueueContainer", isDirectory: true)
         try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
@@ -1072,6 +1232,321 @@ final class AppStoreTests: XCTestCase {
             at: container.appendingPathComponent("ExpiredClips"),
             includingPropertiesForKeys: nil
         ).count, 1)
+    }
+
+    func testSharedPayloadWithoutCreatedAtFailsDecodingAndIsQuarantined() throws {
+        let payload = SharedClipPayload(
+            id: UUID(),
+            type: .text,
+            title: "Missing timestamp",
+            source: "Legacy share",
+            text: "Must not import",
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+        let encoded = try JSONEncoder().encode(payload)
+        var object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+        )
+        object.removeValue(forKey: "createdAt")
+        let missingCreatedAtData = try JSONSerialization.data(
+            withJSONObject: object,
+            options: [.sortedKeys]
+        )
+
+        XCTAssertThrowsError(
+            try JSONDecoder().decode(SharedClipPayload.self, from: missingCreatedAtData)
+        ) { error in
+            guard case DecodingError.keyNotFound(let key, _) = error else {
+                return XCTFail("Expected missing createdAt to fail with keyNotFound, got \(error)")
+            }
+            XCTAssertEqual(key.stringValue, "createdAt")
+        }
+
+        let container = temporaryDirectory.appendingPathComponent(
+            "MissingCreatedAtQueue",
+            isDirectory: true
+        )
+        let pendingDirectory = container.appendingPathComponent("PendingClips", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: pendingDirectory,
+            withIntermediateDirectories: true
+        )
+        let pendingURL = pendingDirectory
+            .appendingPathComponent(payload.id.uuidString)
+            .appendingPathExtension("json")
+        try missingCreatedAtData.write(to: pendingURL)
+
+        XCTAssertTrue(try SharedClipQueue.pendingItems(containerURL: container).isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: pendingURL.path))
+        let failedURLs = try FileManager.default.contentsOfDirectory(
+            at: container.appendingPathComponent("FailedClips", isDirectory: true),
+            includingPropertiesForKeys: nil
+        )
+        XCTAssertEqual(failedURLs.count, 1)
+        XCTAssertEqual(try Data(contentsOf: try XCTUnwrap(failedURLs.first)), missingCreatedAtData)
+    }
+
+    func testUndecodableCommittedGroupedPayloadQuarantinesEveryOriginalAttachment() throws {
+        let container = temporaryDirectory.appendingPathComponent(
+            "UndecodableGroupedBatch",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 6, height: 4)).image { context in
+            UIColor.systemPurple.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 6, height: 4))
+        }
+        let imageData = try XCTUnwrap(image.pngData())
+        let imageAsset = try SharedImageAsset(
+            validatingData: imageData,
+            typeIdentifier: UTType.png.identifier
+        )
+        let pdfData = Data("%PDF-1.4\nGrouped attachment\n%%EOF".utf8)
+        let pdfURL = temporaryDirectory.appendingPathComponent("grouped-corrupt-payload.pdf")
+        try pdfData.write(to: pdfURL)
+        let attachmentAssets = [
+            SharedAttachmentAsset(
+                imageAsset: imageAsset,
+                originalFileName: "original.png",
+                typeIdentifier: UTType.png.identifier
+            ),
+            try SharedAttachmentAsset(
+                validatingFileAt: pdfURL,
+                typeIdentifier: UTType.pdf.identifier,
+                originalFileName: "original.pdf"
+            )
+        ]
+        let payload = SharedClipPayload(
+            type: .file,
+            title: "Grouped originals",
+            source: "Files",
+            createdAt: Date()
+        )
+        try SharedClipQueue.enqueueBatch(
+            [SharedClipQueue.BatchItem(payload: payload, attachmentAssets: attachmentAssets)],
+            containerURL: container
+        )
+
+        let queued = try XCTUnwrap(
+            SharedClipQueue.pendingItems(containerURL: container).first?.payload
+        )
+        XCTAssertEqual(queued.attachments.map(\.originalFileName), ["original.png", "original.pdf"])
+        let expectedDataByFileName = try Dictionary(uniqueKeysWithValues:
+            zip(queued.attachments, [imageData, pdfData]).map { attachment, data in
+                (try XCTUnwrap(attachment.storedFileName), data)
+            }
+        )
+
+        let committedRoot = container.appendingPathComponent(
+            SharedClipQueue.pendingBatchesDirectoryName,
+            isDirectory: true
+        )
+        let batchDirectory = try XCTUnwrap(FileManager.default.contentsOfDirectory(
+            at: committedRoot,
+            includingPropertiesForKeys: [.isDirectoryKey]
+        ).first)
+        let payloadURL = batchDirectory
+            .appendingPathComponent("Payloads", isDirectory: true)
+            .appendingPathComponent(payload.id.uuidString)
+            .appendingPathExtension("json")
+        let validPayloadData = try Data(contentsOf: payloadURL)
+        var payloadObject = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: validPayloadData) as? [String: Any]
+        )
+        payloadObject.removeValue(forKey: "createdAt")
+        let undecodablePayloadData = try JSONSerialization.data(
+            withJSONObject: payloadObject,
+            options: [.sortedKeys]
+        )
+        try undecodablePayloadData.write(to: payloadURL, options: .atomic)
+        XCTAssertThrowsError(
+            try JSONDecoder().decode(SharedClipPayload.self, from: undecodablePayloadData)
+        )
+
+        XCTAssertTrue(try SharedClipQueue.pendingItems(containerURL: container).isEmpty)
+
+        let failedClipRoot = container.appendingPathComponent("FailedClips", isDirectory: true)
+        let failedClipURLs = try FileManager.default.contentsOfDirectory(
+            at: failedClipRoot,
+            includingPropertiesForKeys: nil
+        )
+        let quarantinedPayloadURL = try XCTUnwrap(failedClipURLs.first { url in
+            url.lastPathComponent.hasSuffix("\(payload.id.uuidString).json")
+        })
+        XCTAssertEqual(try Data(contentsOf: quarantinedPayloadURL), undecodablePayloadData)
+
+        let quarantineRoots = [
+            failedClipRoot,
+            container.appendingPathComponent("FailedImages", isDirectory: true)
+        ]
+        let quarantinedURLs = quarantineRoots.flatMap { root -> [URL] in
+            guard FileManager.default.fileExists(atPath: root.path),
+                  let enumerator = FileManager.default.enumerator(
+                    at: root,
+                    includingPropertiesForKeys: [.isRegularFileKey],
+                    options: [.skipsHiddenFiles],
+                    errorHandler: nil
+                  ) else { return [] }
+            return enumerator.compactMap { $0 as? URL }.filter { url in
+                (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+            }
+        }
+        let quarantinedByFileName = Dictionary(
+            quarantinedURLs.map { ($0.lastPathComponent, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        XCTAssertEqual(
+            Set(expectedDataByFileName.keys).intersection(Set(quarantinedByFileName.keys)).count,
+            expectedDataByFileName.count,
+            "Every grouped original must survive payload quarantine"
+        )
+        for (fileName, expectedData) in expectedDataByFileName {
+            let quarantinedURL = try XCTUnwrap(quarantinedByFileName[fileName])
+            XCTAssertEqual(try Data(contentsOf: quarantinedURL), expectedData)
+        }
+    }
+
+    func testCommittedBatchDoesNotExposeLeadingValidPayloadWhenLaterPayloadIsCorrupt() throws {
+        let validPayloadID = try XCTUnwrap(
+            UUID(uuidString: "00000000-0000-0000-0000-000000000001")
+        )
+        let corruptPayloadID = try XCTUnwrap(
+            UUID(uuidString: "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF")
+        )
+        let validAttachmentID = try XCTUnwrap(
+            UUID(uuidString: "11111111-1111-1111-1111-111111111111")
+        )
+        let corruptAttachmentID = try XCTUnwrap(
+            UUID(uuidString: "22222222-2222-2222-2222-222222222222")
+        )
+        let container = temporaryDirectory.appendingPathComponent(
+            "LeadingValidThenCorruptBatch",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 5, height: 5)).image { context in
+            UIColor.systemGreen.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 5, height: 5))
+        }
+        let imageData = try XCTUnwrap(image.pngData())
+        let imageAsset = try SharedImageAsset(
+            validatingData: imageData,
+            typeIdentifier: UTType.png.identifier
+        )
+        let pdfData = Data("%PDF-1.4\nLater corrupt payload\n%%EOF".utf8)
+        let pdfURL = temporaryDirectory.appendingPathComponent("later-corrupt.pdf")
+        try pdfData.write(to: pdfURL)
+        let validAttachment = SharedAttachmentAsset(
+            imageAsset: imageAsset,
+            originalFileName: "leading-valid.png",
+            typeIdentifier: UTType.png.identifier,
+            id: validAttachmentID
+        )
+        let corruptAttachment = try SharedAttachmentAsset(
+            validatingFileAt: pdfURL,
+            typeIdentifier: UTType.pdf.identifier,
+            originalFileName: "later-corrupt.pdf",
+            id: corruptAttachmentID
+        )
+        let createdAt = Date()
+        let validPayload = SharedClipPayload(
+            id: validPayloadID,
+            type: .image,
+            title: "Leading valid payload",
+            source: "Photos",
+            createdAt: createdAt
+        )
+        let corruptPayload = SharedClipPayload(
+            id: corruptPayloadID,
+            type: .file,
+            title: "Later corrupt payload",
+            source: "Files",
+            createdAt: createdAt
+        )
+        // Write the corrupt item first so filename sorting, rather than insertion order,
+        // establishes that the valid payload is decoded before the corrupt payload.
+        try SharedClipQueue.enqueueBatch(
+            [
+                SharedClipQueue.BatchItem(
+                    payload: corruptPayload,
+                    attachmentAssets: [corruptAttachment]
+                ),
+                SharedClipQueue.BatchItem(
+                    payload: validPayload,
+                    attachmentAssets: [validAttachment]
+                )
+            ],
+            containerURL: container
+        )
+
+        let committedRoot = container.appendingPathComponent(
+            SharedClipQueue.pendingBatchesDirectoryName,
+            isDirectory: true
+        )
+        let batchDirectory = try XCTUnwrap(FileManager.default.contentsOfDirectory(
+            at: committedRoot,
+            includingPropertiesForKeys: [.isDirectoryKey]
+        ).first)
+        let payloadsDirectory = batchDirectory.appendingPathComponent("Payloads", isDirectory: true)
+        let payloadURLs = try FileManager.default.contentsOfDirectory(
+            at: payloadsDirectory,
+            includingPropertiesForKeys: nil
+        ).sorted { $0.lastPathComponent < $1.lastPathComponent }
+        let validPayloadURL = payloadsDirectory
+            .appendingPathComponent(validPayloadID.uuidString)
+            .appendingPathExtension("json")
+        let corruptPayloadURL = payloadsDirectory
+            .appendingPathComponent(corruptPayloadID.uuidString)
+            .appendingPathExtension("json")
+        XCTAssertEqual(payloadURLs.map(\.lastPathComponent), [
+            validPayloadURL.lastPathComponent,
+            corruptPayloadURL.lastPathComponent
+        ])
+        XCTAssertLessThan(validPayloadURL.lastPathComponent, corruptPayloadURL.lastPathComponent)
+        let validPayloadData = try Data(contentsOf: validPayloadURL)
+        let originalCorruptPayloadData = try Data(contentsOf: corruptPayloadURL)
+        var corruptObject = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: originalCorruptPayloadData) as? [String: Any]
+        )
+        corruptObject.removeValue(forKey: "createdAt")
+        let corruptPayloadData = try JSONSerialization.data(
+            withJSONObject: corruptObject,
+            options: [.sortedKeys]
+        )
+        try corruptPayloadData.write(to: corruptPayloadURL, options: .atomic)
+
+        let pending = try SharedClipQueue.pendingItems(containerURL: container)
+
+        XCTAssertTrue(pending.isEmpty, "No leading valid Item may escape a corrupt atomic batch")
+        let failedPayloadURLs = try FileManager.default.contentsOfDirectory(
+            at: container.appendingPathComponent("FailedClips", isDirectory: true),
+            includingPropertiesForKeys: nil
+        )
+        let failedPayloadData = try Dictionary(uniqueKeysWithValues: failedPayloadURLs.map {
+            ($0.lastPathComponent, try Data(contentsOf: $0))
+        })
+        XCTAssertEqual(failedPayloadData[validPayloadURL.lastPathComponent], validPayloadData)
+        XCTAssertEqual(failedPayloadData[corruptPayloadURL.lastPathComponent], corruptPayloadData)
+
+        let expectedOriginals = [
+            try XCTUnwrap(validAttachment.attachment.storedFileName): imageData,
+            try XCTUnwrap(corruptAttachment.attachment.storedFileName): pdfData
+        ]
+        let failedOriginalURLs = try FileManager.default.contentsOfDirectory(
+            at: container.appendingPathComponent("FailedImages", isDirectory: true),
+            includingPropertiesForKeys: nil
+        )
+        let failedOriginalData = try Dictionary(uniqueKeysWithValues: failedOriginalURLs.map {
+            ($0.lastPathComponent, try Data(contentsOf: $0))
+        })
+        XCTAssertEqual(Set(failedOriginalData.keys), Set(expectedOriginals.keys))
+        for (fileName, expectedData) in expectedOriginals {
+            XCTAssertEqual(failedOriginalData[fileName], expectedData)
+        }
+        XCTAssertTrue(try FileManager.default.contentsOfDirectory(
+            at: committedRoot,
+            includingPropertiesForKeys: nil
+        ).isEmpty)
     }
 
     func testShareQueueKeepsLegacyMultiPayloadImageBatchImportCompatible() throws {
@@ -1194,6 +1669,170 @@ final class AppStoreTests: XCTestCase {
                 && FileManager.default.fileExists(atPath: $0.path)
         })
         XCTAssertTrue(try SharedClipQueue.pendingItems(containerURL: container).isEmpty)
+    }
+
+    func testGroupedSharePayloadCreatedAtImportsAndPersistsAcrossReload() throws {
+        let container = temporaryDirectory.appendingPathComponent(
+            "GroupedAttachmentCreatedAtQueue",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        let firstURL = temporaryDirectory.appendingPathComponent("grouped-first.txt")
+        let secondURL = temporaryDirectory.appendingPathComponent("grouped-second.pdf")
+        try Data("first attachment".utf8).write(to: firstURL)
+        try Data("%PDF-1.4\nsecond attachment".utf8).write(to: secondURL)
+        let attachmentAssets = [
+            try SharedAttachmentAsset(
+                validatingFileAt: firstURL,
+                typeIdentifier: UTType.plainText.identifier,
+                originalFileName: "first.txt"
+            ),
+            try SharedAttachmentAsset(
+                validatingFileAt: secondURL,
+                typeIdentifier: UTType.pdf.identifier,
+                originalFileName: "second.pdf"
+            )
+        ]
+        let createdAt = Date(
+            timeIntervalSince1970: floor(Date().timeIntervalSince1970) - 60
+        )
+        let payload = SharedClipPayload(
+            type: .file,
+            title: "Grouped files",
+            source: "Files",
+            createdAt: createdAt
+        )
+        try SharedClipQueue.enqueueBatch(
+            [SharedClipQueue.BatchItem(payload: payload, attachmentAssets: attachmentAssets)],
+            containerURL: container
+        )
+
+        let queued = try XCTUnwrap(
+            SharedClipQueue.pendingItems(containerURL: container).first?.payload
+        )
+        XCTAssertEqual(queued.createdAt, createdAt)
+        XCTAssertEqual(queued.attachments.count, 2)
+
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+        store.importSharedClips(containerURL: container)
+        let imported = try XCTUnwrap(
+            store.clips.first(where: { $0.sharePayloadID == payload.id })
+        )
+        XCTAssertEqual(imported.createdAt, createdAt)
+        XCTAssertEqual(imported.attachments.count, 2)
+
+        let reloaded = AppStore(fileURL: dataURL, userDefaults: defaults)
+        let persisted = try XCTUnwrap(
+            reloaded.clips.first(where: { $0.sharePayloadID == payload.id })
+        )
+        XCTAssertEqual(persisted.createdAt, createdAt)
+        XCTAssertEqual(persisted.attachments.map(\.originalFileName), ["first.txt", "second.pdf"])
+    }
+
+    func testAttachmentPasteboardPreparationPreservesAllAndSelectedOrderDataAndUTI() throws {
+        let sourceDirectory = temporaryDirectory.appendingPathComponent(
+            "PasteboardAttachmentSources",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(
+            at: sourceDirectory,
+            withIntermediateDirectories: true
+        )
+        let fixtures: [(UUID, String, Data, UTType)] = [
+            (UUID(), "first.bin", Data([0x01, 0x02]), .png),
+            (UUID(), "second.bin", Data([0x10, 0x11, 0x12]), .pdf),
+            (UUID(), "third.bin", Data("third".utf8), .plainText)
+        ]
+        let items = try fixtures.map { id, name, data, type in
+            let url = sourceDirectory.appendingPathComponent(name)
+            try data.write(to: url)
+            return ClipStoredAttachment(
+                attachment: SharedClipAttachment(
+                    id: id,
+                    kind: type.conforms(to: .image) ? .image : .file,
+                    originalFileName: name,
+                    typeIdentifier: type.identifier,
+                    byteCount: Int64(data.count)
+                ),
+                url: url
+            )
+        }
+
+        let allPayloads = try ClipAttachmentPasteboard.prepareAttachments(items)
+        XCTAssertEqual(allPayloads.map(\.data), fixtures.map { $0.2 })
+        XCTAssertEqual(allPayloads.map(\.typeIdentifier), fixtures.map { $0.3.identifier })
+
+        let selectedItems = ClipAttachmentPasteboard.selectedAttachments(
+            from: items,
+            selectedIDs: Set([fixtures[2].0, fixtures[0].0])
+        )
+        XCTAssertEqual(selectedItems.map(\.id), [fixtures[0].0, fixtures[2].0])
+        let selectedPayloads = try ClipAttachmentPasteboard.prepareAttachments(selectedItems)
+        XCTAssertEqual(selectedPayloads.map(\.data), [fixtures[0].2, fixtures[2].2])
+        XCTAssertEqual(
+            selectedPayloads.map(\.typeIdentifier),
+            [fixtures[0].3.identifier, fixtures[2].3.identifier]
+        )
+    }
+
+    func testAttachmentPasteboardPreparationFailsWithoutReturningPartialPayloads() throws {
+        let validData = Data([0xCA, 0xFE, 0xBA, 0xBE])
+        let validURL = temporaryDirectory.appendingPathComponent("pasteboard-valid.bin")
+        try validData.write(to: validURL)
+        let missingURL = temporaryDirectory.appendingPathComponent("pasteboard-missing.bin")
+        let validID = UUID()
+        let missingID = UUID()
+        let items = [
+            ClipStoredAttachment(
+                attachment: SharedClipAttachment(
+                    id: validID,
+                    kind: .file,
+                    originalFileName: "valid.bin",
+                    typeIdentifier: UTType.data.identifier,
+                    byteCount: Int64(validData.count)
+                ),
+                url: validURL
+            ),
+            ClipStoredAttachment(
+                attachment: SharedClipAttachment(
+                    id: missingID,
+                    kind: .file,
+                    originalFileName: "missing.bin",
+                    typeIdentifier: UTType.data.identifier,
+                    byteCount: 1
+                ),
+                url: missingURL
+            )
+        ]
+        var attachmentPayloads: [ClipPasteboardPayload]?
+        XCTAssertThrowsError(
+            attachmentPayloads = try ClipAttachmentPasteboard.prepareAttachments(items)
+        )
+        XCTAssertNil(attachmentPayloads)
+
+        let imageSources = [
+            ClipImageSource(
+                id: "valid",
+                attachmentID: validID,
+                displayName: "valid.bin",
+                fileURL: validURL,
+                assetName: nil,
+                typeIdentifier: UTType.png.identifier
+            ),
+            ClipImageSource(
+                id: "missing",
+                attachmentID: missingID,
+                displayName: "missing.bin",
+                fileURL: missingURL,
+                assetName: nil,
+                typeIdentifier: UTType.png.identifier
+            )
+        ]
+        var imagePayloads: [ClipPasteboardPayload]?
+        XCTAssertThrowsError(
+            imagePayloads = try ClipAttachmentPasteboard.prepareImageSources(imageSources)
+        )
+        XCTAssertNil(imagePayloads)
     }
 
     func testShareQueueRejectsAttachmentBundleAboveInvocationLimit() throws {
