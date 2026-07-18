@@ -67,6 +67,20 @@ public enum JSONValue: Codable, Equatable, Sendable {
         case .object, .array, .null: return nil
         }
     }
+
+    /// 검색 인덱스용으로 중첩된 JSON 값만 평탄화한다. 키·null은 검색어로 노출하지 않는다.
+    public var searchableValues: [String] {
+        switch self {
+        case .string(let value): return [value]
+        case .number(let value):
+            return [value.rounded() == value ? String(Int(value)) : String(value)]
+        case .bool(let value): return [value ? "true" : "false"]
+        case .object(let value):
+            return value.keys.sorted().flatMap { value[$0]?.searchableValues ?? [] }
+        case .array(let value): return value.flatMap(\.searchableValues)
+        case .null: return []
+        }
+    }
 }
 
 public enum MetadataSource: String, Codable, CaseIterable, Sendable {
@@ -323,6 +337,32 @@ public struct LinkMetadataResult: Codable, Equatable, Sendable {
 
     public var hasUsefulMetadata: Bool {
         title != nil || description != nil || thumbnail != nil || creator != nil || !attributes.isEmpty
+    }
+
+    /// 사용자가 실제로 기억할 만한 링크 내용만 모은 검색 투영값.
+    /// 진단·HTTP 상태·이미지 URL·휘발성 속성은 결과 노이즈와 내부 정보 노출을 막기 위해 제외한다.
+    public var searchableText: String {
+        var values = [
+            originalURL,
+            resolvedURL,
+            canonicalURL,
+            normalizedURL,
+            title?.value,
+            description?.value,
+            summaryShort?.value,
+            summaryDetail?.value,
+            siteName?.value,
+            creator?.value,
+            platform,
+            contentType,
+            contentSubtype
+        ].compactMap { $0 }
+        values.append(contentsOf: originalTags.flatMap(\.value))
+        values.append(contentsOf: derivedTopics.flatMap(\.value))
+        values.append(contentsOf: attributes.keys.sorted().flatMap {
+            attributes[$0]?.value.searchableValues ?? []
+        })
+        return values.joined(separator: "\n")
     }
 }
 

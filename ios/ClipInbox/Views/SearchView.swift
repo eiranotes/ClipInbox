@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SearchView: View {
     @Environment(AppStore.self) private var store
+    @Environment(URLMetadataCoordinator.self) private var metadata
     @Binding private var path: [Route]
     @State private var query = ""
     @State private var settledQuery = ""
@@ -32,7 +33,11 @@ struct SearchView: View {
     }
 
     private var content: some View {
-        let results = store.searchResults(query: settledQuery, filter: searchFilter)
+        let results = store.searchResults(
+            query: settledQuery,
+            filter: searchFilter,
+            additionalTextByClipID: metadata.searchableTextByClipID
+        )
         let isBrowsingRecent = settledQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         return ScreenScaffold {
             ScreenHeader("검색")
@@ -41,7 +46,7 @@ struct SearchView: View {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(Tokens.textSecondary)
-                TextField("제목, 메모, 태그로 검색", text: $query)
+                TextField("제목, URL, 메모, 태그로 검색", text: $query)
                     .font(Tokens.body)
                     .submitLabel(.search)
                     .focused($searchFieldFocused)
@@ -67,21 +72,34 @@ struct SearchView: View {
             .frame(minHeight: Tokens.actionTarget)
             .tokenSurface(radius: Tokens.radiusInput)
 
-            // 메인과 같은 정보 구조: 윗줄은 폴더, 아랫줄은 태그이며 각각 독립 스크롤한다.
+            // 메인과 같은 정보 구조: 윗줄은 스마트 보기와 폴더, 아랫줄은 태그다.
             TwoRowHorizontalSelection(
-                topRow: store.inboxFolderFilters.map { item in
+                topRow: store.inboxScopeFilters.map { item in
                     (store.filterLabel(item), searchFilter == item, { searchFilter = item })
                 },
                 bottomRow: store.inboxTagFilters.map { item in
                     (store.filterLabel(item), searchFilter == item, { searchFilter = item })
-                }
+                },
+                topLabel: "보기"
             )
 
             if isBrowsingRecent {
                 VStack(alignment: .leading, spacing: Tokens.rowGap) {
-                    Text("최근 검색")
-                        .font(Tokens.sectionTitle)
-                        .foregroundStyle(Tokens.textPrimary)
+                    HStack {
+                        Text("최근 검색")
+                            .font(Tokens.sectionTitle)
+                            .foregroundStyle(Tokens.textPrimary)
+                        Spacer()
+                        if !store.recentSearches.isEmpty {
+                            Button("검색 기록 지우기") {
+                                store.clearRecentSearches()
+                            }
+                            .font(Tokens.meta)
+                            .foregroundStyle(Tokens.textSecondary)
+                            .frame(minHeight: Tokens.touchTarget)
+                            .buttonStyle(ResponsivePressButtonStyle())
+                        }
+                    }
                     VStack(spacing: 0) {
                         if store.recentSearches.isEmpty {
                             Text("아직 검색한 기록이 없습니다")

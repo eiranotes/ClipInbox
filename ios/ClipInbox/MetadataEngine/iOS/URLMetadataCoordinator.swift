@@ -50,6 +50,10 @@ final class URLMetadataCoordinator {
         results[clipID]
     }
 
+    var searchableTextByClipID: [Int: String] {
+        results.mapValues(\.searchableText)
+    }
+
     func isAnalyzing(_ clipID: Int) -> Bool {
         activeClipIDs.contains(clipID)
     }

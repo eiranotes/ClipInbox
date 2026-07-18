@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-07-18: Smart Views and Default Tags Extend Existing Organization
+
+Decision: Keep the existing two-row filter control and add `전체`, `미정리`, and `북마크` as dynamic smart views before destination folders. Use the same filter predicate in Inbox and Search. Search the saved clip title, source, URL, tags, description, and memo plus a metadata projection containing canonical content fields and nested stable attributes; exclude images, HTTP inspection, extraction diagnostics, and volatile attributes. Applying a folder default tag happens only during an explicit single/batch move or Sort Later classification, in the same repository transaction as the folder/state change.
+
+Why: These additions improve retrieval and reduce repetitive tagging without adding a second library model, automation engine, account, or server. A user who remembers a URL fragment or extracted article detail should be able to retrieve the saved clip, while diagnostics and image URLs would only create noisy or surprising matches. Default tags are a property of deliberate organization, not passive capture.
+
+Impact: `신규` remains distinct from `미정리`; Trash never appears in smart views or Search. Existing tags keep their spelling and order, case-insensitive duplicates are not added, and a clip already holding 12 user tags keeps all 12 rather than losing one to a default. Persistence failure rolls the folder, state, and tag changes back together. Recent-search clearing removes both the visible list and its `UserDefaults` value.
+
 ## 2026-07-17: Destructive Reset Has a Separate Cross-Store Lifecycle
 
 Decision: Treat `모든 데이터 삭제` as a dedicated asynchronous reset rather than a normal library mutation. Replace the current snapshot with a validated empty snapshot without rotation, remove previous and recovery copies, clear app defaults and in-memory image state, erase pending/quarantined Share artifacts, clear URL metadata sidecar/cache after in-flight analysis finishes, and rewrite only the standard Share configuration. Report success only after every owned store completes.

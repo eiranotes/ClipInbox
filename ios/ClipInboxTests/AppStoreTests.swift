@@ -117,6 +117,169 @@ final class AppStoreTests: XCTestCase {
         XCTAssertEqual(store.searchResults(query: "아이디어", filter: .tag("아이디어")).map(\.id), [3])
     }
 
+    func testSmartViewsContainOnlyActiveMatchingClips() throws {
+        try seedDefaultLibrary()
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+
+        XCTAssertEqual(store.filteredClips(.unsorted).map(\.id), [1, 5])
+        XCTAssertFalse(store.filteredClips(.unsorted).contains { $0.state == .new })
+        XCTAssertTrue(store.toggleBookmark(id: 2))
+        XCTAssertEqual(store.filteredClips(.bookmarked).map(\.id), [2])
+        XCTAssertTrue(store.deleteClip(id: 1))
+        XCTAssertEqual(store.filteredClips(.unsorted).map(\.id), [5])
+        XCTAssertEqual(Array(store.inboxScopeFilters.prefix(3)), [.all, .unsorted, .bookmarked])
+    }
+
+    func testSearchIncludesURLsMetadataAndIntersectsSmartView() throws {
+        try seedDefaultLibrary()
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+        let metadataText = [1: "Café accessibility research"]
+
+        XCTAssertEqual(store.searchResults(query: "product-store", filter: .all).map(\.id), [5])
+        XCTAssertEqual(
+            store.searchResults(
+                query: "CAFE",
+                filter: .unsorted,
+                additionalTextByClipID: metadataText
+            ).map(\.id),
+            [1]
+        )
+        XCTAssertTrue(store.toggleBookmark(id: 1))
+        XCTAssertEqual(
+            store.searchResults(
+                query: "accessibility",
+                filter: .bookmarked,
+                additionalTextByClipID: metadataText
+            ).map(\.id),
+            [1]
+        )
+        XCTAssertTrue(store.toggleBookmark(id: 1))
+        XCTAssertTrue(
+            store.searchResults(
+                query: "accessibility",
+                filter: .bookmarked,
+                additionalTextByClipID: metadataText
+            ).isEmpty
+        )
+    }
+
+    func testMetadataSearchProjectionIncludesContentAndExcludesDiagnostics() {
+        let result = LinkMetadataResult(
+            originalURL: "https://example.com/original",
+            resolvedURL: "https://example.com/resolved",
+            platform: "knowledge",
+            contentType: "article",
+            title: ExtractedField(value: "Readable title", source: .openGraph, confidence: 1),
+            description: ExtractedField(value: "Useful description", source: .semanticDOM, confidence: 1),
+            summaryShort: ExtractedField(value: "Concise summary", source: .derived, confidence: 1),
+            siteName: ExtractedField(value: "Example Site", source: .openGraph, confidence: 1),
+            creator: ExtractedField(value: "Ada", source: .jsonLD, confidence: 1),
+            thumbnail: ExtractedField(value: "https://secret.example/thumbnail.jpg", source: .openGraph, confidence: 1),
+            originalTags: [ExtractedField(value: ["Research"], source: .jsonLD, confidence: 1)],
+            derivedTopics: [ExtractedField(value: ["Accessibility"], source: .derived, confidence: 1)],
+            attributes: [
+                "nested": ExtractedField(
+                    value: .object(["topic": .array([.string("Deep Work"), .number(42)])]),
+                    source: .jsonLD,
+                    confidence: 1
+                )
+            ],
+            volatileAttributes: [
+                "private": ExtractedField(value: .string("volatile-secret"), source: .embeddedState, confidence: 1)
+            ],
+            status: .failed,
+            extractionAttempts: [
+                ExtractionAttempt(
+                    stage: .http,
+                    startedAt: "start",
+                    finishedAt: "finish",
+                    succeeded: false,
+                    message: "diagnostic-secret",
+                    errorCode: "E_SECRET"
+                )
+            ]
+        )
+
+        XCTAssertTrue(result.searchableText.contains("Readable title"))
+        XCTAssertTrue(result.searchableText.contains("Accessibility"))
+        XCTAssertTrue(result.searchableText.contains("Deep Work"))
+        XCTAssertTrue(result.searchableText.contains("42"))
+        XCTAssertFalse(result.searchableText.contains("thumbnail.jpg"))
+        XCTAssertFalse(result.searchableText.contains("volatile-secret"))
+        XCTAssertFalse(result.searchableText.contains("diagnostic-secret"))
+        XCTAssertFalse(result.searchableText.contains("E_SECRET"))
+    }
+
+    func testRecentSearchesCanBeClearedAndStayCleared() {
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+        store.recordSearch("private query")
+
+        store.clearRecentSearches()
+
+        XCTAssertTrue(store.recentSearches.isEmpty)
+        XCTAssertTrue(AppStore(fileURL: dataURL, userDefaults: defaults).recentSearches.isEmpty)
+    }
+
+    func testFolderDefaultTagIsAppliedToSingleBatchAndSortMoves() {
+        var folders = DefaultData.folders
+        folders.append(Folder(icon: "folder", label: "읽을거리", defaultTag: "읽을거리"))
+        let repository = TestClipRepository(bootstrapHandler: {
+            .loaded(DataSnapshot(
+                version: 2,
+                clips: DefaultData.clips,
+                folders: folders,
+                preferences: .standard
+            ))
+        })
+        let store = AppStore(userDefaults: defaults, repository: repository)
+
+        XCTAssertTrue(store.moveClip(id: 1, to: "읽을거리"))
+        XCTAssertEqual(store.clip(id: 1)?.tags.last, "읽을거리")
+        XCTAssertTrue(store.moveClip(id: 1, to: "읽을거리"))
+        XCTAssertEqual(store.clip(id: 1)?.tags.filter { $0 == "읽을거리" }.count, 1)
+        XCTAssertTrue(store.moveClips(ids: [2, 3], to: "읽을거리"))
+        XCTAssertTrue(store.clip(id: 2)?.tags.contains("읽을거리") == true)
+        XCTAssertTrue(store.clip(id: 3)?.tags.contains("읽을거리") == true)
+        XCTAssertTrue(store.applySort(clipID: 5, to: "읽을거리"))
+        XCTAssertTrue(store.clip(id: 5)?.tags.contains("읽을거리") == true)
+    }
+
+    func testFolderDefaultTagDeduplicatesCaseInsensitivelyAndPreservesTwelveUserTags() {
+        var clips = DefaultData.clips
+        clips[0].tags = ["Reference"]
+        clips[1].tags = (1...12).map { "tag-\($0)" }
+        var folders = DefaultData.folders
+        folders.append(Folder(icon: "folder", label: "참고", defaultTag: "reference"))
+        let repository = TestClipRepository(bootstrapHandler: {
+            .loaded(DataSnapshot(version: 2, clips: clips, folders: folders, preferences: .standard))
+        })
+        let store = AppStore(userDefaults: defaults, repository: repository)
+
+        XCTAssertTrue(store.moveClip(id: 1, to: "참고"))
+        XCTAssertEqual(store.clip(id: 1)?.tags, ["Reference"])
+        XCTAssertTrue(store.moveClip(id: 2, to: "참고"))
+        XCTAssertEqual(store.clip(id: 2)?.tags, clips[1].tags)
+    }
+
+    func testFolderDefaultTagRollsBackWithFailedMove() {
+        var folders = DefaultData.folders
+        folders.append(Folder(icon: "folder", label: "읽을거리", defaultTag: "읽을거리"))
+        let repository = TestClipRepository(bootstrapHandler: {
+            .loaded(DataSnapshot(
+                version: 2,
+                clips: DefaultData.clips,
+                folders: folders,
+                preferences: .standard
+            ))
+        })
+        let store = AppStore(userDefaults: defaults, repository: repository)
+        let original = store.clip(id: 1)
+        repository.commitError = ClipRepositoryError.writeFailed
+
+        XCTAssertFalse(store.moveClip(id: 1, to: "읽을거리"))
+        XCTAssertEqual(store.clip(id: 1), original)
+    }
+
     func testPrimaryMutationsPersistAcrossReload() throws {
         try seedDefaultLibrary()
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)

@@ -25,6 +25,7 @@
 "설정" = "Settings";
 "뒤로" = "Back";
 "전체" = "All";
+"보기" = "View";
 "미정리" = "Unsorted";
 "링크" = "Link";
 "이미지" = "Image";
@@ -79,8 +80,9 @@
 "아직 클립이 없습니다" = "No clips yet";
 "클립을 이 폴더로 이동하면 여기에 표시됩니다." = "Move a clip to this folder and it will appear here.";
 
-"제목, 메모, 태그로 검색" = "Search titles, notes, and tags";
+"제목, URL, 메모, 태그로 검색" = "Search titles, URLs, notes, and tags";
 "최근 검색" = "Recent searches";
+"검색 기록 지우기" = "Clear History";
 "아직 검색한 기록이 없습니다" = "No recent searches";
 "검색 결과" = "Search results";
 "검색 결과 없음" = "No results";

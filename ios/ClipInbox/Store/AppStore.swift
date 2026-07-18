@@ -4,12 +4,16 @@ import Observation
 /// 인박스 상단 필터. 윗줄은 폴더, 아랫줄은 태그를 나타낸다.
 enum InboxFilter: Hashable, Identifiable {
     case all
+    case unsorted
+    case bookmarked
     case folder(String)
     case tag(String)
 
     var id: String {
         switch self {
         case .all: return "all"
+        case .unsorted: return "unsorted"
+        case .bookmarked: return "bookmarked"
         case .folder(let label): return "folder:\(label)"
         case .tag(let tag): return "tag:\(tag)"
         }
@@ -18,6 +22,8 @@ enum InboxFilter: Hashable, Identifiable {
     var baseLabel: String {
         switch self {
         case .all: return "전체"
+        case .unsorted: return "미정리"
+        case .bookmarked: return "북마크"
         case .folder(let label): return label
         case .tag(let tag): return tag
         }
@@ -539,13 +545,21 @@ final class AppStore {
     }
 
     func filteredClips(_ filter: InboxFilter) -> [Clip] {
+        activeClips.filter { matches($0, filter: filter) }
+    }
+
+    private func matches(_ clip: Clip, filter: InboxFilter) -> Bool {
         switch filter {
         case .all:
-            return activeClips
+            return true
+        case .unsorted:
+            return clip.state == .unsorted
+        case .bookmarked:
+            return clip.bookmarked
         case .folder(let label):
-            return activeClips.filter { $0.folder == label }
+            return clip.folder == label
         case .tag(let tag):
-            return activeClips.filter { $0.tags.contains(tag) }
+            return clip.tags.contains(tag)
         }
     }
 
@@ -553,9 +567,9 @@ final class AppStore {
         "\(L10n.text(filter.baseLabel)) \(filteredClips(filter).count)"
     }
 
-    /// 인박스 필터 윗줄: 전체 + 이동 가능한 폴더 목록.
-    var inboxFolderFilters: [InboxFilter] {
-        [.all] + destinationFolders.map { .folder($0.label) }
+    /// 인박스 필터 윗줄: 자주 쓰는 스마트 보기 + 이동 가능한 폴더 목록.
+    var inboxScopeFilters: [InboxFilter] {
+        [.all, .unsorted, .bookmarked] + destinationFolders.map { .folder($0.label) }
     }
 
     /// 인박스 필터 아랫줄: 실제 클립에 붙어 있는 태그. 없으면 추천 태그 카탈로그를 보여 준다.
@@ -595,24 +609,32 @@ final class AppStore {
 
     var unsortedClips: [Clip] { activeClips.filter { $0.state == .unsorted } }
 
-    func searchResults(query: String, filter: InboxFilter) -> [Clip] {
-        let term = query.trimmingCharacters(in: .whitespaces).lowercased()
+    func searchResults(
+        query: String,
+        filter: InboxFilter,
+        additionalTextByClipID: [Int: String] = [:]
+    ) -> [Clip] {
+        let term = Self.searchKey(query)
         let matches = term.isEmpty
             ? activeClips
             : activeClips.filter { clip in
-                [clip.title, clip.source, clip.tags.joined(separator: " "), clip.description, clip.memo ?? ""]
-                    .joined(separator: " ").lowercased().contains(term)
+                Self.searchKey([
+                    clip.title,
+                    clip.source,
+                    clip.url,
+                    clip.tags.joined(separator: " "),
+                    clip.description,
+                    clip.memo ?? "",
+                    additionalTextByClipID[clip.id] ?? ""
+                ].joined(separator: " ")).contains(term)
             }
-        let scoped: [Clip]
-        switch filter {
-        case .all:
-            scoped = matches
-        case .folder(let label):
-            scoped = matches.filter { $0.folder == label }
-        case .tag(let tag):
-            scoped = matches.filter { $0.tags.contains(tag) }
-        }
+        let scoped = matches.filter { self.matches($0, filter: filter) }
         return term.isEmpty ? Array(scoped.prefix(3)) : scoped
+    }
+
+    private static func searchKey(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
     }
 
     static func normalizeRecentSearches(_ values: [String]) -> [String] {
@@ -664,6 +686,11 @@ final class AppStore {
         userDefaults.set(recentSearches, forKey: Self.recentSearchesKey)
     }
 
+    func clearRecentSearches() {
+        recentSearches.removeAll()
+        userDefaults.removeObject(forKey: Self.recentSearchesKey)
+    }
+
     // MARK: - 뮤테이션
 
     private struct RuntimeState {
@@ -709,6 +736,14 @@ final class AppStore {
         return commitMutation { update(&clips[index]) }
     }
 
+    private func assign(_ clip: inout Clip, to folder: String) {
+        clip.folder = folder
+        clip.state = nil
+        guard let defaultTag = folders.first(where: { $0.label == folder })?.defaultTag else { return }
+        // 기존 사용자 태그가 이미 12개면 그대로 보존하고, 여유가 있을 때만 기본 태그를 덧붙인다.
+        clip.tags = Array(Self.normalizeTags(clip.tags + [defaultTag]).prefix(12))
+    }
+
     @discardableResult
     func toggleBookmark(id: Int) -> Bool {
         mutate(id: id) { $0.bookmarked.toggle() }
@@ -717,8 +752,7 @@ final class AppStore {
     @discardableResult
     func moveClip(id: Int, to folder: String) -> Bool {
         guard mutate(id: id, {
-            $0.folder = folder
-            $0.state = nil
+            assign(&$0, to: folder)
         }) else { return false }
         showToast(L10n.format("format.moved_to_folder", L10n.text(folder)))
         return true
@@ -731,8 +765,7 @@ final class AppStore {
         guard !activeIDs.isEmpty else { return false }
         guard commitMutation({
             for index in clips.indices where activeIDs.contains(clips[index].id) {
-                clips[index].folder = folder
-                clips[index].state = nil
+                assign(&clips[index], to: folder)
             }
         }) else { return false }
         showToast(L10n.format(
@@ -1132,11 +1165,10 @@ final class AppStore {
             $0.id == clipID && !$0.isInTrash && $0.state == .unsorted
         }) else { return false }
         return commitMutation {
-            clips[index].folder = destination
-            clips[index].state = nil
             if !folders.contains(where: { $0.label == destination }) {
                 folders.append(Folder(icon: "folder", label: destination))
             }
+            assign(&clips[index], to: destination)
         }
     }
 

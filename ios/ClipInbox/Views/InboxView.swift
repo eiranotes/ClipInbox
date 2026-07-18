@@ -51,14 +51,15 @@ struct InboxView: View {
                     }
                 }
 
-                // 윗줄은 폴더, 아랫줄은 태그 필터를 보여 준다.
+                // 윗줄은 스마트 보기와 폴더, 아랫줄은 태그 필터를 보여 준다.
                 TwoRowHorizontalSelection(
-                    topRow: store.inboxFolderFilters.map { item in
+                    topRow: store.inboxScopeFilters.map { item in
                         (store.filterLabel(item), filter == item, { selectFilter(item) })
                     },
                     bottomRow: store.inboxTagFilters.map { item in
                         (store.filterLabel(item), filter == item, { selectFilter(item) })
-                    }
+                    },
+                    topLabel: "보기"
                 )
 
                 if store.activeClips.isEmpty, filter == .all, !dynamicTypeSize.isAccessibilitySize {

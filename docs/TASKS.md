@@ -2,6 +2,7 @@
 
 ## Done
 
+- [x] Add `전체`/`미정리`/`북마크` smart views to Inbox and Search, search clip URLs plus useful link metadata, provide persistent recent-search clearing, and apply folder default tags transactionally on explicit moves and Sort Later classification.
 - [x] Make `모든 데이터 삭제` remove previous/recovery snapshots, app defaults and recent searches, all Share queue/quarantine/image artifacts, decoded image memory, and URL metadata sidecar/cache before showing success.
 - [x] Allow multi-image Photos sharing, preserve every selected original in order, apply Review destination/memo to the full selection, atomically promote staged payload/image batches, cap one invocation at 20 while keeping the 200-item backlog, clean interrupted staging, and show off-main-thread save progress.
 - [x] Show Sort Later with the shared collapsed Clip Detail overview and pinned folder/classify controls; add filter-scoped Inbox multi-selection with select all/deselect all, atomic batch folder move, confirmed batch Trash move, and grouped five-second Undo.
