@@ -9,7 +9,7 @@ enum ClipDetailCopyKind: Equatable {
         switch clip.type {
         case .image, .screenshot:
             return clip.hasImageReference ? .image : nil
-        case .link, .memo:
+        case .link, .memo, .file:
             return clip.url.isEmpty ? nil : .link
         }
     }
@@ -67,6 +67,10 @@ struct ClipDetailOverview: View {
                     .frame(height: resolvedImageHeight)
             }
 
+            if clip.attachments.count > 1 || clip.attachments.contains(where: { $0.kind == .file }) {
+                ClipAttachmentSummary(attachments: clip.attachments)
+            }
+
             // 링크 메타데이터가 있으면 별도의 접힌 정보 섹션이 요약을 담당한다.
             if !clip.description.isEmpty, metadata.result(for: clip.id) == nil {
                 Text(L10n.text(clip.description, locale: locale))
@@ -86,6 +90,45 @@ struct ClipDetailOverview: View {
         ClipThumbnail(clip: clip, contentMode: .fit)
             .frame(maxWidth: .infinity)
             .frame(height: resolvedImageHeight)
+    }
+}
+
+struct ClipAttachmentSummary: View {
+    let attachments: [SharedClipAttachment]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Tokens.rowGap) {
+            Text(L10n.format("format.attachment_count", attachments.count))
+                .font(Tokens.metaBold)
+                .foregroundStyle(Tokens.textSecondary)
+                .accessibilityAddTraits(.isHeader)
+
+            ForEach(attachments.prefix(5)) { attachment in
+                HStack(spacing: Tokens.cardGap) {
+                    Image(systemName: attachment.kind == .image ? "photo" : "doc")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Tokens.textSecondary)
+                        .frame(width: Tokens.iconColumn)
+                    Text(attachment.originalFileName)
+                        .font(Tokens.body)
+                        .foregroundStyle(Tokens.textPrimary)
+                        .lineLimit(1)
+                    Spacer(minLength: Tokens.rowGap)
+                    Text(ByteCountFormatter.string(fromByteCount: attachment.byteCount, countStyle: .file))
+                        .font(Tokens.meta)
+                        .foregroundStyle(Tokens.textTertiary)
+                }
+                .frame(minHeight: Tokens.touchTarget)
+            }
+
+            if attachments.count > 5 {
+                Text(L10n.format("format.more_attachments", attachments.count - 5))
+                    .font(Tokens.meta)
+                    .foregroundStyle(Tokens.textSecondary)
+            }
+        }
+        .padding(Tokens.cardPad)
+        .tokenSurface(fill: Tokens.bgCardMuted, radius: Tokens.radiusInput)
     }
 }
 

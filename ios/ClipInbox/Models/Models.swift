@@ -4,7 +4,7 @@ import Foundation
 // 필드를 추가/변경할 때는 scripts/qa.mjs 쪽 normalizeData와 함께 맞춘다.
 
 enum ClipType: String, Codable, CaseIterable {
-    case link, image, memo, screenshot
+    case link, image, memo, screenshot, file
 
     var label: String {
         switch self {
@@ -12,6 +12,7 @@ enum ClipType: String, Codable, CaseIterable {
         case .image: return "이미지"
         case .memo: return "메모"
         case .screenshot: return "스크린샷"
+        case .file: return "파일"
         }
     }
 
@@ -21,6 +22,7 @@ enum ClipType: String, Codable, CaseIterable {
         case .image: return "photo"
         case .memo: return "note.text"
         case .screenshot: return "camera"
+        case .file: return "doc.on.doc"
         }
     }
 }
@@ -50,6 +52,7 @@ struct Clip: Identifiable, Codable, Equatable {
     var folderSuggestions: [String]
     var image: String?
     var sharedImageName: String?
+    var attachments: [SharedClipAttachment]
     var sharePayloadID: UUID?
     var description: String
     var memo: String?
@@ -59,6 +62,7 @@ struct Clip: Identifiable, Codable, Equatable {
     init(id: Int, type: ClipType, state: ClipState? = nil, title: String, source: String,
          url: String, time: String, folder: String, tags: [String] = [],
          folderSuggestions: [String] = [], image: String? = nil, sharedImageName: String? = nil,
+         attachments: [SharedClipAttachment] = [],
          sharePayloadID: UUID? = nil,
          description: String = "",
          memo: String? = nil, bookmarked: Bool = false, deletedAt: Date? = nil) {
@@ -74,6 +78,7 @@ struct Clip: Identifiable, Codable, Equatable {
         self.folderSuggestions = folderSuggestions
         self.image = image
         self.sharedImageName = sharedImageName
+        self.attachments = attachments
         self.sharePayloadID = sharePayloadID
         self.description = description
         self.memo = memo
@@ -95,6 +100,7 @@ struct Clip: Identifiable, Codable, Equatable {
         folderSuggestions = (try? container.decodeIfPresent([String].self, forKey: .folderSuggestions)) ?? []
         image = try? container.decodeIfPresent(String.self, forKey: .image)
         sharedImageName = try? container.decodeIfPresent(String.self, forKey: .sharedImageName)
+        attachments = (try? container.decodeIfPresent([SharedClipAttachment].self, forKey: .attachments)) ?? []
         sharePayloadID = try? container.decodeIfPresent(UUID.self, forKey: .sharePayloadID)
         description = (try? container.decodeIfPresent(String.self, forKey: .description)) ?? ""
         memo = try? container.decodeIfPresent(String.self, forKey: .memo)
@@ -117,6 +123,19 @@ struct Clip: Identifiable, Codable, Equatable {
 
     var hasImageReference: Bool {
         image?.isEmpty == false || sharedImageName?.isEmpty == false
+    }
+
+    var storedAttachmentURLs: [(attachment: SharedClipAttachment, url: URL)] {
+        attachments.compactMap { attachment in
+            guard let fileName = attachment.storedFileName,
+                  let url = SharedClipQueue.attachmentURL(named: fileName),
+                  FileManager.default.fileExists(atPath: url.path) else { return nil }
+            return (attachment, url)
+        }
+    }
+
+    var storedFileNames: Set<String> {
+        Set(attachments.compactMap(\.storedFileName) + [sharedImageName].compactMap { $0 })
     }
 
     var isInTrash: Bool { deletedAt != nil }

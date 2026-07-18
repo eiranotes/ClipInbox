@@ -2,6 +2,7 @@
 
 ## Done
 
+- [x] Add confirmed Delete to Sort Later with five-second Undo, and group up to 20 images/files from one Share invocation into one clip while preserving and re-sharing every original attachment atomically.
 - [x] Prepare the 1.1 update as `MARKETING_VERSION 1.1.0` build `2`, keep app/extension versions synchronized, and assert both values from the archived bundles in the local release gate.
 - [x] Add original-image re-sharing, actionable empty states, semantic and VoiceOver-announced toasts, explicit selection counts/states, and cancellation-safe Photo capture loading with a downsampled preview and removable error state.
 - [x] Add `전체`/`미정리`/`북마크` smart views to Inbox and Search, search clip URLs plus useful link metadata, provide persistent recent-search clearing, and apply folder default tags transactionally on explicit moves and Sort Later classification.

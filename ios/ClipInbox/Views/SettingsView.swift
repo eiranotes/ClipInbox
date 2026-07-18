@@ -118,7 +118,7 @@ struct SettingsView: View {
             }
             Button("취소", role: .cancel) {}
         } message: {
-            Text("클립, 폴더, 설정, 원본 이미지, 검색 기록, 공유 대기 항목과 복구 사본을 모두 삭제합니다. 이 작업은 되돌릴 수 없습니다.")
+            Text("클립, 폴더, 설정, 원본 첨부 파일, 검색 기록, 공유 대기 항목과 복구 사본을 모두 삭제합니다. 이 작업은 되돌릴 수 없습니다.")
         }
     }
 
@@ -466,7 +466,7 @@ struct SettingDetailView: View {
             StatePanel(
                 systemImage: "exclamationmark.shield",
                 title: "평문 JSON 백업",
-                message: "클립, 폴더와 현재 설정만 포함합니다. 원본 이미지, 최근 검색, 태그 카탈로그와 링크 열기 설정은 포함하지 않으며 선택한 파일 위치에 암호화되지 않은 사본이 남습니다."
+                message: "클립, 폴더와 현재 설정만 포함합니다. 원본 첨부 파일, 최근 검색, 태그 카탈로그와 링크 열기 설정은 포함하지 않으며 선택한 파일 위치에 암호화되지 않은 사본이 남습니다."
             )
             Button {
                 do {
@@ -485,10 +485,10 @@ struct SettingDetailView: View {
                 BoardSection(title: "기기 저장 공간") {
                     VStack(spacing: 0) {
                         storageRow("클립 데이터", value: byteText(storageSummary.snapshotBytes))
-                        storageRow("원본 이미지", value: L10n.format(
+                        storageRow("원본 첨부 파일", value: L10n.format(
                             "format.storage_images",
-                            storageSummary.originalImageCount,
-                            byteText(storageSummary.originalImageBytes)
+                            storageSummary.originalAttachmentCount,
+                            byteText(storageSummary.originalAttachmentBytes)
                         ))
                         storageRow("가져오기 대기", value: L10n.format(
                             "format.storage_pending",
@@ -501,7 +501,7 @@ struct SettingDetailView: View {
                 StatePanel(
                     systemImage: "info.circle",
                     title: "원본 보존 정책",
-                    message: "이미지는 원본 형식과 바이트를 유지합니다. 삭제한 클립은 휴지통에서 복원할 수 있으며 30일 후 원본 이미지와 함께 자동 삭제됩니다."
+                    message: "이미지와 파일은 원본 형식과 바이트를 유지합니다. 삭제한 클립은 휴지통에서 복원할 수 있으며 30일 후 원본 첨부 파일과 함께 자동 삭제됩니다."
                 )
             } else if let errorMessage {
                 StatePanel(systemImage: "externaldrive.badge.exclamationmark",

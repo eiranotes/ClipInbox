@@ -55,7 +55,7 @@ struct ShareOptionsSheet: View {
                             store.showToast("링크를 복사했습니다")
                         }
 
-                        if let originalImageItem = originalImageItem(for: clip) {
+                        if clip.attachments.isEmpty, let originalImageItem = originalImageItem(for: clip) {
                             let previewImage = Image(uiImage: ClipImageResolver.image(for: clip))
                             ShareLink(
                                 item: originalImageItem,
@@ -86,6 +86,24 @@ struct ShareOptionsSheet: View {
                         } else {
                             shareRowLabel(systemImage: "photo", label: "이미지 카드 공유", value: "카드 생성 중…")
                                 .opacity(0.5)
+                        }
+                    }
+                }
+
+
+                if !clip.storedAttachmentURLs.isEmpty {
+                    BoardSection(title: "첨부 파일") {
+                        VStack(spacing: 0) {
+                            ForEach(clip.storedAttachmentURLs, id: \.attachment.id) { item in
+                                ShareLink(item: item.url) {
+                                    shareRowLabel(
+                                        systemImage: item.attachment.kind == .image ? "photo" : "doc",
+                                        label: item.attachment.originalFileName,
+                                        value: "원본 파일 전송"
+                                    )
+                                }
+                                .buttonStyle(ResponsivePressButtonStyle())
+                            }
                         }
                     }
                 }
@@ -123,8 +141,12 @@ struct ShareOptionsSheet: View {
                 .foregroundStyle(Tokens.textPrimary)
                 .frame(width: Tokens.iconColumn, height: Tokens.destinationIcon)
             VStack(alignment: .leading, spacing: Tokens.space1) {
-                Text(label).font(Tokens.bodySemibold).foregroundStyle(Tokens.textPrimary)
-                Text(value).font(Tokens.meta).foregroundStyle(Tokens.textSecondary)
+                Text(L10n.text(label, locale: locale))
+                    .font(Tokens.bodySemibold)
+                    .foregroundStyle(Tokens.textPrimary)
+                Text(L10n.text(value, locale: locale))
+                    .font(Tokens.meta)
+                    .foregroundStyle(Tokens.textSecondary)
             }
             Spacer(minLength: Tokens.rowGap)
             Image(systemName: "chevron.right")

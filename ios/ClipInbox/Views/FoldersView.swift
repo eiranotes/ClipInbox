@@ -51,7 +51,7 @@ struct TrashView: View {
             StatePanel(
                 systemImage: "clock.badge.exclamationmark",
                 title: "30일 동안 보관됩니다",
-                message: "삭제된 클립은 휴지통에서 복원할 수 있으며 30일이 지나면 원본 이미지와 함께 자동으로 영구 삭제됩니다.",
+                message: "삭제된 클립은 휴지통에서 복원할 수 있으며 30일이 지나면 원본 첨부 파일과 함께 자동으로 영구 삭제됩니다.",
                 isAccent: true
             )
             .padding(Tokens.panelPad)
@@ -87,7 +87,7 @@ struct TrashView: View {
             }
             Button("취소", role: .cancel) {}
         } message: {
-            Text("휴지통의 클립과 원본 이미지를 모두 삭제합니다. 이 작업은 되돌릴 수 없습니다.")
+            Text("휴지통의 클립과 원본 첨부 파일을 모두 삭제합니다. 이 작업은 되돌릴 수 없습니다.")
         }
     }
 }

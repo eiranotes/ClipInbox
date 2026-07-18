@@ -6,10 +6,13 @@ struct SortView: View {
     @Environment(URLMetadataCoordinator.self) private var metadata
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var total = 0
     @State private var completed = 0
     @State private var choice = ""
+    @State private var deleteCandidate: Clip?
+    @State private var localDeletionID: UUID?
 
     var body: some View {
         let unsorted = store.unsortedClips
@@ -45,10 +48,36 @@ struct SortView: View {
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let clip = unsorted.first {
-                classificationBar(for: clip)
-                    .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+            if unsorted.first != nil || store.pendingDeletion != nil {
+                VStack(spacing: 0) {
+                    if let pendingDeletion = store.pendingDeletion {
+                        UndoDeletionBanner(title: pendingDeletion.displayTitle) {
+                            undoDeletion(pendingDeletion)
+                        }
+                        .padding(.vertical, Tokens.rowGap)
+                        .background(Tokens.bgCardMuted)
+                    }
+                    if let clip = unsorted.first {
+                        classificationBar(for: clip)
+                    }
+                }
+                .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
             }
+        }
+        .alert(
+            "삭제 확인",
+            isPresented: Binding(
+                get: { deleteCandidate != nil },
+                set: { if !$0 { deleteCandidate = nil } }
+            ),
+            presenting: deleteCandidate
+        ) { clip in
+            Button("삭제 확인", role: .destructive) {
+                delete(clip)
+            }
+            Button("취소", role: .cancel) {}
+        } message: { _ in
+            Text("이 클립은 휴지통으로 이동하며 5초 동안 바로 되돌릴 수 있습니다.")
         }
         .onAppear {
             total = store.unsortedClips.count
@@ -78,16 +107,19 @@ struct SortView: View {
                 choice = option
             }
 
-            Button {
-                withAnimation(reduceMotion ? nil : .easeOut(duration: Tokens.motionBase)) {
-                    guard store.applySort(clipID: clip.id, to: selected) else { return }
-                    completed += 1
-                    syncChoice()
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(spacing: Tokens.rowGap) {
+                        deleteButton(for: clip)
+                        classifyButton(clip: clip, destination: selected)
+                    }
+                } else {
+                    HStack(spacing: Tokens.rowGap) {
+                        deleteButton(for: clip)
+                        classifyButton(clip: clip, destination: selected)
+                    }
                 }
-            } label: {
-                Text(L10n.format("format.sort_to_folder", L10n.text(selected)))
             }
-            .buttonStyle(PrimaryBoxButtonStyle())
         }
         .padding(.horizontal, Tokens.screenX)
         .padding(.top, Tokens.cardPad)
@@ -98,6 +130,47 @@ struct SortView: View {
                     Tokens.borderSoft.frame(height: Tokens.borderChipWidth)
                 }
         )
+    }
+
+    private func deleteButton(for clip: Clip) -> some View {
+        Button {
+            deleteCandidate = clip
+        } label: {
+            Label("삭제", systemImage: "trash")
+        }
+        .buttonStyle(SecondaryBoxButtonStyle(isDanger: true))
+    }
+
+    private func classifyButton(clip: Clip, destination: String) -> some View {
+        Button {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: Tokens.motionBase)) {
+                guard store.applySort(clipID: clip.id, to: destination) else { return }
+                completed += 1
+                syncChoice()
+            }
+        } label: {
+            Text(L10n.format("format.sort_to_folder", L10n.text(destination)))
+        }
+        .buttonStyle(PrimaryBoxButtonStyle())
+    }
+
+    private func delete(_ clip: Clip) {
+        withAnimation(reduceMotion ? nil : .easeOut(duration: Tokens.motionBase)) {
+            guard store.deleteClip(id: clip.id) else { return }
+            completed += 1
+            localDeletionID = store.pendingDeletion?.id
+            deleteCandidate = nil
+            syncChoice()
+        }
+    }
+
+    private func undoDeletion(_ deletion: AppStore.PendingDeletion) {
+        guard store.undoDelete() else { return }
+        if localDeletionID == deletion.id {
+            completed = max(0, completed - 1)
+            localDeletionID = nil
+            syncChoice()
+        }
     }
 
     private func sortChoices(for clip: Clip) -> [String] {

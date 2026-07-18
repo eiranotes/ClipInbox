@@ -1074,7 +1074,7 @@ final class AppStoreTests: XCTestCase {
         ).count, 1)
     }
 
-    func testShareQueueBatchEnqueuesAndImportsEverySelectedImage() throws {
+    func testShareQueueKeepsLegacyMultiPayloadImageBatchImportCompatible() throws {
         let container = temporaryDirectory.appendingPathComponent("BatchImageQueue", isDirectory: true)
         try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
         let image = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8)).image { context in
@@ -1123,6 +1123,110 @@ final class AppStoreTests: XCTestCase {
         }
         XCTAssertTrue(promotedURLs.allSatisfy { $0.path.contains("SharedImages") })
         XCTAssertTrue(promotedURLs.allSatisfy { FileManager.default.fileExists(atPath: $0.path) })
+    }
+
+    func testShareAttachmentBundleImportsAsOneClipWithEveryOriginal() throws {
+        let container = temporaryDirectory.appendingPathComponent("GroupedAttachmentQueue", isDirectory: true)
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8)).image { context in
+            UIColor.systemTeal.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+        }
+        let imageAsset = try SharedImageAsset(
+            validatingData: try XCTUnwrap(image.pngData()),
+            typeIdentifier: UTType.png.identifier
+        )
+        let pdfURL = temporaryDirectory.appendingPathComponent("reference.pdf")
+        try Data("%PDF-1.4\n%%EOF".utf8).write(to: pdfURL)
+        let attachmentAssets = [
+            SharedAttachmentAsset(
+                imageAsset: imageAsset,
+                originalFileName: "cover.png",
+                typeIdentifier: UTType.png.identifier
+            ),
+            SharedAttachmentAsset(
+                imageAsset: imageAsset,
+                originalFileName: "detail.png",
+                typeIdentifier: UTType.png.identifier
+            ),
+            try SharedAttachmentAsset(
+                validatingFileAt: pdfURL,
+                typeIdentifier: UTType.pdf.identifier,
+                originalFileName: "reference.pdf"
+            )
+        ]
+        let payload = SharedClipPayload(
+            type: .file,
+            title: "cover.png 외 2개",
+            source: "파일"
+        )
+
+        try SharedClipQueue.enqueueBatch(
+            [SharedClipQueue.BatchItem(payload: payload, attachmentAssets: attachmentAssets)],
+            containerURL: container
+        )
+
+        let queued = try SharedClipQueue.pendingItems(containerURL: container)
+        XCTAssertEqual(queued.count, 1)
+        XCTAssertEqual(queued.first?.payload.id, payload.id)
+        XCTAssertEqual(queued.first?.payload.attachments.count, 3)
+        XCTAssertEqual(queued.first?.payload.attachments.map(\.originalFileName), [
+            "cover.png", "detail.png", "reference.pdf"
+        ])
+        XCTAssertEqual(queued.first?.payload.type, .file)
+        XCTAssertNotNil(queued.first?.payload.sharedImageName)
+
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+        store.importSharedClips(containerURL: container)
+
+        let imported = try XCTUnwrap(store.clips.first(where: { $0.sharePayloadID == payload.id }))
+        XCTAssertEqual(store.clips.filter { $0.sharePayloadID == payload.id }.count, 1)
+        XCTAssertEqual(imported.type, .file)
+        XCTAssertEqual(imported.attachments.count, 3)
+        let importedURLs = imported.attachments.compactMap { attachment in
+            attachment.storedFileName.flatMap {
+                SharedClipQueue.attachmentURL(named: $0, containerURL: container)
+            }
+        }
+        XCTAssertEqual(importedURLs.count, 3)
+        XCTAssertTrue(importedURLs.allSatisfy {
+            $0.path.contains("SharedImages")
+                && FileManager.default.fileExists(atPath: $0.path)
+        })
+        XCTAssertTrue(try SharedClipQueue.pendingItems(containerURL: container).isEmpty)
+    }
+
+    func testShareQueueRejectsAttachmentBundleAboveInvocationLimit() throws {
+        let container = temporaryDirectory.appendingPathComponent("OversizedAttachmentBundle", isDirectory: true)
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 4, height: 4)).image { context in
+            UIColor.systemIndigo.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 4, height: 4))
+        }
+        let imageAsset = try SharedImageAsset(
+            validatingData: try XCTUnwrap(image.pngData()),
+            typeIdentifier: UTType.png.identifier
+        )
+        let attachment = SharedAttachmentAsset(
+            imageAsset: imageAsset,
+            originalFileName: "item.png",
+            typeIdentifier: UTType.png.identifier
+        )
+        let item = SharedClipQueue.BatchItem(
+            payload: SharedClipPayload(type: .image, title: "Too many", source: "test"),
+            attachmentAssets: Array(
+                repeating: attachment,
+                count: SharedClipQueue.maxShareBatchItemCount + 1
+            )
+        )
+
+        XCTAssertThrowsError(try SharedClipQueue.enqueueBatch([item], containerURL: container)) { error in
+            XCTAssertEqual(
+                error as? SharedClipQueue.QueueError,
+                .batchItemLimitReached(SharedClipQueue.maxShareBatchItemCount)
+            )
+        }
+        XCTAssertTrue(try SharedClipQueue.pendingItems(containerURL: container).isEmpty)
     }
 
     func testShareImportShowsNewerInvocationsFirstWithoutReversingEachSelection() throws {
@@ -1438,12 +1542,12 @@ final class AppStoreTests: XCTestCase {
         let store = AppStore(fileURL: dataURL, userDefaults: defaults)
         let app = try store.storageSummary(containerURL: container)
 
-        XCTAssertEqual(shared.originalImageCount, 1)
-        XCTAssertGreaterThan(shared.originalImageBytes, 0)
+        XCTAssertEqual(shared.originalAttachmentCount, 1)
+        XCTAssertGreaterThan(shared.originalAttachmentBytes, 0)
         XCTAssertEqual(shared.pendingCount, 1)
         XCTAssertGreaterThan(shared.pendingBytes, asset.byteCount)
         XCTAssertEqual(shared.quarantinedCount, 1)
         XCTAssertGreaterThan(app.snapshotBytes, 0)
-        XCTAssertEqual(app.originalImageCount, shared.originalImageCount)
+        XCTAssertEqual(app.originalAttachmentCount, shared.originalAttachmentCount)
     }
 }

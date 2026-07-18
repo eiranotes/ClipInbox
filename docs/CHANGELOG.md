@@ -4,6 +4,8 @@
 
 ### Added
 
+- Sort Later now offers a confirmed Delete action beside classification and keeps the shared five-second Undo visible while moving to the next unclassified clip.
+- Multi-image and Files shares now keep every selected original as an attachment inside one clip; Clip Detail lists the bundle and can re-share each original file.
 - Prepared the 1.1 update as version `1.1.0 (2)` for both the app and Share Extension; the local release gate now rejects stale or mismatched archive versions.
 - Inbox and Search now offer `전체`, `미정리`, and `북마크` smart views before the existing folder scopes.
 - Search now matches saved URLs and useful extracted link metadata, including summaries, creators, topics, and stable nested attributes.
@@ -13,6 +15,9 @@
 
 ### Changed
 
+- One Share invocation now creates one clip instead of one clip per selected image. Up to 20 attachments are staged and promoted atomically, with legacy separate-image batches still importable.
+- Storage accounting, full reset, Trash expiry, and permanent deletion now include original non-image attachments as well as images.
+- The current native suite passes 88/88 tests on the iPhone 17 Pro iOS 26.5 simulator, including grouped attachment import, the 20-item invocation cap, and embedded Share Extension validation.
 - XcodeGen synchronization checks now compare the generated project's before/after state, allowing an intentional project-version change to be verified before it is committed while still rejecting generator drift.
 - The complete 1.1 local gate passes 86/86 simulator tests and an unsigned generic-iOS Release archive with matching app/extension versions, privacy manifests, and Korean, English, and Japanese resources.
 - Explicit single/batch folder moves and Sort Later classification now append the destination folder's default tag in the same durable transaction, without duplicating an existing tag or displacing 12 existing user tags.

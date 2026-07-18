@@ -53,6 +53,28 @@ targets:
   ClipInboxShare:
     type: app-extension
     platform: iOS
+    info:
+      path: ClipShareExtension/Info.plist
+      properties:
+        CFBundleDisplayName: "Clip Inbox"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        LSRequiresIPhoneOS: true
+        MinimumOSVersion: "$(IPHONEOS_DEPLOYMENT_TARGET)"
+        NSExtension:
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationDictionaryVersion: 2
+              NSExtensionActivationSupportsFileWithMaxCount: 20
+              NSExtensionActivationSupportsImageWithMaxCount: 20
+              NSExtensionActivationSupportsText: true
+              NSExtensionActivationSupportsWebPageWithMaxCount: 1
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationUsesStrictMatching: false
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).ShareViewController"
+        UIAppFonts:
+          - Pretendard-Regular.otf
     sources:
       - path: ClipShareExtension
       - path: ClipInbox/Shared
@@ -62,8 +84,6 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.eiradev.ClipInbox.Share
         PRODUCT_NAME: ClipInboxShare
         TARGETED_DEVICE_FAMILY: "1"
-        GENERATE_INFOPLIST_FILE: NO
-        INFOPLIST_FILE: ClipShareExtension/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: ShareExtensionIcon
         CODE_SIGN_ENTITLEMENTS: ClipShareExtension/ClipInboxShare.entitlements
         DEVELOPMENT_TEAM: 83BB7YWQHU

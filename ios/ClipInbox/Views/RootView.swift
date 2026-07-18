@@ -211,7 +211,7 @@ private struct PersistentTrustBanner: View {
     }
 }
 
-private struct UndoDeletionBanner: View {
+struct UndoDeletionBanner: View {
     let title: String
     let undo: () -> Void
 

@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-07-18: One Share Invocation Becomes One Clip
+
+Decision: Treat the user's Share action as the clip boundary. Collect up to 20 image or Files providers in their supplied order, create one payload and one app clip, and retain each original as attachment metadata plus an atomically staged file. An all-image bundle remains an image clip with its first image as the representative thumbnail; a mixed or non-image bundle uses the file clip type. Keep legacy multi-payload image batches import-compatible. Add confirmed Delete beside the pinned Sort Later classify action and route it through the existing Trash/five-second Undo transaction.
+
+Why: A single multi-selection followed by one Share action expresses one capture intent; turning that action into several unrelated Inbox rows makes later organization repetitive. Preserving every original inside the grouped clip avoids solving row count by discarding content. Sort Later also needs a direct cleanup path when the current unclassified item is not worth organizing.
+
+Impact: Quick and Review modes now save one clip and apply one folder/memo choice. The queue still stages all bytes before one directory promotion, enforces 50 MB per attachment plus 250 MB accumulated storage, and caps one invocation at 20 attachments. Detail and Sort show attachment names/counts, original files can be re-shared individually, storage/reset/Trash cleanup include non-image attachments, and deleting during Sort advances progress while keeping immediate Undo visible.
+
 ## 2026-07-18: The First Update Is Version 1.1.0 Build 2
 
 Decision: Keep the user-reported `1.0.0 (1)` App Review submission untouched and prepare the next repository candidate as `1.1.0 (2)`. The app and Share Extension inherit one shared XcodeGen version, and the release script rejects an archive unless both bundles contain the exact expected marketing and build versions.
@@ -32,13 +40,13 @@ Why: The previous implementation committed an empty snapshot through the normal 
 
 Impact: The reset is intentionally irreversible and its confirmation names the expanded scope. Repository failure leaves side stores untouched; later cleanup failure is reported as retryable partial cleanup. Focused tests prove the current snapshot contains no old clip bytes and previous/recovery, queue, search, and metadata artifacts do not resurrect after reload.
 
-## 2026-07-17: A Multi-Image Share Is One Atomic Intake Batch
+## 2026-07-17: A Multi-Image Share Is One Atomic Intake Batch (Superseded by Grouped Clips)
 
 Decision: Accept up to 20 images in one Share invocation while keeping the separate pending-queue ceiling at 200 items/250 MB. Collect every image provider in selection order and create one payload per image. Quick mode saves the complete selection immediately; Review mode applies the chosen folder and memo to every selected image. Write originals and payloads inside a hidden staging directory, then expose the complete batch with one atomic directory promotion.
 
 Why: The extension previously declared an image maximum of one in its activation rule, so iOS could hide it when two or more Photos items were selected. Its loader also returned after the first image provider, which discarded later selections even if the extension opened. Repeating the existing single-item enqueue would additionally allow a late capacity failure to leave only part of a user's selection queued.
 
-Impact: Each selected image becomes an independent clip while retaining the existing 50 MB/100 MP per-image and 250 MB/200-item pending-queue protections. The extension shows localized multi-item counts and preserves the one-image copy and confirmation path. Interrupted staging remains invisible, is cleaned after 24 hours, and cannot leave a partially importable selection.
+Impact: This established the atomic staging and capacity protections still used today. The 2026-07-18 grouped-clip decision supersedes only the one-payload-per-image product boundary; interrupted staging remains invisible, is cleaned after 24 hours, and cannot leave a partially importable selection.
 
 ## 2026-07-16: Classification Keeps Detail Context While Batch Actions Stay Contextual
 

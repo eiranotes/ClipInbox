@@ -33,6 +33,37 @@ enum SharedClipType: String, Codable, Sendable {
     case link
     case text
     case image
+    case file
+}
+
+enum SharedClipAttachmentKind: String, Codable, Sendable {
+    case image
+    case file
+}
+
+struct SharedClipAttachment: Codable, Equatable, Identifiable, Sendable {
+    var id: UUID
+    var kind: SharedClipAttachmentKind
+    var originalFileName: String
+    var storedFileName: String?
+    var typeIdentifier: String?
+    var byteCount: Int64
+
+    init(
+        id: UUID = UUID(),
+        kind: SharedClipAttachmentKind,
+        originalFileName: String,
+        storedFileName: String? = nil,
+        typeIdentifier: String? = nil,
+        byteCount: Int64 = 0
+    ) {
+        self.id = id
+        self.kind = kind
+        self.originalFileName = originalFileName
+        self.storedFileName = storedFileName
+        self.typeIdentifier = typeIdentifier
+        self.byteCount = byteCount
+    }
 }
 
 struct SharedClipPayload: Codable, Identifiable, Sendable {
@@ -43,6 +74,7 @@ struct SharedClipPayload: Codable, Identifiable, Sendable {
     var url: String
     var text: String
     var sharedImageName: String?
+    var attachments: [SharedClipAttachment]
     var folder: String
     var tags: [String]
     var memo: String
@@ -56,6 +88,7 @@ struct SharedClipPayload: Codable, Identifiable, Sendable {
         url: String = "",
         text: String = "",
         sharedImageName: String? = nil,
+        attachments: [SharedClipAttachment] = [],
         folder: String = "인박스",
         tags: [String] = [],
         memo: String = "",
@@ -68,10 +101,27 @@ struct SharedClipPayload: Codable, Identifiable, Sendable {
         self.url = url
         self.text = text
         self.sharedImageName = sharedImageName
+        self.attachments = attachments
         self.folder = folder
         self.tags = tags
         self.memo = memo
         self.createdAt = createdAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        type = try container.decode(SharedClipType.self, forKey: .type)
+        title = try container.decode(String.self, forKey: .title)
+        source = try container.decode(String.self, forKey: .source)
+        url = try container.decodeIfPresent(String.self, forKey: .url) ?? ""
+        text = try container.decodeIfPresent(String.self, forKey: .text) ?? ""
+        sharedImageName = try container.decodeIfPresent(String.self, forKey: .sharedImageName)
+        attachments = try container.decodeIfPresent([SharedClipAttachment].self, forKey: .attachments) ?? []
+        folder = try container.decodeIfPresent(String.self, forKey: .folder) ?? "인박스"
+        tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+        memo = try container.decodeIfPresent(String.self, forKey: .memo) ?? ""
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
     }
 }
 
@@ -88,6 +138,20 @@ enum SharedImageAssetError: LocalizedError, Equatable, Sendable {
             return SharedL10n.format("format.image_too_large", maxMegabytes)
         case .tooManyPixels(let maxMegapixels):
             return SharedL10n.format("format.image_too_many_pixels", maxMegapixels)
+        }
+    }
+}
+
+enum SharedAttachmentAssetError: LocalizedError, Equatable, Sendable {
+    case unsupported
+    case tooLarge(maxMegabytes: Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .unsupported:
+            return SharedL10n.text("지원하는 첨부 파일을 읽을 수 없습니다.")
+        case .tooLarge(let maxMegabytes):
+            return SharedL10n.format("format.attachment_too_large", maxMegabytes)
         }
     }
 }
@@ -232,12 +296,130 @@ struct SharedImageAsset: Equatable, Sendable {
     }
 }
 
+/// 이미지와 일반 파일을 같은 공유 호출의 한 클립에 묶기 위한 원본 첨부 파일이다.
+/// 이미지는 기존 픽셀/형식 검증을 그대로 거치고, 일반 파일은 크기와 정규 파일 여부를
+/// 확인한 뒤 원본 바이트를 staging 디렉터리로 복사한다.
+struct SharedAttachmentAsset: Sendable {
+    static let maxBytes = SharedImageAsset.maxBytes
+
+    private enum Source: Sendable {
+        case image(SharedImageAsset)
+        case file(URL, removeAfterUse: Bool)
+    }
+
+    private let source: Source
+    let id: UUID
+    let kind: SharedClipAttachmentKind
+    let originalFileName: String
+    let typeIdentifier: String?
+    let fileExtension: String
+    let byteCount: Int64
+
+    init(
+        imageAsset: SharedImageAsset,
+        originalFileName: String? = nil,
+        typeIdentifier: String? = nil,
+        id: UUID = UUID()
+    ) {
+        source = .image(imageAsset)
+        self.id = id
+        kind = .image
+        self.typeIdentifier = typeIdentifier
+        fileExtension = imageAsset.fileExtension
+        byteCount = imageAsset.byteCount
+        self.originalFileName = Self.displayFileName(
+            originalFileName,
+            fallback: "image.\(imageAsset.fileExtension)"
+        )
+    }
+
+    init(
+        validatingFileAt url: URL,
+        typeIdentifier: String? = nil,
+        originalFileName: String? = nil,
+        removeAfterUse: Bool = false,
+        id: UUID = UUID()
+    ) throws {
+        let values = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
+        guard values.isRegularFile == true, let fileSize = values.fileSize, fileSize > 0 else {
+            throw SharedAttachmentAssetError.unsupported
+        }
+        guard Int64(fileSize) <= Self.maxBytes else {
+            throw SharedAttachmentAssetError.tooLarge(maxMegabytes: Int(Self.maxBytes / 1_024 / 1_024))
+        }
+        let candidates = [
+            typeIdentifier.flatMap { UTType($0)?.preferredFilenameExtension },
+            url.pathExtension,
+            originalFileName.map { ($0 as NSString).pathExtension }
+        ]
+        let resolvedExtension = candidates.compactMap(SharedClipQueue.safeAttachmentFileExtension).first ?? "bin"
+        source = .file(url, removeAfterUse: removeAfterUse)
+        self.id = id
+        kind = .file
+        self.typeIdentifier = typeIdentifier
+        fileExtension = resolvedExtension
+        byteCount = Int64(fileSize)
+        self.originalFileName = Self.displayFileName(
+            originalFileName ?? url.lastPathComponent,
+            fallback: "file.\(resolvedExtension)"
+        )
+    }
+
+    var attachment: SharedClipAttachment {
+        SharedClipAttachment(
+            id: id,
+            kind: kind,
+            originalFileName: originalFileName,
+            storedFileName: "\(id.uuidString).\(fileExtension)",
+            typeIdentifier: typeIdentifier,
+            byteCount: byteCount
+        )
+    }
+
+    func write(to destination: URL) throws {
+        switch source {
+        case .image(let imageAsset):
+            try imageAsset.write(to: destination)
+        case .file(let sourceURL, _):
+            let temporary = destination.deletingLastPathComponent()
+                .appendingPathComponent(".\(UUID().uuidString).tmp")
+            try FileManager.default.copyItem(at: sourceURL, to: temporary)
+            do {
+                try FileManager.default.moveItem(at: temporary, to: destination)
+                try FileManager.default.setAttributes(
+                    [.protectionKey: FileProtectionType.completeUnlessOpen],
+                    ofItemAtPath: destination.path
+                )
+            } catch {
+                try? FileManager.default.removeItem(at: temporary)
+                throw error
+            }
+        }
+    }
+
+    func cleanupSourceIfNeeded() {
+        switch source {
+        case .image(let imageAsset):
+            imageAsset.cleanupSourceIfNeeded()
+        case .file(let url, let removeAfterUse):
+            if removeAfterUse { try? FileManager.default.removeItem(at: url) }
+        }
+    }
+
+    private static func displayFileName(_ value: String?, fallback: String) -> String {
+        let candidate = (value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let leaf = (candidate as NSString).lastPathComponent
+        return leaf.isEmpty ? fallback : String(leaf.prefix(200))
+    }
+}
+
 enum SharedClipQueue {
     static let appGroupIdentifier = "group.app.eiradev.ClipInbox"
     static let maxPendingItemCount = 200
     static let maxPendingBytes: Int64 = 250 * 1_024 * 1_024
     static let maxPendingAge: TimeInterval = 30 * 24 * 60 * 60
     static let maxShareBatchItemCount = 20
+    static let maxShareAttachmentCount = 20
     static let maxStagingBatchAge: TimeInterval = 24 * 60 * 60
     static let pendingBatchesDirectoryName = "PendingClipBatches"
     static let stagingBatchesDirectoryName = "PendingClipBatchesStaging"
@@ -252,7 +434,7 @@ enum SharedClipQueue {
     struct Item: Sendable {
         let fileURL: URL
         let payload: SharedClipPayload
-        fileprivate let pendingImageURL: URL?
+        fileprivate let pendingAttachmentURLs: [String: URL]
         fileprivate let batchDirectoryURL: URL?
         fileprivate let sourceContainerURL: URL
 
@@ -264,18 +446,24 @@ enum SharedClipQueue {
     struct BatchItem: Sendable {
         let payload: SharedClipPayload
         let imageAsset: SharedImageAsset?
+        let attachmentAssets: [SharedAttachmentAsset]
 
-        init(payload: SharedClipPayload, imageAsset: SharedImageAsset? = nil) {
+        init(
+            payload: SharedClipPayload,
+            imageAsset: SharedImageAsset? = nil,
+            attachmentAssets: [SharedAttachmentAsset] = []
+        ) {
             self.payload = payload
             self.imageAsset = imageAsset
+            self.attachmentAssets = attachmentAssets
         }
     }
 
     typealias BatchProgressHandler = @Sendable (_ completed: Int, _ total: Int) -> Void
 
     struct StorageSummary: Equatable, Sendable {
-        let originalImageCount: Int
-        let originalImageBytes: Int64
+        let originalAttachmentCount: Int
+        let originalAttachmentBytes: Int64
         let pendingCount: Int
         let pendingBytes: Int64
         let quarantinedCount: Int
@@ -330,7 +518,7 @@ enum SharedClipQueue {
         try enqueueBatch(payloads.map { BatchItem(payload: $0) }, containerURL: containerURL)
     }
 
-    /// payload와 원본 이미지를 외부에서 보이지 않는 staging 디렉터리에 모두
+    /// payload와 원본 첨부 파일을 외부에서 보이지 않는 staging 디렉터리에 모두
     /// 기록한 뒤, 완성된 디렉터리 하나를 pending root로 rename해 한 번에 공개한다.
     static func enqueueBatch(
         _ items: [BatchItem],
@@ -340,6 +528,12 @@ enum SharedClipQueue {
         guard !items.isEmpty else { return }
         guard items.count <= maxShareBatchItemCount else {
             throw QueueError.batchItemLimitReached(maxShareBatchItemCount)
+        }
+        let attachmentCount = items.reduce(0) { partial, item in
+            partial + max(item.attachmentAssets.count, item.imageAsset == nil ? 0 : 1)
+        }
+        guard attachmentCount <= maxShareAttachmentCount else {
+            throw QueueError.batchItemLimitReached(maxShareAttachmentCount)
         }
 
         try cleanupStaleStagingBatches(containerURL: containerURL)
@@ -355,23 +549,41 @@ enum SharedClipQueue {
         encoder.outputFormatting = [.sortedKeys]
         let encoded = try newItems.map { item in
             var payload = item.payload
-            if let asset = item.imageAsset {
+            let attachmentAssets = item.attachmentAssets
+            if !attachmentAssets.isEmpty {
+                payload.attachments = attachmentAssets.map(\.attachment)
+                payload.sharedImageName = payload.attachments.first(where: { $0.kind == .image })?.storedFileName
+                payload.type = payload.attachments.allSatisfy { $0.kind == .image } ? .image : .file
+            } else if let asset = item.imageAsset {
                 payload.sharedImageName = "\(payload.id.uuidString).\(asset.fileExtension)"
             }
-            return (payload: payload, data: try encoder.encode(payload), imageAsset: item.imageAsset)
+            return (
+                payload: payload,
+                data: try encoder.encode(payload),
+                imageAsset: item.imageAsset,
+                attachmentAssets: attachmentAssets
+            )
         }
         let existingBytes = try pending.reduce(Int64(0)) { partial, item in
             partial + (try queuedBytes(for: item, containerURL: containerURL))
         }
         let incomingBytes = encoded.reduce(Int64(0)) { partial, item in
             let imageBytes: Int64
-            if let asset = item.imageAsset {
+            if !item.attachmentAssets.isEmpty {
+                imageBytes = item.attachmentAssets.reduce(0) { $0 + $1.byteCount }
+            } else if let asset = item.imageAsset {
                 imageBytes = asset.byteCount
-            } else if let imageName = item.payload.sharedImageName,
-               let imageURL = imageURL(named: imageName, containerURL: containerURL) {
-                imageBytes = Int64((try? imageURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
             } else {
-                imageBytes = 0
+                let names = Set(item.payload.attachments.compactMap(\.storedFileName)
+                    + [item.payload.sharedImageName].compactMap { $0 })
+                imageBytes = names.reduce(0) { bytes, fileName in
+                    guard let fileURL = attachmentURL(named: fileName, containerURL: containerURL) else {
+                        return bytes
+                    }
+                    return bytes + Int64(
+                        (try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                    )
+                }
             }
             return partial + Int64(item.data.count) + imageBytes
         }
@@ -404,17 +616,34 @@ enum SharedClipQueue {
             }
         }
 
-        progress?(0, encoded.count)
+        let progressTotal = encoded.reduce(0) { partial, item in
+            partial + max(max(item.attachmentAssets.count, item.imageAsset == nil ? 0 : 1), 1)
+        }
+        var completedProgress = 0
+        progress?(0, progressTotal)
         do {
-            for (index, item) in encoded.enumerated() {
-                if let asset = item.imageAsset, let imageName = item.payload.sharedImageName {
+            for item in encoded {
+                for asset in item.attachmentAssets {
+                    let fileName = asset.attachment.storedFileName ?? ""
+                    try asset.write(to: imagesDirectory.appendingPathComponent(fileName))
+                    completedProgress += 1
+                    progress?(completedProgress, progressTotal)
+                }
+                if item.attachmentAssets.isEmpty,
+                   let asset = item.imageAsset,
+                   let imageName = item.payload.sharedImageName {
                     try asset.write(to: imagesDirectory.appendingPathComponent(imageName))
+                    completedProgress += 1
+                    progress?(completedProgress, progressTotal)
                 }
                 let payloadURL = payloadsDirectory
                     .appendingPathComponent(item.payload.id.uuidString)
                     .appendingPathExtension("json")
                 try item.data.write(to: payloadURL, options: [.atomic, .completeFileProtectionUnlessOpen])
-                progress?(index + 1, encoded.count)
+                if item.attachmentAssets.isEmpty && item.imageAsset == nil {
+                    completedProgress += 1
+                    progress?(completedProgress, progressTotal)
+                }
             }
             try FileManager.default.moveItem(at: stagingBatch, to: committedBatch)
             committed = true
@@ -484,19 +713,23 @@ enum SharedClipQueue {
         }
     }
 
-    /// 앱 저장소 commit 이후 호출한다. 새 배치의 이미지는 먼저 SharedImages로
+    /// 앱 저장소 commit 이후 호출한다. 새 배치의 첨부 파일은 먼저 SharedImages로
     /// 승격하고, 그 다음 payload를 제거한다. 중간 종료 뒤 재호출해도 안전하다.
     static func finalizeImport(_ items: [Item], containerURL: URL? = nil) throws {
         for item in items {
             let container = containerURL ?? item.sourceContainerURL
-            if let imageName = item.payload.sharedImageName, item.batchDirectoryURL != nil {
-                guard isValidImageFileName(imageName) else {
-                    throw SharedImageAssetError.unsupported
+            let attachmentNames = Set(
+                item.payload.attachments.compactMap(\.storedFileName)
+                    + [item.payload.sharedImageName].compactMap { $0 }
+            )
+            for attachmentName in attachmentNames where item.batchDirectoryURL != nil {
+                guard isValidAttachmentFileName(attachmentName) else {
+                    throw SharedAttachmentAssetError.unsupported
                 }
                 let destination = try imagesDirectoryURL(containerURL: container)
-                    .appendingPathComponent(imageName)
+                    .appendingPathComponent(attachmentName)
                 let destinationExists = FileManager.default.fileExists(atPath: destination.path)
-                if let source = item.pendingImageURL {
+                if let source = item.pendingAttachmentURLs[attachmentName] {
                     let sourceExists = FileManager.default.fileExists(atPath: source.path)
                     guard sourceExists || destinationExists else {
                         throw fileError(NSFileNoSuchFileError, path: source.path)
@@ -511,7 +744,7 @@ enum SharedClipQueue {
                             ofItemAtPath: destination.path
                         )
                     }
-                } else if !destinationExists, item.payload.type == .image {
+                } else if !destinationExists {
                     throw fileError(NSFileNoSuchFileError, path: destination.path)
                 }
             }
@@ -535,9 +768,12 @@ enum SharedClipQueue {
     }
 
     static func imageURL(named fileName: String, containerURL: URL? = nil) -> URL? {
-        guard isValidImageFileName(fileName) else {
-            return nil
-        }
+        guard isValidImageFileName(fileName) else { return nil }
+        return attachmentURL(named: fileName, containerURL: containerURL)
+    }
+
+    static func attachmentURL(named fileName: String, containerURL: URL? = nil) -> URL? {
+        guard isValidAttachmentFileName(fileName) else { return nil }
         guard let sharedURL = try? imagesDirectoryURL(containerURL: containerURL)
             .appendingPathComponent(fileName) else { return nil }
         if FileManager.default.fileExists(atPath: sharedURL.path) {
@@ -560,6 +796,11 @@ enum SharedClipQueue {
 
     static func removeImage(named fileName: String, containerURL: URL? = nil) throws {
         guard isValidImageFileName(fileName) else { return }
+        try removeAttachment(named: fileName, containerURL: containerURL)
+    }
+
+    static func removeAttachment(named fileName: String, containerURL: URL? = nil) throws {
+        guard isValidAttachmentFileName(fileName) else { return }
         let fileURL = try imagesDirectoryURL(containerURL: containerURL).appendingPathComponent(fileName)
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
         try FileManager.default.removeItem(at: fileURL)
@@ -568,12 +809,12 @@ enum SharedClipQueue {
     static func removeAllImages() throws {
         let directory = try imagesDirectoryURL()
         let urls = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
-        for url in urls where isValidImageFileName(url.lastPathComponent) {
+        for url in urls where isValidAttachmentFileName(url.lastPathComponent) {
             try FileManager.default.removeItem(at: url)
         }
     }
 
-    /// 앱의 명시적 전체 삭제에서만 사용한다. 활성 이미지뿐 아니라 아직 앱에
+    /// 앱의 명시적 전체 삭제에서만 사용한다. 활성 첨부 파일뿐 아니라 아직 앱에
     /// 들어오지 않은 payload와 실패/만료 격리본, Share 설정 파일까지 제거한다.
     static func removeAllData(containerURL: URL? = nil) throws {
         let container = try resolvedContainerURL(containerURL)
@@ -595,12 +836,12 @@ enum SharedClipQueue {
     }
 
     static func storageSummary(containerURL: URL? = nil) throws -> StorageSummary {
-        let images = try FileManager.default.contentsOfDirectory(
+        let attachments = try FileManager.default.contentsOfDirectory(
             at: imagesDirectoryURL(containerURL: containerURL),
             includingPropertiesForKeys: [.fileSizeKey],
             options: [.skipsHiddenFiles]
-        ).filter { isValidImageFileName($0.lastPathComponent) }
-        let imageBytes = try images.reduce(Int64(0)) { partial, url in
+        ).filter { isValidAttachmentFileName($0.lastPathComponent) }
+        let attachmentBytes = try attachments.reduce(Int64(0)) { partial, url in
             partial + Int64(try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0)
         }
         let pending = try pendingItems(containerURL: containerURL)
@@ -618,8 +859,8 @@ enum SharedClipQueue {
             return partial + count
         }
         return StorageSummary(
-            originalImageCount: images.count,
-            originalImageBytes: imageBytes,
+            originalAttachmentCount: attachments.count,
+            originalAttachmentBytes: attachmentBytes,
             pendingCount: pending.count,
             pendingBytes: pendingBytes,
             quarantinedCount: quarantinedCount
@@ -627,16 +868,30 @@ enum SharedClipQueue {
     }
 
     static func isValidImageFileName(_ fileName: String) -> Bool {
+        guard isValidAttachmentFileName(fileName) else { return false }
+        return safeImageFileExtension((fileName as NSString).pathExtension) != nil
+    }
+
+    static func isValidAttachmentFileName(_ fileName: String) -> Bool {
         guard fileName == (fileName as NSString).lastPathComponent else { return false }
         let stem = (fileName as NSString).deletingPathExtension
         guard UUID(uuidString: stem) != nil else { return false }
-        return safeImageFileExtension((fileName as NSString).pathExtension) != nil
+        return safeAttachmentFileExtension((fileName as NSString).pathExtension) != nil
     }
 
     static func safeImageFileExtension(_ value: String?) -> String? {
         guard let value else { return nil }
         let normalized = value.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased()
         return supportedImageFileExtensions.contains(normalized) ? normalized : nil
+    }
+
+    static func safeAttachmentFileExtension(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let normalized = value.trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased()
+        guard normalized.range(of: #"^[a-z0-9_-]{1,12}$"#, options: .regularExpression) != nil else {
+            return nil
+        }
+        return normalized
     }
 
     static func cleanupStaleStagingBatches(
@@ -788,35 +1043,37 @@ enum SharedClipQueue {
             return nil
         }
 
-        let pendingImageURL: URL?
-        if let batchDirectory,
-           let imageName = payload.sharedImageName,
-           isValidImageFileName(imageName) {
-            let candidate = batchDirectory
+        let attachmentNames = Set(
+            payload.attachments.compactMap(\.storedFileName)
+                + [payload.sharedImageName].compactMap { $0 }
+        )
+        var pendingAttachmentURLs: [String: URL] = [:]
+        if let batchDirectory {
+            let attachmentsDirectory = batchDirectory
                 .appendingPathComponent(batchImagesDirectoryName, isDirectory: true)
-                .appendingPathComponent(imageName)
-            pendingImageURL = FileManager.default.fileExists(atPath: candidate.path) ? candidate : nil
-        } else {
-            pendingImageURL = nil
+            for name in attachmentNames where isValidAttachmentFileName(name) {
+                let candidate = attachmentsDirectory.appendingPathComponent(name)
+                if FileManager.default.fileExists(atPath: candidate.path) {
+                    pendingAttachmentURLs[name] = candidate
+                }
+            }
         }
         let item = Item(
             fileURL: payloadURL,
             payload: payload,
-            pendingImageURL: pendingImageURL,
+            pendingAttachmentURLs: pendingAttachmentURLs,
             batchDirectoryURL: batchDirectory,
             sourceContainerURL: containerURL
         )
-        if payload.type == .image {
-            let promotedImageExists: Bool
-            if let imageName = payload.sharedImageName,
-               isValidImageFileName(imageName),
-               let promotedURL = try? imagesDirectoryURL(containerURL: containerURL)
-                .appendingPathComponent(imageName) {
-                promotedImageExists = FileManager.default.fileExists(atPath: promotedURL.path)
-            } else {
-                promotedImageExists = false
+        if payload.type == .image || payload.type == .file || !attachmentNames.isEmpty {
+            let allAttachmentsExist = !attachmentNames.isEmpty && attachmentNames.allSatisfy { name in
+                guard isValidAttachmentFileName(name) else { return false }
+                if pendingAttachmentURLs[name] != nil { return true }
+                guard let promotedURL = try? imagesDirectoryURL(containerURL: containerURL)
+                    .appendingPathComponent(name) else { return false }
+                return FileManager.default.fileExists(atPath: promotedURL.path)
             }
-            guard pendingImageURL != nil || promotedImageExists else {
+            guard allAttachmentsExist else {
                 try? quarantinePendingItem(
                     item,
                     directoryName: "FailedClips",
@@ -841,18 +1098,29 @@ enum SharedClipQueue {
         directoryName: String,
         imageDirectoryName: String
     ) throws {
-        if let source = item.pendingImageURL,
-           FileManager.default.fileExists(atPath: source.path) {
-            try quarantine(source, directoryName: imageDirectoryName,
-                           containerURL: item.sourceContainerURL)
-        } else if item.batchDirectoryURL == nil,
-                  let imageName = item.payload.sharedImageName,
-                  isValidImageFileName(imageName) {
-            let legacyImage = try imagesDirectoryURL(containerURL: item.sourceContainerURL)
-                .appendingPathComponent(imageName)
-            if FileManager.default.fileExists(atPath: legacyImage.path) {
-                try quarantine(legacyImage, directoryName: imageDirectoryName,
-                               containerURL: item.sourceContainerURL)
+        for source in item.pendingAttachmentURLs.values
+            where FileManager.default.fileExists(atPath: source.path) {
+            try quarantine(
+                source,
+                directoryName: imageDirectoryName,
+                containerURL: item.sourceContainerURL
+            )
+        }
+        if item.batchDirectoryURL == nil {
+            let names = Set(
+                item.payload.attachments.compactMap(\.storedFileName)
+                    + [item.payload.sharedImageName].compactMap { $0 }
+            )
+            for name in names where isValidAttachmentFileName(name) {
+                let legacyAttachment = try imagesDirectoryURL(containerURL: item.sourceContainerURL)
+                    .appendingPathComponent(name)
+                if FileManager.default.fileExists(atPath: legacyAttachment.path) {
+                    try quarantine(
+                        legacyAttachment,
+                        directoryName: imageDirectoryName,
+                        containerURL: item.sourceContainerURL
+                    )
+                }
             }
         }
         if FileManager.default.fileExists(atPath: item.fileURL.path) {
@@ -903,16 +1171,16 @@ enum SharedClipQueue {
 
     private static func queuedBytes(for item: Item, containerURL: URL?) throws -> Int64 {
         let payloadBytes = Int64(try item.fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0)
-        if let pendingImageURL = item.pendingImageURL {
-            let imageBytes = Int64(
-                try pendingImageURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-            )
-            return payloadBytes + imageBytes
+        let names = Set(
+            item.payload.attachments.compactMap(\.storedFileName)
+                + [item.payload.sharedImageName].compactMap { $0 }
+        )
+        let attachmentBytes = try names.reduce(Int64(0)) { partial, name in
+            let url = item.pendingAttachmentURLs[name]
+                ?? attachmentURL(named: name, containerURL: containerURL)
+            guard let url, FileManager.default.fileExists(atPath: url.path) else { return partial }
+            return partial + Int64(try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0)
         }
-        guard let imageName = item.payload.sharedImageName,
-              let imageURL = imageURL(named: imageName, containerURL: containerURL),
-              FileManager.default.fileExists(atPath: imageURL.path) else { return payloadBytes }
-        let imageBytes = Int64(try imageURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0)
-        return payloadBytes + imageBytes
+        return payloadBytes + attachmentBytes
     }
 }

@@ -59,8 +59,8 @@ enum ManualCaptureType: String, CaseIterable, Identifiable {
 
 struct AppStorageSummary: Equatable {
     let snapshotBytes: Int64
-    let originalImageCount: Int
-    let originalImageBytes: Int64
+    let originalAttachmentCount: Int
+    let originalAttachmentBytes: Int64
     let pendingCount: Int
     let pendingBytes: Int64
     let quarantinedCount: Int
@@ -292,6 +292,7 @@ final class AppStore {
                 let titleFallback: String
                 switch payload.type {
                 case .image: titleFallback = "공유한 이미지"
+                case .file: titleFallback = "공유한 파일"
                 case .text: titleFallback = "공유한 텍스트"
                 case .link: titleFallback = URL(string: safeURL)?.host ?? "공유한 링크"
                 }
@@ -306,6 +307,7 @@ final class AppStore {
                         case .link: return .link
                         case .text: return .memo
                         case .image: return .image
+                        case .file: return .file
                         }
                     }(),
                     state: .unsorted,
@@ -317,6 +319,7 @@ final class AppStore {
                     tags: cleanTags,
                     folderSuggestions: [destination, "나중에"],
                     sharedImageName: Self.safeSharedImageName(payload.sharedImageName),
+                    attachments: Self.safeSharedAttachments(payload.attachments),
                     sharePayloadID: payload.id,
                     description: Self.cleanText(payload.text, maxLength: 500),
                     memo: Self.cleanText(payload.memo, maxLength: 1000)
@@ -352,8 +355,8 @@ final class AppStore {
         let shared = try SharedClipQueue.storageSummary(containerURL: containerURL)
         return AppStorageSummary(
             snapshotBytes: snapshotBytes,
-            originalImageCount: shared.originalImageCount,
-            originalImageBytes: shared.originalImageBytes,
+            originalAttachmentCount: shared.originalAttachmentCount,
+            originalAttachmentBytes: shared.originalAttachmentBytes,
             pendingCount: shared.pendingCount,
             pendingBytes: shared.pendingBytes,
             quarantinedCount: shared.quarantinedCount
@@ -410,6 +413,27 @@ final class AppStore {
         return value
     }
 
+    static func safeSharedAttachments(_ values: [SharedClipAttachment]) -> [SharedClipAttachment] {
+        var seenIDs = Set<UUID>()
+        var seenFileNames = Set<String>()
+        return values.compactMap { value in
+            guard seenIDs.insert(value.id).inserted,
+                  let storedFileName = value.storedFileName,
+                  SharedClipQueue.isValidAttachmentFileName(storedFileName),
+                  seenFileNames.insert(storedFileName).inserted else { return nil }
+            var safe = value
+            safe.originalFileName = cleanText(
+                (value.originalFileName as NSString).lastPathComponent,
+                fallback: "첨부 파일",
+                maxLength: 200
+            )
+            safe.storedFileName = storedFileName
+            safe.typeIdentifier = value.typeIdentifier.map { cleanText($0, maxLength: 120) }
+            safe.byteCount = max(0, value.byteCount)
+            return safe
+        }
+    }
+
     static func normalize(_ input: DataSnapshot) -> DataSnapshot {
         var seenClipIds = Set<Int>()
         var safeClips: [Clip] = []
@@ -428,6 +452,7 @@ final class AppStore {
             clip.memo = clip.memo.map { cleanText($0, maxLength: 1000) }
             clip.image = safeImagePath(clip.image)
             clip.sharedImageName = safeSharedImageName(clip.sharedImageName)
+            clip.attachments = safeSharedAttachments(clip.attachments)
             clip.tags = Array(clip.tags.map { cleanText($0, maxLength: 50) }.filter { !$0.isEmpty }.prefix(12))
             clip.folderSuggestions = normalizeFolderSuggestions(clip.folderSuggestions)
             safeClips.append(clip)
@@ -1336,8 +1361,11 @@ final class AppStore {
     }
 
     private func removeStoredImages(for clips: [Clip]) {
-        for imageName in Set(clips.compactMap(\.sharedImageName)) {
-            try? SharedClipQueue.removeImage(named: imageName)
+        let fileNames = clips.reduce(into: Set<String>()) { names, clip in
+            names.formUnion(clip.storedFileNames)
+        }
+        for fileName in fileNames {
+            try? SharedClipQueue.removeAttachment(named: fileName)
         }
     }
 }

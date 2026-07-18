@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
     private struct PendingShareItem: Sendable {
         var payload: SharedClipPayload
-        let imageAsset: SharedImageAsset?
+        let attachmentAssets: [SharedAttachmentAsset]
     }
 
     private var configuration = SharedClipConfiguration.standard
@@ -41,7 +41,7 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         var errorDescription: String? {
             switch self {
             case .missingPayload:
-                return SharedL10n.text("공유한 링크, 텍스트 또는 이미지를 읽을 수 없습니다.")
+                return SharedL10n.text("공유한 링크, 텍스트 또는 첨부 파일을 읽을 수 없습니다.")
             case .providerTimedOut:
                 return SharedL10n.text("공유 항목을 불러오는 시간이 초과되었습니다. 다시 시도하세요.")
             }
@@ -363,7 +363,7 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
             var payload = item.payload
             payload.folder = selectedFolder
             payload.memo = memo
-            return PendingShareItem(payload: payload, imageAsset: item.imageAsset)
+            return PendingShareItem(payload: payload, attachmentAssets: item.attachmentAssets)
         }
         Task { @MainActor in await saveAndComplete(reviewed) }
     }
@@ -388,7 +388,10 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
             let batchItems = items.map { item in
                 var payload = item.payload
                 if payload.folder.isEmpty { payload.folder = defaultFolder }
-                return SharedClipQueue.BatchItem(payload: payload, imageAsset: item.imageAsset)
+                return SharedClipQueue.BatchItem(
+                    payload: payload,
+                    attachmentAssets: item.attachmentAssets
+                )
             }
             let progressHandler: SharedClipQueue.BatchProgressHandler = { [weak self] completed, total in
                 Task { @MainActor [weak self] in
@@ -488,38 +491,55 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         let attributedText = items.compactMap(\.attributedContentText?.string).first
         let providers = items.flatMap { $0.attachments ?? [] }
 
-        // Photos와 일부 이미지 앱은 이미지와 파일 URL을 함께 제공한다. 이미지
-        // provider가 하나라도 있으면 먼저 원본 이미지 표현을 읽어 URL 클립으로
-        // 잘못 저장하지 않는다.
-        let imageProviders = providers.filter {
-            $0.hasItemConformingToTypeIdentifier(UTType.image.identifier)
-        }
-        if !imageProviders.isEmpty {
-            guard imageProviders.count <= SharedClipQueue.maxShareBatchItemCount else {
+        // Photos와 Files는 원본 표현과 URL/텍스트 표현을 함께 제공할 수 있다.
+        // 첨부 provider가 하나라도 있으면 원본을 우선 수집해 한 공유 호출을 한
+        // payload로 묶고, 보조 URL 표현으로 잘못 분류하지 않는다.
+        let attachmentProviders = providers.filter(isAttachmentProvider)
+        if !attachmentProviders.isEmpty {
+            guard attachmentProviders.count <= SharedClipQueue.maxShareAttachmentCount else {
                 throw SharedClipQueue.QueueError.batchItemLimitReached(
-                    SharedClipQueue.maxShareBatchItemCount
+                    SharedClipQueue.maxShareAttachmentCount
                 )
             }
-            var loadedItems: [PendingShareItem] = []
-            let batchCreatedAt = Date()
+            var attachmentAssets: [SharedAttachmentAsset] = []
             do {
-                for (index, provider) in imageProviders.enumerated() {
-                    guard let imageAsset = try await loadImageAsset(from: provider) else {
-                        throw ShareError.missingPayload
+                for provider in attachmentProviders {
+                    if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+                        guard let imageAsset = try await loadImageAsset(from: provider) else {
+                            throw ShareError.missingPayload
+                        }
+                        attachmentAssets.append(SharedAttachmentAsset(
+                            imageAsset: imageAsset,
+                            originalFileName: provider.suggestedName,
+                            typeIdentifier: preferredTypeIdentifier(for: provider, conformingTo: .image)
+                        ))
+                    } else {
+                        guard let fileAsset = try await loadAttachmentAsset(from: provider) else {
+                            throw ShareError.missingPayload
+                        }
+                        attachmentAssets.append(fileAsset)
                     }
-                    let payload = SharedClipPayload(
-                        type: .image,
-                        title: clean(attributedTitle, fallback: localized("공유한 이미지"), limit: 200),
-                        source: localized("사진"),
-                        text: clean(attributedText, limit: 500),
-                        folder: configuration.defaultFolder,
-                        createdAt: batchCreatedAt.addingTimeInterval(Double(index) / 1_000)
-                    )
-                    loadedItems.append(PendingShareItem(payload: payload, imageAsset: imageAsset))
                 }
-                return loadedItems
+                guard let firstAsset = attachmentAssets.first else { throw ShareError.missingPayload }
+                let allImages = attachmentAssets.allSatisfy { $0.kind == .image }
+                let fallbackTitle = attachmentAssets.count == 1
+                    ? firstAsset.originalFileName
+                    : SharedL10n.format(
+                        "format.shared_attachment_bundle_title",
+                        language: configuration.language,
+                        firstAsset.originalFileName,
+                        attachmentAssets.count - 1
+                    )
+                let payload = SharedClipPayload(
+                    type: allImages ? .image : .file,
+                    title: clean(attributedTitle, fallback: fallbackTitle, limit: 200),
+                    source: localized(allImages ? "사진" : "파일"),
+                    text: clean(attributedText, limit: 500),
+                    folder: configuration.defaultFolder
+                )
+                return [PendingShareItem(payload: payload, attachmentAssets: attachmentAssets)]
             } catch {
-                cleanupPendingItems(loadedItems)
+                attachmentAssets.forEach { $0.cleanupSourceIfNeeded() }
                 throw error
             }
         }
@@ -545,7 +565,7 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
                                             source: host, url: url.absoluteString,
                                             text: clean(sharedText, limit: 500),
                                             folder: configuration.defaultFolder)
-            return [PendingShareItem(payload: payload, imageAsset: nil)]
+            return [PendingShareItem(payload: payload, attachmentAssets: [])]
         }
         if let sharedText, !sharedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let firstLine = sharedText.split(separator: "\n", maxSplits: 1).first.map(String.init)
@@ -555,16 +575,16 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
                                                          limit: 200),
                                             source: localized("공유 시트"), text: clean(sharedText, limit: 500),
                                             folder: configuration.defaultFolder)
-            return [PendingShareItem(payload: payload, imageAsset: nil)]
+            return [PendingShareItem(payload: payload, attachmentAssets: [])]
         }
         return []
     }
 
     private func cleanupPendingItems(_ items: [PendingShareItem]? = nil) {
         if let items {
-            items.forEach { $0.imageAsset?.cleanupSourceIfNeeded() }
+            items.flatMap(\.attachmentAssets).forEach { $0.cleanupSourceIfNeeded() }
         } else {
-            pendingItems.forEach { $0.imageAsset?.cleanupSourceIfNeeded() }
+            pendingItems.flatMap(\.attachmentAssets).forEach { $0.cleanupSourceIfNeeded() }
             pendingItems = []
         }
     }
@@ -595,6 +615,95 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
     private func clean(_ value: String?, fallback: String = "", limit: Int) -> String {
         let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? fallback : String(trimmed.prefix(limit))
+    }
+
+    private func isAttachmentProvider(_ provider: NSItemProvider) -> Bool {
+        if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier)
+            || provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+            return true
+        }
+        return provider.registeredTypeIdentifiers.contains { identifier in
+            guard let type = UTType(identifier), type.conforms(to: .content) else { return false }
+            return type != .url && type != .plainText && type != .text && type != .html
+        }
+    }
+
+    private func preferredTypeIdentifier(
+        for provider: NSItemProvider,
+        conformingTo parentType: UTType
+    ) -> String? {
+        provider.registeredTypeIdentifiers.first { identifier in
+            guard let type = UTType(identifier), type.conforms(to: parentType) else { return false }
+            return type != parentType
+        } ?? provider.registeredTypeIdentifiers.first { UTType($0)?.conforms(to: parentType) == true }
+    }
+
+    private func loadAttachmentAsset(from provider: NSItemProvider) async throws -> SharedAttachmentAsset? {
+        let abstractTypes: Set<UTType> = [.item, .content, .data, .fileURL]
+        let identifiers = provider.registeredTypeIdentifiers.filter { identifier in
+            guard let type = UTType(identifier), type.conforms(to: .content) else { return false }
+            return !abstractTypes.contains(type) && type != .url && type != .plainText && type != .text
+        } + provider.registeredTypeIdentifiers.filter { identifier in
+            guard let type = UTType(identifier) else { return false }
+            return type == .data || type == .content || type == .item
+        }
+
+        for identifier in identifiers {
+            do {
+                let fileURL = try await loadFileRepresentation(from: provider, typeIdentifier: identifier)
+                do {
+                    return try SharedAttachmentAsset(
+                        validatingFileAt: fileURL,
+                        typeIdentifier: identifier,
+                        originalFileName: provider.suggestedName ?? fileURL.lastPathComponent,
+                        removeAfterUse: true
+                    )
+                } catch {
+                    try? FileManager.default.removeItem(at: fileURL)
+                    if let attachmentError = error as? SharedAttachmentAssetError,
+                       case .tooLarge = attachmentError {
+                        throw attachmentError
+                    }
+                }
+            } catch ShareError.providerTimedOut {
+                throw ShareError.providerTimedOut
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch let error as SharedAttachmentAssetError {
+                throw error
+            } catch {
+                continue
+            }
+        }
+
+        guard provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier),
+              let item = try await optionalItem(from: provider, typeIdentifier: UTType.fileURL.identifier),
+              let sourceURL = item as? URL ?? (item as? NSURL).map({ $0 as URL }) else { return nil }
+        let temporaryURL = try copyToTemporaryLocation(
+            sourceURL,
+            preferredName: provider.suggestedName
+        )
+        do {
+            return try SharedAttachmentAsset(
+                validatingFileAt: temporaryURL,
+                typeIdentifier: preferredTypeIdentifier(for: provider, conformingTo: .content),
+                originalFileName: provider.suggestedName ?? sourceURL.lastPathComponent,
+                removeAfterUse: true
+            )
+        } catch {
+            try? FileManager.default.removeItem(at: temporaryURL)
+            throw error
+        }
+    }
+
+    private func copyToTemporaryLocation(_ sourceURL: URL, preferredName: String?) throws -> URL {
+        let preferredExtension = NSString(string: preferredName ?? "").pathExtension
+        let pathExtension = preferredExtension.isEmpty ? sourceURL.pathExtension : preferredExtension
+        var temporaryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ClipInboxShare-\(UUID().uuidString)")
+        if !pathExtension.isEmpty { temporaryURL.appendPathExtension(pathExtension) }
+        try FileManager.default.copyItem(at: sourceURL, to: temporaryURL)
+        return temporaryURL
     }
 
     private func loadImageAsset(from provider: NSItemProvider) async throws -> SharedImageAsset? {

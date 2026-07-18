@@ -802,7 +802,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = ShareExtensionIcon;
 				CODE_SIGN_ENTITLEMENTS = ClipShareExtension/ClipInboxShare.entitlements;
 				DEVELOPMENT_TEAM = 83BB7YWQHU;
-				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ClipShareExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -842,7 +841,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = ShareExtensionIcon;
 				CODE_SIGN_ENTITLEMENTS = ClipShareExtension/ClipInboxShare.entitlements;
 				DEVELOPMENT_TEAM = 83BB7YWQHU;
-				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ClipShareExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
