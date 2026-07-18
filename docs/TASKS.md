@@ -2,6 +2,7 @@
 
 ## Done
 
+- [x] Add original-image re-sharing, actionable empty states, semantic and VoiceOver-announced toasts, explicit selection counts/states, and cancellation-safe Photo capture loading with a downsampled preview and removable error state.
 - [x] Add `전체`/`미정리`/`북마크` smart views to Inbox and Search, search clip URLs plus useful link metadata, provide persistent recent-search clearing, and apply folder default tags transactionally on explicit moves and Sort Later classification.
 - [x] Make `모든 데이터 삭제` remove previous/recovery snapshots, app defaults and recent searches, all Share queue/quarantine/image artifacts, decoded image memory, and URL metadata sidecar/cache before showing success.
 - [x] Allow multi-image Photos sharing, preserve every selected original in order, apply Review destination/memo to the full selection, atomically promote staged payload/image batches, cap one invocation at 20 while keeping the 200-item backlog, clean interrupted staging, and show off-main-thread save progress.

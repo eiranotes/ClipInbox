@@ -36,10 +36,11 @@ struct ClipCardView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(ResponsivePressButtonStyle())
-                .accessibilityLabel(L10n.format(
-                    "format.clip_selection_accessibility",
-                    L10n.text(metadata.cardTitle(for: clip, locale: locale), locale: locale)
-                ))
+                .accessibilityLabel(L10n.text(metadata.cardTitle(for: clip, locale: locale), locale: locale))
+                .accessibilityValue(selectionState ? L10n.text("선택됨", locale: locale) : L10n.text("선택 안 됨", locale: locale))
+                .accessibilityHint(selectionState
+                    ? L10n.text("선택 해제하려면 이중 탭", locale: locale)
+                    : L10n.text("선택하려면 이중 탭", locale: locale))
                 .accessibilityAddTraits(selectionState ? .isSelected : [])
             } else {
                 HStack(alignment: .center, spacing: 0) {

@@ -578,6 +578,8 @@ struct EmptyStateView: View {
     var systemImage = "tray"
     let title: String
     let message: String
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: Tokens.rowGap) {
@@ -590,6 +592,13 @@ struct EmptyStateView: View {
                 .foregroundStyle(Tokens.textSecondary)
                 .lineSpacing(Tokens.metaLineSpacing)
                 .multilineTextAlignment(.center)
+            if let actionTitle, let action {
+                Button(L10n.text(actionTitle, locale: locale), action: action)
+                    .font(Tokens.bodySemibold)
+                    .foregroundStyle(Tokens.textPrimary)
+                    .frame(minWidth: Tokens.touchTarget, minHeight: Tokens.touchTarget)
+                    .buttonStyle(ResponsivePressButtonStyle())
+            }
         }
         .padding(.vertical, Tokens.sectionGap * 2)
         .frame(maxWidth: .infinity)
@@ -679,13 +688,14 @@ struct FallbackDomain: View {
 
 struct ToastView: View {
     @Environment(\.locale) private var locale
-    let message: String
+    let toast: AppToast
 
     var body: some View {
         HStack(spacing: Tokens.rowGap) {
-            Image(systemName: "checkmark.circle")
+            Image(systemName: toast.semantic.systemImage)
                 .font(.system(size: 16, weight: .bold))
-            Text(L10n.text(message, locale: locale)).font(Tokens.bodyBold)
+                .accessibilityHidden(true)
+            Text(L10n.text(toast.message, locale: locale)).font(Tokens.bodyBold)
         }
         .foregroundStyle(Tokens.onAccent)
         .padding(.horizontal, Tokens.panelPad)

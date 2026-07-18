@@ -69,7 +69,10 @@ struct InboxView: View {
                     .padding(.top, Tokens.emptyGuideTop)
                 } else if list.isEmpty {
                     EmptyStateView(title: "표시할 클립이 없습니다",
-                                   message: "다른 항목을 선택하거나 새 클립을 추가해 보세요.")
+                                   message: "다른 항목을 선택하거나 새 클립을 추가해 보세요.",
+                                   actionTitle: "전체 보기") {
+                        selectFilter(.all)
+                    }
                 } else {
                     LazyVStack(spacing: 0) {
                         ForEach(list) { clip in
@@ -175,16 +178,23 @@ private struct BatchSelectionBar: View {
     let delete: () -> Void
 
     var body: some View {
-        HStack(spacing: Tokens.rowGap) {
-            Button(action: move) {
-                Label("폴더 이동", systemImage: "folder")
-            }
-            .buttonStyle(SecondaryBoxButtonStyle())
+        VStack(alignment: .leading, spacing: Tokens.rowGap) {
+            Text(L10n.format("format.selected_clip_count", selectionCount))
+                .font(Tokens.bodyBold)
+                .foregroundStyle(Tokens.textPrimary)
+                .accessibilityAddTraits(.isHeader)
 
-            Button(action: delete) {
-                Label("삭제", systemImage: "trash")
+            HStack(spacing: Tokens.rowGap) {
+                Button(action: move) {
+                    Label("폴더 이동", systemImage: "folder")
+                }
+                .buttonStyle(SecondaryBoxButtonStyle())
+
+                Button(action: delete) {
+                    Label("삭제", systemImage: "trash")
+                }
+                .buttonStyle(SecondaryBoxButtonStyle(isDanger: true))
             }
-            .buttonStyle(SecondaryBoxButtonStyle(isDanger: true))
         }
         .disabled(selectionCount == 0)
         .opacity(selectionCount == 0 ? 0.45 : 1)

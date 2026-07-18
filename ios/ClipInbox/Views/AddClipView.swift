@@ -1,5 +1,7 @@
 import SwiftUI
 import PhotosUI
+import ImageIO
+import UIKit
 
 /// 공유 시트를 쓰기 어려운 상황을 위한 실제 수동 캡처 폼.
 struct AddClipView: View {
@@ -19,7 +21,9 @@ struct AddClipView: View {
     @State private var showTagEditor = false
     @State private var photoItem: PhotosPickerItem?
     @State private var photoAsset: SharedImageAsset?
-    @State private var photoStatus: String?
+    @State private var photoPreview: UIImage?
+    @State private var photoError: String?
+    @State private var isLoadingPhoto = false
 
     var body: some View {
         ScreenScaffold(
@@ -121,9 +125,8 @@ struct AddClipView: View {
         .sheet(isPresented: $showTagEditor) {
             TagEditorSheet(tags: $tags).workflowSheet(.standard)
         }
-        .onChange(of: photoItem) { _, item in
-            guard let item else { return }
-            Task { await loadPhoto(item) }
+        .task(id: photoItem) {
+            await loadPhoto(photoItem)
         }
     }
 
@@ -141,8 +144,8 @@ struct AddClipView: View {
                 }
             }
             .buttonStyle(PrimaryBoxButtonStyle())
-            .disabled(saved || isSaving)
-            .opacity(saved || isSaving ? 0.56 : 1)
+            .disabled(saved || isSaving || photoSelectionInvalid)
+            .opacity(saved || isSaving || photoSelectionInvalid ? 0.56 : 1)
 
             if saved {
                 Button("새로 저장하기", action: resetDraft)
@@ -186,10 +189,45 @@ struct AddClipView: View {
                         .frame(maxWidth: .infinity, minHeight: Tokens.actionTarget)
                 }
                 .buttonStyle(SecondaryBoxButtonStyle())
-                if let photoStatus {
-                    Text(photoStatus)
+
+                if isLoadingPhoto {
+                    HStack(spacing: Tokens.rowGap) {
+                        ProgressView()
+                        Text("사진을 확인하는 중…")
+                    }
+                    .font(Tokens.meta)
+                    .foregroundStyle(Tokens.textSecondary)
+                    .frame(minHeight: Tokens.touchTarget)
+                } else if let photoPreview {
+                    ZStack(alignment: .topTrailing) {
+                        Image(uiImage: photoPreview)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: .infinity, maxHeight: 220)
+                            .background(Tokens.bgCardMuted)
+                            .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusThumbnail, style: .continuous))
+
+                        Button(action: removePhoto) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(Tokens.textPrimary)
+                                .frame(width: Tokens.touchTarget, height: Tokens.touchTarget)
+                                .background(Tokens.bgCard.opacity(0.92))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(ResponsivePressButtonStyle(pressedScale: 0.9))
+                        .accessibilityLabel("선택한 사진 제거")
+                        .padding(Tokens.space1)
+                    }
+                    if let photoAsset {
+                        Text(ByteCountFormatter.string(fromByteCount: photoAsset.byteCount, countStyle: .file))
+                            .font(Tokens.meta)
+                            .foregroundStyle(Tokens.textSecondary)
+                    }
+                } else if let photoError {
+                    Text(photoError)
                         .font(Tokens.meta)
-                        .foregroundStyle(photoAsset == nil ? Tokens.danger : Tokens.textSecondary)
+                        .foregroundStyle(Tokens.danger)
                 }
                 Text("원본 형식을 유지하며 최대 50MB · 1억 픽셀까지 저장합니다.")
                     .font(Tokens.meta)
@@ -240,20 +278,72 @@ struct AddClipView: View {
         }
     }
 
+    private var photoSelectionInvalid: Bool {
+        type == .photo && (isLoadingPhoto || photoAsset == nil || photoError != nil)
+    }
+
     @MainActor
-    private func loadPhoto(_ item: PhotosPickerItem) async {
+    private func loadPhoto(_ item: PhotosPickerItem?) async {
+        guard let item else {
+            photoAsset = nil
+            photoPreview = nil
+            photoError = nil
+            isLoadingPhoto = false
+            return
+        }
         photoAsset = nil
-        photoStatus = "사진을 확인하는 중…"
+        photoPreview = nil
+        photoError = nil
+        saveError = nil
+        isLoadingPhoto = true
         do {
             guard let data = try await item.loadTransferable(type: Data.self) else {
                 throw SharedImageAssetError.unsupported
             }
-            let asset = try SharedImageAsset(validatingData: data, typeIdentifier: item.supportedContentTypes.first?.identifier)
+            try Task.checkCancellation()
+            let typeIdentifier = item.supportedContentTypes.first?.identifier
+            let prepared = try await Task.detached(priority: .userInitiated) {
+                try Self.preparePhoto(data: data, typeIdentifier: typeIdentifier)
+            }.value
+            try Task.checkCancellation()
+            guard photoItem == item else { return }
+            let asset = prepared.asset
             photoAsset = asset
-            photoStatus = ByteCountFormatter.string(fromByteCount: asset.byteCount, countStyle: .file)
+            photoPreview = prepared.previewData.flatMap(UIImage.init(data:))
+            isLoadingPhoto = false
+        } catch is CancellationError {
+            return
         } catch {
-            photoStatus = error.localizedDescription
+            guard photoItem == item else { return }
+            photoError = error.localizedDescription
+            isLoadingPhoto = false
         }
+    }
+
+    private nonisolated static func preparePhoto(
+        data: Data,
+        typeIdentifier: String?
+    ) throws -> (asset: SharedImageAsset, previewData: Data?) {
+        let asset = try SharedImageAsset(validatingData: data, typeIdentifier: typeIdentifier)
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
+            throw SharedImageAssetError.unsupported
+        }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: 720
+        ]
+        let previewData = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+            .flatMap { UIImage(cgImage: $0).jpegData(compressionQuality: 0.82) }
+        return (asset, previewData)
+    }
+
+    private func removePhoto() {
+        photoItem = nil
+        photoAsset = nil
+        photoPreview = nil
+        photoError = nil
+        isLoadingPhoto = false
     }
 
     private func resetDraft() {
@@ -268,7 +358,9 @@ struct AddClipView: View {
         saveError = nil
         photoItem = nil
         photoAsset = nil
-        photoStatus = nil
+        photoPreview = nil
+        photoError = nil
+        isLoadingPhoto = false
     }
 }
 

@@ -128,7 +128,10 @@ struct SearchView: View {
                                    title: isBrowsingRecent ? "아직 저장한 클립이 없습니다" : "검색 결과 없음",
                                    message: isBrowsingRecent
                                        ? "공유 시트나 추가 탭에서 첫 클립을 저장해 보세요."
-                                       : "제목, URL, 메모, 태그를 바꿔 다시 찾아보세요.")
+                                       : "제목, URL, 메모, 태그를 바꿔 다시 찾아보세요.",
+                                   actionTitle: emptyStateActionTitle) {
+                        recoverFromEmptyResults()
+                    }
                 } else {
                     VStack(spacing: 0) {
                         ForEach(results) { clip in
@@ -155,5 +158,20 @@ struct SearchView: View {
     private func recordCurrentSearch() {
         settledQuery = query
         store.recordSearch(query)
+    }
+
+    private var emptyStateActionTitle: String? {
+        if searchFilter != .all { return "필터 해제" }
+        return query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : "검색어 지우기"
+    }
+
+    private func recoverFromEmptyResults() {
+        if searchFilter != .all {
+            searchFilter = .all
+        } else {
+            query = ""
+            settledQuery = ""
+            searchFieldFocused = true
+        }
     }
 }

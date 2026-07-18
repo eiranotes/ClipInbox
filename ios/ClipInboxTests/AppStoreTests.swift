@@ -220,6 +220,20 @@ final class AppStoreTests: XCTestCase {
         XCTAssertTrue(AppStore(fileURL: dataURL, userDefaults: defaults).recentSearches.isEmpty)
     }
 
+    func testToastCarriesSemanticAndUniqueIdentity() {
+        let store = AppStore(fileURL: dataURL, userDefaults: defaults)
+        store.showToast("정보", semantic: .info)
+        let first = store.toast
+
+        XCTAssertEqual(first?.message, L10n.text("정보"))
+        XCTAssertEqual(first?.semantic, .info)
+
+        store.showToast("오류", semantic: .error)
+
+        XCTAssertEqual(store.toast?.semantic, .error)
+        XCTAssertNotEqual(store.toast?.id, first?.id)
+    }
+
     func testFolderDefaultTagIsAppliedToSingleBatchAndSortMoves() {
         var folders = DefaultData.folders
         folders.append(Folder(icon: "folder", label: "읽을거리", defaultTag: "읽을거리"))

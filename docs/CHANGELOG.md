@@ -7,16 +7,22 @@
 - Inbox and Search now offer `전체`, `미정리`, and `북마크` smart views before the existing folder scopes.
 - Search now matches saved URLs and useful extracted link metadata, including summaries, creators, topics, and stable nested attributes.
 - Recent Search history can be cleared directly from its section header.
+- Image and screenshot clips with an available stored original can share that exact file separately from the generated PNG card.
+- Filtered Inbox/Search empty states now offer `전체 보기`, `필터 해제`, or `검색어 지우기` recovery actions as appropriate.
 
 ### Changed
 
 - Explicit single/batch folder moves and Sort Later classification now append the destination folder's default tag in the same durable transaction, without duplicating an existing tag or displacing 12 existing user tags.
 - The localized search placeholder now names URL search, and the upper filter rail is identified as `보기` because it contains both smart views and folders.
+- App feedback now carries success, information, or error semantics with matching symbols and VoiceOver announcements while preserving the established yellow feedback surface.
+- Photo Add validates and downsamples the selected image off the main actor, shows loading/preview/error states, provides a 44pt remove control, cancels superseded loads, and disables Save until a valid original is ready.
+- Inbox selection keeps the selected count visible in its contextual action bar and exposes accurate selected/unselected values and toggle hints to VoiceOver.
 
 ### Fixed
 
 - Search and Inbox now share one scope predicate, so query results intersect correctly with smart views while trashed clips remain excluded.
 - A failed move cannot leave behind a default tag or a partially updated organization state.
+- Storage and cleanup failures no longer appear with a success checkmark, and link-opening or automatic-purge notices no longer impersonate a completed save.
 
 ## Unreleased - 2026-07-17
 

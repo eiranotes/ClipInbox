@@ -136,13 +136,13 @@ struct RootView: View {
                     .transition(feedbackTransition)
                 }
                 if let toast = store.toast {
-                    ToastView(message: toast)
+                    ToastView(toast: toast)
                         .transition(feedbackTransition)
                 }
             }
             .padding(.bottom, Tokens.bottomNavigationClearance)
         }
-        .animation(reduceMotion ? nil : .easeOut(duration: Tokens.motionBase), value: store.toast)
+        .animation(reduceMotion ? nil : .easeOut(duration: Tokens.motionBase), value: store.toast?.id)
         .animation(reduceMotion ? nil : .easeOut(duration: Tokens.motionBase), value: store.pendingDeletion?.id)
         .overlay {
             if lock.isLocked {
@@ -159,6 +159,10 @@ struct RootView: View {
         }
         .onAppear {
             if !onboardingCompleted { showOnboarding = true }
+        }
+        .onChange(of: store.toast?.id) { _, id in
+            guard id != nil, let toast = store.toast else { return }
+            UIAccessibility.post(notification: .announcement, argument: L10n.text(toast.message))
         }
     }
 

@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-07-18: Recovery Actions and Feedback Stay Local to Existing Workflows
+
+Decision: Add recovery buttons only where the current Inbox/Search state is locally reversible, keep toast visuals on the existing yellow product feedback surface while assigning success/info/error semantics and VoiceOver announcements, and expose an original-image Share action only when a stored image/screenshot file actually exists. Photo Add validates the original off the main actor, generates a bounded preview, cancels superseded selections, exposes a 44pt remove action, and disables Save until the photo state is valid.
+
+Why: A filtered empty screen without a way back, a green-looking success icon on an error, or a selected image with no preview/removal path creates friction inside the app's core capture-and-retrieve loop. These are state-clarity gaps, not reasons to add editing, sync, OCR, or a new media workflow.
+
+Impact: `전체 보기`, `필터 해제`, and `검색어 지우기` preserve the user's surrounding context. Selection rows announce their title, selected value, and toggle hint, while the contextual bar always shows the selected count. Image/screenshot clips can send the exact stored original independently from the generated PNG card. Simulator automation verified the Inbox and Add resting layouts; the PhotosPicker interaction still requires a direct Simulator or physical-device touch because the embedded iOS accessibility tree is not exposed to the local macOS UI driver.
+
 ## 2026-07-18: Smart Views and Default Tags Extend Existing Organization
 
 Decision: Keep the existing two-row filter control and add `전체`, `미정리`, and `북마크` as dynamic smart views before destination folders. Use the same filter predicate in Inbox and Search. Search the saved clip title, source, URL, tags, description, and memo plus a metadata projection containing canonical content fields and nested stable attributes; exclude images, HTTP inspection, extraction diagnostics, and volatile attributes. Applying a folder default tag happens only during an explicit single/batch move or Sort Later classification, in the same repository transaction as the folder/state change.

@@ -397,6 +397,15 @@
 // Link metadata (URLMetadataEngine)
 "링크 정보" = "Link Info";
 "자세히 보기" = "Show More";
+"전체 보기" = "View All";
+"필터 해제" = "Clear Filter";
+"선택됨" = "Selected";
+"선택 안 됨" = "Not selected";
+"선택하려면 이중 탭" = "Double-tap to select";
+"선택 해제하려면 이중 탭" = "Double-tap to deselect";
+"원본 이미지 공유" = "Share Original Image";
+"저장된 원본 파일 전송" = "Send the saved original file";
+"선택한 사진 제거" = "Remove selected photo";
 "접기" = "Collapse";
 "링크 정보를 접습니다" = "Collapses the link info";
 "링크 정보를 더 보여 줍니다" = "Shows more link info";

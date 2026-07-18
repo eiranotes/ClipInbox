@@ -1,5 +1,17 @@
 import SwiftUI
 import UIKit
+import CoreTransferable
+import UniformTypeIdentifiers
+
+private struct OriginalImageShareItem: Transferable {
+    let fileURL: URL
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .image) { item in
+            SentTransferredFile(item.fileURL)
+        }
+    }
+}
 
 /// 공유 시트: 링크 복사, 시스템 공유, 공유 카드 이미지.
 struct ShareOptionsSheet: View {
@@ -43,6 +55,21 @@ struct ShareOptionsSheet: View {
                             store.showToast("링크를 복사했습니다")
                         }
 
+                        if let originalImageItem = originalImageItem(for: clip) {
+                            let previewImage = Image(uiImage: ClipImageResolver.image(for: clip))
+                            ShareLink(
+                                item: originalImageItem,
+                                preview: SharePreview(clip.presentationTitle, image: previewImage)
+                            ) {
+                                shareRowLabel(
+                                    systemImage: "photo.on.rectangle",
+                                    label: "원본 이미지 공유",
+                                    value: "저장된 원본 파일 전송"
+                                )
+                            }
+                            .buttonStyle(ResponsivePressButtonStyle())
+                        }
+
                         ShareLink(item: shareText(clip)) {
                             shareRowLabel(systemImage: "square.and.arrow.up", label: "시스템 공유",
                                           value: "제목과 메모를 공유 시트로 전송")
@@ -80,6 +107,13 @@ struct ShareOptionsSheet: View {
         [clip.presentationTitle, clip.memo ?? clip.description, clip.url]
             .filter { !$0.isEmpty }
             .joined(separator: "\n")
+    }
+
+    private func originalImageItem(for clip: Clip) -> OriginalImageShareItem? {
+        guard clip.type == .image || clip.type == .screenshot,
+              let fileURL = clip.sharedImageURL,
+              FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
+        return OriginalImageShareItem(fileURL: fileURL)
     }
 
     private func shareRowLabel(systemImage: String, label: String, value: String) -> some View {

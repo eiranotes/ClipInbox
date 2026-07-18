@@ -250,7 +250,7 @@ struct DetailView: View {
                 Button("브라우저에서 열기") {
                     if let url = URL(string: clip.url) {
                         openURL(url)
-                        store.showToast("브라우저에서 원본 열기를 요청했습니다")
+                        store.showToast("브라우저에서 원본 열기를 요청했습니다", semantic: .info)
                     }
                 }
             } message: {
@@ -297,7 +297,7 @@ struct DetailView: View {
             showExternalConfirm = true
         } else {
             openURL(url)
-            store.showToast("브라우저에서 원본 열기를 요청했습니다")
+            store.showToast("브라우저에서 원본 열기를 요청했습니다", semantic: .info)
         }
     }
 
@@ -308,7 +308,7 @@ struct DetailView: View {
             store.showToast("링크를 복사했습니다")
         case .image:
             guard let image = ClipImageResolver.originalImage(for: clip) else {
-                store.showToast("이미지를 복사할 수 없습니다")
+                store.showToast("이미지를 복사할 수 없습니다", semantic: .error)
                 return
             }
             UIPasteboard.general.image = image

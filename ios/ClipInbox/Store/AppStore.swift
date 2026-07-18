@@ -66,6 +66,26 @@ struct AppStorageSummary: Equatable {
     let quarantinedCount: Int
 }
 
+enum ToastSemantic: Equatable {
+    case success
+    case info
+    case error
+
+    var systemImage: String {
+        switch self {
+        case .success: return "checkmark.circle"
+        case .info: return "info.circle"
+        case .error: return "exclamationmark.triangle"
+        }
+    }
+}
+
+struct AppToast: Identifiable, Equatable {
+    let id = UUID()
+    let message: String
+    let semantic: ToastSemantic
+}
+
 @Observable
 final class AppStore {
     struct PendingDeletion: Identifiable {
@@ -92,7 +112,7 @@ final class AppStore {
     private(set) var recoveredLibraryNotice = false
     private(set) var sharedQueueNotice: String? = nil
 
-    var toast: String?
+    var toast: AppToast?
     private var toastTask: Task<Void, Never>?
     @ObservationIgnored private var deletionTask: Task<Void, Never>?
 
@@ -724,7 +744,7 @@ final class AppStore {
             linkOpenMode = previous.linkOpenMode
             try? repository.commit(snapshot())
             try? syncSharedConfiguration()
-            showToast(storageFailureMessage)
+            showToast(storageFailureMessage, semantic: .error)
             return false
         }
         return true
@@ -904,7 +924,9 @@ final class AppStore {
         let expiredIDs = Set(expired.map(\.id))
         guard commitMutation({ clips.removeAll { expiredIDs.contains($0.id) } }) else { return 0 }
         removeStoredImages(for: expired)
-        if showFeedback { showToast(L10n.format("format.auto_deleted_trash", expired.count)) }
+        if showFeedback {
+            showToast(L10n.format("format.auto_deleted_trash", expired.count), semantic: .info)
+        }
         return expired.count
     }
 
@@ -1209,7 +1231,7 @@ final class AppStore {
             try repository.eraseAllData(replacingWith: emptySnapshot)
         } catch {
             storageErrorMessage = error.localizedDescription
-            showToast(storageFailureMessage)
+            showToast(storageFailureMessage, semantic: .error)
             return false
         }
 
@@ -1236,7 +1258,7 @@ final class AppStore {
             try syncSharedConfiguration(containerURL: containerURL)
         } catch {
             storageErrorMessage = L10n.text("일부 로컬 데이터를 정리하지 못했습니다. 다시 시도하세요.")
-            showToast(storageErrorMessage ?? error.localizedDescription)
+            showToast(storageErrorMessage ?? error.localizedDescription, semantic: .error)
             return false
         }
 
@@ -1263,9 +1285,9 @@ final class AppStore {
 
     // MARK: - 토스트
 
-    func showToast(_ message: String) {
+    func showToast(_ message: String, semantic: ToastSemantic = .success) {
         toastTask?.cancel()
-        toast = L10n.text(message)
+        toast = AppToast(message: L10n.text(message), semantic: semantic)
         toastTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(2.4))
             if !Task.isCancelled { self?.toast = nil }
