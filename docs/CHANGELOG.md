@@ -4,6 +4,7 @@
 
 ### Added
 
+- Prepared the 1.1 update as version `1.1.0 (2)` for both the app and Share Extension; the local release gate now rejects stale or mismatched archive versions.
 - Inbox and Search now offer `전체`, `미정리`, and `북마크` smart views before the existing folder scopes.
 - Search now matches saved URLs and useful extracted link metadata, including summaries, creators, topics, and stable nested attributes.
 - Recent Search history can be cleared directly from its section header.
@@ -12,6 +13,8 @@
 
 ### Changed
 
+- XcodeGen synchronization checks now compare the generated project's before/after state, allowing an intentional project-version change to be verified before it is committed while still rejecting generator drift.
+- The complete 1.1 local gate passes 86/86 simulator tests and an unsigned generic-iOS Release archive with matching app/extension versions, privacy manifests, and Korean, English, and Japanese resources.
 - Explicit single/batch folder moves and Sort Later classification now append the destination folder's default tag in the same durable transaction, without duplicating an existing tag or displacing 12 existing user tags.
 - The localized search placeholder now names URL search, and the upper filter rail is identified as `보기` because it contains both smart views and folders.
 - App feedback now carries success, information, or error semantics with matching symbols and VoiceOver announcements while preserving the established yellow feedback surface.

@@ -13,6 +13,8 @@ REQUIRE_OWNED_METADATA="${REQUIRE_OWNED_METADATA:-0}"
 EXPECTED_APP_ID="app.eiradev.ClipInbox"
 EXPECTED_EXTENSION_ID="app.eiradev.ClipInbox.Share"
 EXPECTED_APP_GROUP="group.app.eiradev.ClipInbox"
+EXPECTED_MARKETING_VERSION="1.1.0"
+EXPECTED_BUILD_VERSION="2"
 
 log() {
   printf '[release-gate] %s\n' "$*"
@@ -57,8 +59,16 @@ extension_group="$(plist_value "$IOS_DIR/ClipShareExtension/ClipInboxShare.entit
 [[ "$extension_group" == "$EXPECTED_APP_GROUP" ]] || fail "unexpected extension App Group: $extension_group"
 
 log "regenerating the Xcode project"
+project_state_before="$(
+  git -C "$ROOT_DIR" diff --no-ext-diff --binary -- ios/ClipInbox.xcodeproj
+  git -C "$ROOT_DIR" status --porcelain --untracked-files=all -- ios/ClipInbox.xcodeproj
+)"
 (cd "$IOS_DIR" && xcodegen generate --spec project.yml)
-if ! git -C "$ROOT_DIR" diff --quiet -- ios/ClipInbox.xcodeproj; then
+project_state_after="$(
+  git -C "$ROOT_DIR" diff --no-ext-diff --binary -- ios/ClipInbox.xcodeproj
+  git -C "$ROOT_DIR" status --porcelain --untracked-files=all -- ios/ClipInbox.xcodeproj
+)"
+if [[ "$project_state_before" != "$project_state_after" ]]; then
   fail "ios/ClipInbox.xcodeproj is not synchronized with ios/project.yml"
 fi
 
@@ -118,8 +128,17 @@ extension_path="$(find "$app_path/PlugIns" -maxdepth 1 -type d -name '*.appex' -
 log "inspecting the archived app and Share Extension"
 app_id="$(plist_value "$app_path/Info.plist" CFBundleIdentifier)"
 extension_id="$(plist_value "$extension_path/Info.plist" CFBundleIdentifier)"
+app_marketing_version="$(plist_value "$app_path/Info.plist" CFBundleShortVersionString)"
+extension_marketing_version="$(plist_value "$extension_path/Info.plist" CFBundleShortVersionString)"
+app_build_version="$(plist_value "$app_path/Info.plist" CFBundleVersion)"
+extension_build_version="$(plist_value "$extension_path/Info.plist" CFBundleVersion)"
 [[ "$app_id" == "$EXPECTED_APP_ID" ]] || fail "unexpected app bundle identifier: $app_id"
 [[ "$extension_id" == "$EXPECTED_EXTENSION_ID" ]] || fail "unexpected extension bundle identifier: $extension_id"
+[[ "$app_marketing_version" == "$EXPECTED_MARKETING_VERSION" ]] || fail "unexpected app marketing version: $app_marketing_version"
+[[ "$extension_marketing_version" == "$EXPECTED_MARKETING_VERSION" ]] || fail "unexpected extension marketing version: $extension_marketing_version"
+[[ "$app_build_version" == "$EXPECTED_BUILD_VERSION" ]] || fail "unexpected app build version: $app_build_version"
+[[ "$extension_build_version" == "$EXPECTED_BUILD_VERSION" ]] || fail "unexpected extension build version: $extension_build_version"
+log "archive version: $EXPECTED_MARKETING_VERSION ($EXPECTED_BUILD_VERSION)"
 
 for manifest in "$app_path/PrivacyInfo.xcprivacy" "$extension_path/PrivacyInfo.xcprivacy"; do
   require_file "$manifest"

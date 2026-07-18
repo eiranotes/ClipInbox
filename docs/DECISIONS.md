@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-07-18: The First Update Is Version 1.1.0 Build 2
+
+Decision: Keep the user-reported `1.0.0 (1)` App Review submission untouched and prepare the next repository candidate as `1.1.0 (2)`. The app and Share Extension inherit one shared XcodeGen version, and the release script rejects an archive unless both bundles contain the exact expected marketing and build versions.
+
+Why: The retrieval, multi-image capture, data-reset, and workflow-polish changes form a coherent product-bounded update, while a new build number is required to distinguish it from the first submitted binary. Checking only bundle identifiers could allow a stale extension or archive to pass local inspection.
+
+Impact: Settings displays 1.1 from the built bundle, release verification proves app/extension version parity, and App Store Connect submission remains an external account-holder step. Export-compliance remains an explicit external determination; the repository does not guess an `ITSAppUsesNonExemptEncryption` value.
+
 ## 2026-07-18: Recovery Actions and Feedback Stay Local to Existing Workflows
 
 Decision: Add recovery buttons only where the current Inbox/Search state is locally reversible, keep toast visuals on the existing yellow product feedback surface while assigning success/info/error semantics and VoiceOver announcements, and expose an original-image Share action only when a stored image/screenshot file actually exists. Photo Add validates the original off the main actor, generates a bounded preview, cancels superseded selections, exposes a 44pt remove action, and disables Save until the photo state is valid.
@@ -26,11 +34,11 @@ Impact: The reset is intentionally irreversible and its confirmation names the e
 
 ## 2026-07-17: A Multi-Image Share Is One Atomic Intake Batch
 
-Decision: Advertise Share Extension support for up to 200 images, matching the pending queue item ceiling. Collect every image provider in selection order and create one payload per image. Quick mode saves the complete selection immediately; Review mode applies the chosen folder and memo to every selected image. Store original image files first, preflight the complete payload batch against the queue's item and byte limits, then write all payload files with rollback for any failure created by this attempt.
+Decision: Accept up to 20 images in one Share invocation while keeping the separate pending-queue ceiling at 200 items/250 MB. Collect every image provider in selection order and create one payload per image. Quick mode saves the complete selection immediately; Review mode applies the chosen folder and memo to every selected image. Write originals and payloads inside a hidden staging directory, then expose the complete batch with one atomic directory promotion.
 
 Why: The extension previously declared an image maximum of one in its activation rule, so iOS could hide it when two or more Photos items were selected. Its loader also returned after the first image provider, which discarded later selections even if the extension opened. Repeating the existing single-item enqueue would additionally allow a late capacity failure to leave only part of a user's selection queued.
 
-Impact: Each selected image becomes an independent clip while retaining the existing 50 MB/100 MP per-image and 250 MB/200-item pending-queue protections. The extension shows localized multi-item counts and preserves the one-image copy and confirmation path. If a batch cannot be accepted, newly written originals and payloads from that attempt are removed instead of reporting partial success.
+Impact: Each selected image becomes an independent clip while retaining the existing 50 MB/100 MP per-image and 250 MB/200-item pending-queue protections. The extension shows localized multi-item counts and preserves the one-image copy and confirmation path. Interrupted staging remains invisible, is cleaned after 24 hours, and cannot leave a partially importable selection.
 
 ## 2026-07-16: Classification Keeps Detail Context While Batch Actions Stay Contextual
 

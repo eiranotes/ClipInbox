@@ -2,6 +2,7 @@
 
 ## Done
 
+- [x] Prepare the 1.1 update as `MARKETING_VERSION 1.1.0` build `2`, keep app/extension versions synchronized, and assert both values from the archived bundles in the local release gate.
 - [x] Add original-image re-sharing, actionable empty states, semantic and VoiceOver-announced toasts, explicit selection counts/states, and cancellation-safe Photo capture loading with a downsampled preview and removable error state.
 - [x] Add `전체`/`미정리`/`북마크` smart views to Inbox and Search, search clip URLs plus useful link metadata, provide persistent recent-search clearing, and apply folder default tags transactionally on explicit moves and Sort Later classification.
 - [x] Make `모든 데이터 삭제` remove previous/recovery snapshots, app defaults and recent searches, all Share queue/quarantine/image artifacts, decoded image memory, and URL metadata sidecar/cache before showing success.
@@ -140,7 +141,7 @@
 - [x] Phase 2: harden Share capture and App Lock, then replace the demo Add flow.
 - [x] Phase 3: add trust states, Undo, storage/export disclosure, and accessibility variants.
 - [x] Phase 4 repository gate: add local validation, unsigned Release archive inspection, and recovery/Share/release runbooks.
-- [ ] Phase 4 distribution gate: verify an owned-metadata, distribution-signed archive and complete the physical-device/App Store Connect matrix.
+- [ ] Phase 4 distribution gate for 1.1: verify an owned-metadata, distribution-signed `1.1.0 (2)` archive and complete the physical-device/App Store Connect matrix.
 
 ## Deferred
 

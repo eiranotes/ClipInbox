@@ -1,5 +1,7 @@
 # App Store Release Checklist
 
+The user reports that `1.0.0 (1)` is currently in App Review. The repository's next candidate is the product-bounded `1.1.0 (2)` update; App Store Connect state is not verifiable from the repository.
+
 ## Proven in the repository
 
 - Native SwiftUI app and embedded Share Extension build together.
@@ -33,10 +35,10 @@
 - Enter the required App Review contact name, email, and phone number. Add review notes explaining that no login is required, App Lock is off by default, and Share Extension testing starts from another app's share sheet.
 - If distributing in the EU, complete the App Store Connect trader-status declaration and any required public contact details.
 - Verify the distribution provisioning profiles include the same App Group for both executables.
-- [x] Use `MARKETING_VERSION 1.0.0` and `CURRENT_PROJECT_VERSION 1` for the first upload; increment the build number for every subsequent upload.
+- [x] Preserve `1.0.0 (1)` as the first upload and use `MARKETING_VERSION 1.1.0` with `CURRENT_PROJECT_VERSION 2` for the next update.
 - Archive with the Release configuration, run Xcode validation, and upload from the account holder's signed environment.
 - Select the uploaded build, choose the version release option, add it to the review submission, and submit it.
-- Test Safari URL, plain text, and Photos image sharing on a physical device before submission.
+- Test Safari URL, plain text, and single/multi-image Photos sharing on a physical device before the 1.1 submission.
 - Test Face ID after enabling App Lock on a physical Face ID device.
 - Optionally publish accurate iPhone Accessibility Nutrition Labels after completing a common-task accessibility audit; Apple currently describes these labels as voluntary but planned to become mandatory later.
 
@@ -63,8 +65,9 @@
 ## Final binary checks
 
 - [x] `scripts/verify_ios_release.sh` regenerates the project and rejects Xcode project drift.
-- [x] Simulator build and all 59 unit tests pass with DerivedData on the local disk and index store disabled.
-- [x] Unsigned generic iPhoneOS Release archive passes and contains the embedded `ClipInboxShare.appex`.
+- [x] The release gate asserts that both the app and embedded Share Extension archive as `1.1.0 (2)`.
+- [x] The complete 1.1 simulator suite passes 86/86 tests on iPhone 17 Pro iOS 26.5 with DerivedData on the local disk and index store disabled.
+- [x] The 1.1 unsigned generic iPhoneOS Release archive passes and contains the embedded `ClipInboxShare.appex`.
 - [x] Both `PrivacyInfo.xcprivacy` files are valid and present in the archived bundle.
 - [x] Korean, English, and Japanese `Localizable.strings` are present in both app and extension bundles.
 - [ ] Distribution-signed archive passes strict App Group entitlement checks for both executables.

@@ -2,7 +2,7 @@
 
 ## Current State
 
-Clip Inbox's production source of truth is now the iPhone-only native SwiftUI app under `ios/`, prepared as App Store version `1.0.0 (1)`. The dependency-free web implementation under `src/` is retained as a historical design prototype and is no longer a target for product-logic changes unless web work is explicitly requested. The native app uses a productive-minimal, list-first interface: one warm canvas, hairline-separated rows, quieter metadata, and yellow reserved for selection and primary actions.
+Clip Inbox's production source of truth is now the iPhone-only native SwiftUI app under `ios/`. The user reports that `1.0.0 (1)` is in App Review; the repository is prepared as the `1.1.0 (2)` update candidate. The dependency-free web implementation under `src/` is retained as a historical design prototype and is no longer a target for product-logic changes unless web work is explicitly requested. The native app uses a productive-minimal, list-first interface: one warm canvas, hairline-separated rows, quieter metadata, and yellow reserved for selection and primary actions.
 
 The 2026-07-16 native UI quality pass keeps that identity while closing the main interaction and accessibility gaps: shared press feedback across flat controls, relative Dynamic Type for Pretendard, stronger Increased Contrast tokens, Reduce Motion-aware transitions, labeled folder/tag rails, compact accessibility-size filter menus, a sticky Add save action, explicit recent-clip Search browsing, finger-tracking back navigation, and a native pan/pinch/momentum image viewer. The Share Extension follows the same Dynamic Type, contrast, target-size, and motion contract. Default, Add, Search, and accessibility-size/high-contrast simulator evidence is in `.superloopy/evidence/ios/20260716-ui-polish/`.
 
@@ -30,6 +30,7 @@ Implemented screens:
 
 ## Completed Work
 
+- Prepared the app and embedded Share Extension as `1.1.0 (2)`, and extended the local release gate to assert both archived bundles carry that exact marketing/build version. Project regeneration now checks for changes caused by XcodeGen itself, so the gate remains usable while an intentional generated-project update is awaiting its commit. The complete 1.1 gate passes 86/86 tests on the iPhone 17 Pro iOS 26.5 simulator plus an unsigned generic-iOS Release archive with both bundles, privacy manifests, and all three localizations intact.
 - Added exact stored-image Transferable sharing, reusable empty-state recovery actions, typed success/info/error toasts with accessibility announcements, explicit selection-state semantics, and a cancellable off-main-thread Photo Add preview pipeline. Focused `AppStoreTests` pass 58/58; localized strings validate, and the Inbox/Add resting layouts were inspected on the iPhone 17 Pro iOS 26.5 simulator. The desktop accessibility driver cannot inject touches into the embedded iOS screen, so PhotosPicker interaction remains in the final direct-touch device matrix.
 - Added active-only Unsorted and Bookmark smart views, centralized Inbox/Search scope matching, URL and stable metadata search projection, persistent recent-search clearing, and atomic folder-default-tag application for single/batch moves and Sort Later. Focused `AppStoreTests` pass 57/57, covering active-state boundaries, query/filter intersection, metadata exclusions, history persistence, tag deduplication/cap policy, and rollback.
 - Added a non-rotating repository erase path and cross-store reset orchestration, including exact Share-container cleanup, standard configuration rewrite, metadata cache/sidecar deletion, onboarding/search/default cleanup, and focused success/failure regressions.
@@ -111,7 +112,7 @@ Implemented screens:
 ## Next Steps
 
 - Use App Store Connect Product Page Optimization to compare the dense onboarding panorama with the preserved real-UI candidate once the listing has enough first-time-download traffic.
-- Close the external Phase 4 release gates: enter the published URLs in App Store Connect, run the strict script mode against a distribution-signed archive, validate/upload it in Xcode, and complete the physical-device matrix in `docs/runbooks/RELEASE_VALIDATION.md`.
+- Close the external 1.1 release gates: paste the localized What's New copy, run the strict script mode against a distribution-signed `1.1.0 (2)` archive, validate/upload it in Xcode, and complete the physical-device matrix in `docs/runbooks/RELEASE_VALIDATION.md`.
 - In App Store Connect, accept the Paid Apps Agreement, use South Korea as the base storefront, confirm whether `₩1,900` is offered as an exact current price point, and set the app's upfront price before review. The binary intentionally has no StoreKit paywall, subscription, or restore-purchase UI because the whole app is paid before download.
 - Replace the static `time` strings with `Date`-based values and a relative formatter once real capture exists.
 - Run the app on a Face ID-enrolled device/simulator session to exercise the interactive unlock path end to end.
